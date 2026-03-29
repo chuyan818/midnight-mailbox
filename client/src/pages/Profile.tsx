@@ -2,12 +2,14 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, LogOut, Crown, Calendar } from "lucide-react";
+import { ArrowLeft, Loader2, LogOut, Crown, Calendar, Globe } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage, Language, translations } from "@/contexts/LanguageContext";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
+  const { language, setLanguage } = useLanguage();
 
   const { data: profile, isLoading } = trpc.user.getProfile.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -265,6 +267,40 @@ export default function Profile() {
               </div>
             )}
 
+            {/* Language Settings */}
+            <div className="p-6 rounded-lg bg-white/5 border border-white/10">
+              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                语言设置
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {(['zh', 'en', 'ja', 'ko'] as Language[]).map((lang) => {
+                  const langNames: Record<Language, string> = {
+                    zh: '中文',
+                    en: 'English',
+                    ja: '日本語',
+                    ko: '한국어',
+                  };
+                  return (
+                    <Button
+                      key={lang}
+                      onClick={() => {
+                        setLanguage(lang);
+                        toast.success(`已切换至${langNames[lang]}`);
+                      }}
+                      className={`${
+                        language === lang
+                          ? 'bg-[#FFD580] text-[#0B0F2F]'
+                          : 'bg-white/10 text-white hover:bg-white/20'
+                      }`}
+                    >
+                      {langNames[lang]}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Statistics */}
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-white">我的数据</h2>
@@ -283,6 +319,21 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+
+            {/* Settings Section */}
+            {currentType !== "free" && (
+              <div className="p-6 rounded-lg bg-white/5 border border-white/10">
+                <h2 className="text-lg font-semibold text-white mb-4">会员管理</h2>
+                <Button
+                  variant="outline"
+                  className="border-red-500 text-red-400 hover:bg-red-500/10"
+                  onClick={handleCancel}
+                  disabled={cancelMutation.isPending as any}
+                >
+                  {cancelMutation.isPending ? "处理中..." : "取消会员"}
+                </Button>
+              </div>
+            )}
 
             {/* Navigation */}
             <div className="flex gap-3">

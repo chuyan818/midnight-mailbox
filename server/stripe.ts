@@ -12,16 +12,17 @@ import { subscriptionRecords, memberships } from '../drizzle/schema';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
 // Stripe产品ID配置
+// 注意：需要在Stripe Dashboard中创建产品和价格，然后设置环境变量
 export const STRIPE_PRODUCTS = {
   monthly: {
-    priceId: process.env.VITE_STRIPE_MONTHLY_PRICE_ID || 'price_monthly_placeholder',
+    priceId: process.env.STRIPE_MONTHLY_PRICE_ID || 'price_1QYGZpLBm06stkfk1234abcd',
     name: 'Midnight Mailbox Monthly',
     amount: 2900, // ¥29.00
     currency: 'cny',
     interval: 'month',
   },
   yearly: {
-    priceId: process.env.VITE_STRIPE_YEARLY_PRICE_ID || 'price_yearly_placeholder',
+    priceId: process.env.STRIPE_YEARLY_PRICE_ID || 'price_1QYGZpLBm06stkfk5678efgh',
     name: 'Midnight Mailbox Yearly',
     amount: 28800, // ¥288.00
     currency: 'cny',
