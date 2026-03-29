@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `subscription_records` ADD `stripeCustomerId` varchar(255);\nALTER TABLE `subscription_records` ADD `stripeSubscriptionId` varchar(255);\nALTER TABLE `subscription_records` ADD `updatedAt` timestamp DEFAULT (now()) NOT NULL ON UPDATE CURRENT_TIMESTAMP;\nALTER TABLE `subscription_records` ADD CONSTRAINT `subscription_records_stripeSubscriptionId_unique` UNIQUE(`stripeSubscriptionId`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2ww3ArrZnAfvtYc.root --database VqhYiWskVgxqusBx5gV4tN --execute ALTER TABLE `subscription_records` ADD `stripeCustomerId` varchar(255);\nALTER TABLE `subscription_records` ADD `stripeSubscriptionId` varchar(255);\nALTER TABLE `subscription_records` ADD `updatedAt` timestamp DEFAULT (now()) NOT NULL ON UPDATE CURRENT_TIMESTAMP;\nALTER TABLE `subscription_records` ADD CONSTRAINT `subscription_records_stripeSubscriptionId_unique` UNIQUE(`stripeSubscriptionId`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2889
+}

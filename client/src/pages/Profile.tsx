@@ -15,6 +15,7 @@ export default function Profile() {
 
   const upgradeMutation = trpc.membership.upgrade.useMutation();
   const cancelMutation = trpc.membership.cancel.useMutation();
+  const createCheckoutMutation = trpc.subscription.createCheckoutSession.useMutation();
 
   if (!isAuthenticated) {
     return (
@@ -31,10 +32,12 @@ export default function Profile() {
 
   const handleUpgrade = async (type: "monthly" | "yearly") => {
     try {
-      await upgradeMutation.mutateAsync({ type });
-      toast.success("升级成功！");
+      const result = await createCheckoutMutation.mutateAsync({ type });
+      // 在新标签页打开Stripe Checkout
+      window.open(result.url, '_blank');
+      toast.success('正在跳转到支付页面...');
     } catch (error: any) {
-      toast.error(error.message || "升级失败");
+      toast.error(error.message || "创建支付会话失败");
     }
   };
 
@@ -222,9 +225,9 @@ export default function Profile() {
                     <Button
                       className="w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
                       onClick={() => handleUpgrade("monthly")}
-                      disabled={upgradeMutation.isPending as any}
+                      disabled={createCheckoutMutation.isPending as any}
                     >
-                      {upgradeMutation.isPending ? "升级中..." : "升级为月会员"}
+                      {createCheckoutMutation.isPending ? "处理中..." : "升级为月会员"}
                     </Button>
                   </div>
 
@@ -249,9 +252,9 @@ export default function Profile() {
                     <Button
                       className="w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
                       onClick={() => handleUpgrade("yearly")}
-                      disabled={upgradeMutation.isPending as any}
+                      disabled={createCheckoutMutation.isPending as any}
                     >
-                      {upgradeMutation.isPending ? "升级中..." : "升级为年会员"}
+                      {createCheckoutMutation.isPending ? "处理中..." : "升级为年会员"}
                     </Button>
                   </div>
                 </div>

@@ -397,12 +397,22 @@ export const appRouter = router({
     createCheckoutSession: protectedProcedure
       .input(z.object({ type: z.enum(["monthly", "yearly"]) }))
       .mutation(async ({ ctx, input }) => {
-        // TODO: Implement Stripe checkout session creation
-        return {
-          sessionId: "placeholder",
-          url: "https://checkout.stripe.com/placeholder",
-        };
+        const { createCheckoutSession } = await import('./stripe');
+        const successUrl = `${ctx.req.headers.origin || 'http://localhost:3000'}/profile?session_id={CHECKOUT_SESSION_ID}`;
+        const cancelUrl = `${ctx.req.headers.origin || 'http://localhost:3000'}/profile?canceled=true`;
+        return await createCheckoutSession(ctx.user.id, input.type, successUrl, cancelUrl);
       }),
+
+    getInfo: protectedProcedure.query(async ({ ctx }) => {
+      const { getSubscriptionInfo } = await import('./stripe');
+      return await getSubscriptionInfo(ctx.user.id);
+    }),
+
+    cancel: protectedProcedure.mutation(async ({ ctx }) => {
+      const { cancelSubscription } = await import('./stripe');
+      await cancelSubscription(ctx.user.id);
+      return { success: true };
+    }),
   }),
 });
 
