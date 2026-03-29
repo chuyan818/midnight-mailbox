@@ -33,6 +33,8 @@ export const letters = mysqlTable("letters", {
   userId: int("userId").notNull(),
   content: text("content").notNull(),
   backgroundType: varchar("backgroundType", { length: 50 }),
+  emotionTags: json("emotionTags"),
+  isPublic: boolean("isPublic").default(false).notNull(),
   emotionScore: int("emotionScore"),
   emotionType: varchar("emotionType", { length: 50 }),
   keywords: json("keywords"),
@@ -99,3 +101,81 @@ export const subscriptionRecords = mysqlTable("subscription_records", {
 
 export type SubscriptionRecord = typeof subscriptionRecords.$inferSelect;
 export type InsertSubscriptionRecord = typeof subscriptionRecords.$inferInsert;
+
+/**
+ * Public letters table - stores public/shareable letters
+ */
+export const publicLetters = mysqlTable("public_letters", {
+  id: int("id").autoincrement().primaryKey(),
+  letterId: int("letterId").notNull().unique(),
+  userId: int("userId").notNull(),
+  excerpt: varchar("excerpt", { length: 500 }).notNull(),
+  emotionTags: json("emotionTags"),
+  starCount: int("starCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PublicLetter = typeof publicLetters.$inferSelect;
+export type InsertPublicLetter = typeof publicLetters.$inferInsert;
+
+/**
+ * Stars table - stores user interactions (shared feelings)
+ */
+export const stars = mysqlTable("stars", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  publicLetterId: int("publicLetterId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Star = typeof stars.$inferSelect;
+export type InsertStar = typeof stars.$inferInsert;
+
+/**
+ * Daily quotes table - stores daily selected quotes
+ */
+export const dailyQuotes = mysqlTable("daily_quotes", {
+  id: int("id").autoincrement().primaryKey(),
+  letterId: int("letterId").notNull(),
+  quote: varchar("quote", { length: 500 }).notNull(),
+  emotionTags: json("emotionTags"),
+  date: date("date").notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DailyQuote = typeof dailyQuotes.$inferSelect;
+export type InsertDailyQuote = typeof dailyQuotes.$inferInsert;
+
+/**
+ * Time capsules table - stores letters to future self
+ */
+export const timeCapsules = mysqlTable("time_capsules", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  content: text("content").notNull(),
+  openDate: timestamp("openDate").notNull(),
+  status: mysqlEnum("status", ["pending", "opened"]).default("pending").notNull(),
+  autoReply: text("autoReply"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  openedAt: timestamp("openedAt"),
+});
+
+export type TimeCapsule = typeof timeCapsules.$inferSelect;
+export type InsertTimeCapsule = typeof timeCapsules.$inferInsert;
+
+/**
+ * Emotion stars table - stores 3D star positions for emotion constellation
+ */
+export const emotionStars = mysqlTable("emotion_stars", {
+  id: int("id").autoincrement().primaryKey(),
+  letterId: int("letterId").notNull(),
+  emotionType: varchar("emotionType", { length: 50 }).notNull(),
+  color: varchar("color", { length: 10 }).notNull(),
+  x: decimal("x", { precision: 10, scale: 4 }).notNull(),
+  y: decimal("y", { precision: 10, scale: 4 }).notNull(),
+  z: decimal("z", { precision: 10, scale: 4 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmotionStar = typeof emotionStars.$inferSelect;
+export type InsertEmotionStar = typeof emotionStars.$inferInsert;

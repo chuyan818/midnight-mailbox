@@ -11,6 +11,10 @@ import Letter from "./pages/Letter";
 import Mailbox from "./pages/Mailbox";
 import Report from "./pages/Report";
 import Profile from "./pages/Profile";
+import PublicMailbox from "./pages/PublicMailbox";
+import DailyQuote from "./pages/DailyQuote";
+import TimeCapsule from "./pages/TimeCapsule";
+import EmotionPlanet from "./pages/EmotionPlanet";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -22,6 +26,10 @@ function Router() {
       <Route path={"/mailbox"} component={Mailbox} />
       <Route path={"/report"} component={Report} />
       <Route path={"/profile"} component={Profile} />
+      <Route path={"/public-mailbox"} component={PublicMailbox} />
+      <Route path={"/daily-quote"} component={DailyQuote} />
+      <Route path={"/time-capsule"} component={TimeCapsule} />
+      <Route path={"/emotion-planet"} component={EmotionPlanet} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -38,7 +46,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
+        defaultTheme="dark"
         // switchable
       >
         <LanguageProvider>

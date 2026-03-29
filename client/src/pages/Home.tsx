@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
-import { Sparkles, Heart, TrendingUp, Lock } from "lucide-react";
+import { Sparkles, Heart, TrendingUp, Lock, Clock } from "lucide-react";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
@@ -92,8 +92,11 @@ export default function Home() {
             </div>
 
             {/* Features */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-8">
-              <div className="space-y-3 p-6 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#FFD580]/30 transition-colors">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 py-8">
+              <div 
+                className="space-y-3 p-6 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#FFD580]/30 transition-colors cursor-pointer"
+                onClick={() => navigate("/write")}
+              >
                 <Heart className="w-8 h-8 text-[#FFD580] mx-auto" />
                 <h3 className="font-semibold">匿名倾诉</h3>
                 <p className="text-sm text-gray-400">
@@ -101,19 +104,33 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="space-y-3 p-6 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#FFD580]/30 transition-colors">
+              <div className="space-y-3 p-6 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#FFD580]/30 transition-colors cursor-pointer"
+                onClick={() => navigate("/public-mailbox")}
+              >
                 <Sparkles className="w-8 h-8 text-[#FFD580] mx-auto" />
-                <h3 className="font-semibold">AI温暖回信</h3>
+                <h3 className="font-semibold">公共信箱</h3>
                 <p className="text-sm text-gray-400">
-                  获得温柔、治愈的AI回复
+                  阅读他人的故事，点亮共鸣之星
                 </p>
               </div>
 
-              <div className="space-y-3 p-6 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#FFD580]/30 transition-colors">
+              <div className="space-y-3 p-6 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#FFD580]/30 transition-colors cursor-pointer"
+                onClick={() => navigate("/daily-quote")}
+              >
                 <TrendingUp className="w-8 h-8 text-[#FFD580] mx-auto" />
-                <h3 className="font-semibold">情绪报告</h3>
+                <h3 className="font-semibold">今日一句</h3>
                 <p className="text-sm text-gray-400">
-                  追踪情绪变化，了解自己
+                  最孤独的句子，最温暖的陪伴
+                </p>
+              </div>
+
+              <div className="space-y-3 p-6 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 hover:border-[#FFD580]/30 transition-colors cursor-pointer"
+                onClick={() => navigate("/emotion-planet")}
+              >
+                <Sparkles className="w-8 h-8 text-[#FFD580] mx-auto" />
+                <h3 className="font-semibold">情绪星球</h3>
+                <p className="text-sm text-gray-400">
+                  所有情绪在星空中闪烁
                 </p>
               </div>
             </div>
@@ -127,6 +144,17 @@ export default function Home() {
               >
                 开始写信
               </Button>
+              {isAuthenticated && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 text-base font-semibold px-8 py-6"
+                  onClick={() => navigate("/time-capsule")}
+                >
+                  <Clock className="w-5 h-5 mr-2" />
+                  时间胶囊
+                </Button>
+              )}
               {!isAuthenticated && (
                 <Button
                   size="lg"

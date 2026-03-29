@@ -22,6 +22,13 @@
       "when": 1774749006005,
       "tag": "0002_tranquil_the_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1774751598089,
+      "tag": "0003_majestic_namor",
+      "breakpoints": true
     }
   ]
 }

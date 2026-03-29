@@ -4,9 +4,17 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Send, ArrowLeft, Sparkles } from "lucide-react";
+import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
 
 type BackgroundType = "星空漫漫" | "牛皮纸" | "樱花来信" | "秋日落信" | "节日灯火";
+
+const EMOTION_TAGS = [
+  { label: "孤独", emoji: "😔" },
+  { label: "压力", emoji: "😰" },
+  { label: "想念", emoji: "💭" },
+  { label: "遗憾", emoji: "😞" },
+  { label: "希望", emoji: "✨" },
+];
 
 const BACKGROUNDS: { type: BackgroundType; label: string; bg: string; description: string }[] = [
   {
@@ -46,7 +54,17 @@ export default function Write() {
   const [, navigate] = useLocation();
   const [selectedBackground, setSelectedBackground] = useState<BackgroundType>("星空漫漫");
   const [content, setContent] = useState("");
+  const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
+  const [isPublic, setIsPublic] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const toggleEmotion = (emotion: string) => {
+    setSelectedEmotions((prev) =>
+      prev.includes(emotion)
+        ? prev.filter((e) => e !== emotion)
+        : [...prev, emotion]
+    );
+  };
 
   const createLetterMutation = trpc.letter.create.useMutation();
 
@@ -73,6 +91,8 @@ export default function Write() {
       toast.error("信件内容至少需要10个字符");
       return;
     }
+
+
 
     setIsSubmitting(true);
     try {
@@ -181,20 +201,73 @@ export default function Write() {
                 className="w-full h-48 p-4 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:border-[#FFD580] focus:outline-none resize-none"
               />
 
+              {/* Emotion Tags */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-300">
+                  标记你的情绪（必需）
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {EMOTION_TAGS.map((tag) => (
+                    <button
+                      key={tag.label}
+                      onClick={() => toggleEmotion(tag.label)}
+                      className={`px-4 py-2 rounded-full border-2 transition-all text-sm font-medium ${
+                        selectedEmotions.includes(tag.label)
+                          ? "border-[#FFD580] bg-[#FFD580]/20 text-[#FFD580]"
+                          : "border-white/10 bg-white/5 text-gray-300 hover:border-white/20"
+                      }`}
+                    >
+                      {tag.emoji} {tag.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Public Option */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-300">
+                  分享设置
+                </label>
+                <button
+                  onClick={() => setIsPublic(!isPublic)}
+                  className={`w-full p-4 rounded-lg border-2 transition-all flex items-center gap-3 ${
+                    isPublic
+                      ? "border-[#FFD580] bg-[#FFD580]/10"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
+                  }`}
+                >
+                  {isPublic ? (
+                    <Globe className="w-5 h-5 text-[#FFD580]" />
+                  ) : (
+                    <Lock className="w-5 h-5 text-gray-400" />
+                  )}
+                  <div className="text-left">
+                    <div className="font-medium text-white">
+                      {isPublic ? "公开分享" : "仅自己可见"}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {isPublic
+                        ? "这封信会发布到公共信箱，其他用户可以看到并点亮星星"
+                        : "这封信只有你能看到"}
+                    </div>
+                  </div>
+                </button>
+              </div>
+
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-400">
                   {content.length === 0 && "开始写信..."}
                   {content.length > 0 && content.length < 10 && (
                     <span className="text-yellow-400">至少需要10个字符</span>
                   )}
-                  {content.length >= 10 && (
+                  {content.length >= 10 && selectedEmotions.length > 0 && (
                     <span className="text-green-400">✓ 可以发送</span>
                   )}
                 </div>
 
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || content.length < 10}
+                  disabled={isSubmitting || content.length < 10 || selectedEmotions.length === 0}
                   className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <Send className="w-4 h-4" />
