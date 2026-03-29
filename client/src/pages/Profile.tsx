@@ -30,9 +30,13 @@ export default function Profile() {
     );
   }
 
-  const handleUpgrade = async (type: "monthly" | "yearly") => {
+  const handleUpgrade = async (planType: "monthly" | "yearly") => {
     try {
-      const result = await createCheckoutMutation.mutateAsync({ type });
+      const result = await createCheckoutMutation.mutateAsync({
+        planType,
+        successUrl: `${window.location.origin}/profile?success=true`,
+        cancelUrl: `${window.location.origin}/profile?canceled=true`,
+      });
       // 在新标签页打开Stripe Checkout
       window.open(result.url, '_blank');
       toast.success('正在跳转到支付页面...');

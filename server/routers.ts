@@ -18,8 +18,12 @@ import {
 } from "./db";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
-import { invokeLLM } from "./_core/llm";
-import { detectLanguage, getAIReplyPrompt, getEmotionAnalysisPrompt, getSafetyCheckPrompt } from "./i18n";
+import {
+  generateAIReply,
+  analyzeEmotion,
+  checkContentSafety,
+  detectLanguage,
+} from "./llm-hybrid";
 
 // Emotion types
 const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫", "压力", "思念"] as const;
@@ -27,173 +31,8 @@ const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫
 // Background types
 const BACKGROUND_TYPES = ["星空漫漫", "牛皮纸", "樱花来信", "秋日落信", "节日灯火"] as const;
 
-/**
- * Analyze emotion from letter content using LLM
- */
-async function analyzeEmotion(content: string): Promise<{
-  emotionType: string;
-  emotionScore: number;
-  keywords: string[];
-}> {
-  try {
-    const language = detectLanguage(content);
-    const response = await invokeLLM({
-      messages: [
-        {
-          role: "system",
-          content: getEmotionAnalysisPrompt(language),
-        },
-        {
-          role: "user",
-          content: `请分析这封信的情绪：\n\n${content}`,
-        },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "emotion_analysis",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              emotionType: { type: "string" },
-              emotionScore: { type: "number" },
-              keywords: { type: "array", items: { type: "string" } },
-            },
-            required: ["emotionType", "emotionScore", "keywords"],
-            additionalProperties: false,
-          },
-        },
-      },
-    });
-
-    const content_text = response.choices[0]?.message.content;
-    if (!content_text) throw new Error("No response from LLM");
-
-    let textContent = '';
-    if (typeof content_text === 'string') {
-      textContent = content_text;
-    } else if (Array.isArray(content_text)) {
-      const textItem = content_text.find((c: any) => c.type === 'text');
-      textContent = (textItem as any)?.text || '';
-    }
-    
-    if (!textContent) throw new Error("No text response from LLM");
-    const result = JSON.parse(textContent);
-    return result;
-  } catch (error) {
-    console.error("Emotion analysis error:", error);
-    // Fallback to default emotion
-    return {
-      emotionType: "迷茫",
-      emotionScore: 50,
-      keywords: ["倾诉", "思考", "感受"],
-    };
-  }
-}
-
-/**
- * Generate AI reply using LLM
- */
-async function generateAIReply(content: string, emotionType: string): Promise<string> {
-  try {
-    const language = detectLanguage(content);
-    const response = await invokeLLM({
-      messages: [
-        {
-          role: "system",
-          content: getAIReplyPrompt(language),
-        },
-        {
-          role: "user",
-          content: `用户的来信：\n\n${content}\n\n他们的主要情绪是：${emotionType}`,
-        },
-      ],
-    });
-
-    const content_text = response.choices[0]?.message.content;
-    if (!content_text) throw new Error("No response from LLM");
-
-    let textContent = '';
-    if (typeof content_text === 'string') {
-      textContent = content_text;
-    } else if (Array.isArray(content_text)) {
-      const textItem = content_text.find((c: any) => c.type === 'text');
-      textContent = (textItem as any)?.text || '';
-    }
-    
-    return textContent || "感谢你的倾诉。我听到了你心中的声音，那些感受都是真实而有效的。在这个深夜，我想告诉你，你不是一个人。无论现在有多困难，这一刻会过去，而你会变得更强。温暖拥抱你。";
-  } catch (error) {
-    console.error("AI reply generation error:", error);
-    return "感谢你的倾诉。我听到了你心中的声音，那些感受都是真实而有效的。在这个深夜，我想告诉你，你不是一个人。无论现在有多困难，这一刻会过去，而你会变得更强。温暖拥抱你。";
-  }
-}
-
-/**
- * Check content safety using LLM
- */
-async function checkContentSafety(content: string): Promise<{
-  safe: boolean;
-  reason: string;
-}> {
-  try {
-    const language = detectLanguage(content);
-    const response = await invokeLLM({
-      messages: [
-        {
-          role: "system",
-          content: getSafetyCheckPrompt(language),
-        },
-        {
-          role: "user",
-          content: `请检查这段话是否安全：\n\n${content}`,
-        },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "safety_check",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              safe: { type: "boolean" },
-              riskLevel: { type: "string", enum: ["low", "medium", "high"] },
-              reason: { type: "string" },
-            },
-            required: ["safe", "riskLevel", "reason"],
-            additionalProperties: false,
-          },
-        },
-      },
-    });
-
-    const content_text = response.choices[0]?.message.content;
-    if (!content_text) throw new Error("No response from LLM");
-
-    let textContent = '';
-    if (typeof content_text === 'string') {
-      textContent = content_text;
-    } else if (Array.isArray(content_text)) {
-      const textItem = content_text.find((c: any) => c.type === 'text');
-      textContent = (textItem as any)?.text || '';
-    }
-    
-    if (!textContent) throw new Error("No text response from LLM");
-    const result = JSON.parse(textContent);
-    return {
-      safe: result.safe !== false,
-      reason: result.reason || "内容安全",
-    };
-  } catch (error) {
-    console.error("Safety check error:", error);
-    // Fallback to safe
-    return {
-      safe: true,
-      reason: "内容安全",
-    };
-  }
-}
+// LLM functions are now imported from llm-hybrid module
+// which provides fallback from Manus LLM to OpenAI
 
 /**
  * Helper to get DB connection
@@ -395,12 +234,27 @@ export const appRouter = router({
 
   subscription: router({
     createCheckoutSession: protectedProcedure
-      .input(z.object({ type: z.enum(["monthly", "yearly"]) }))
+      .input(z.object({
+        planType: z.enum(["monthly", "yearly"]),
+        successUrl: z.string(),
+        cancelUrl: z.string(),
+      }))
       .mutation(async ({ ctx, input }) => {
+        // Import Stripe utilities
         const { createCheckoutSession } = await import('./stripe');
-        const successUrl = `${ctx.req.headers.origin || 'http://localhost:3000'}/profile?session_id={CHECKOUT_SESSION_ID}`;
-        const cancelUrl = `${ctx.req.headers.origin || 'http://localhost:3000'}/profile?canceled=true`;
-        return await createCheckoutSession(ctx.user.id, input.type, successUrl, cancelUrl);
+        
+        try {
+          const session = await createCheckoutSession(
+            ctx.user.id,
+            input.planType,
+            input.successUrl,
+            input.cancelUrl
+          );
+          return session;
+        } catch (error) {
+          console.error("Failed to create checkout session:", error);
+          throw error;
+        }
       }),
 
     getInfo: protectedProcedure.query(async ({ ctx }) => {
@@ -410,8 +264,13 @@ export const appRouter = router({
 
     cancel: protectedProcedure.mutation(async ({ ctx }) => {
       const { cancelSubscription } = await import('./stripe');
-      await cancelSubscription(ctx.user.id);
-      return { success: true };
+      try {
+        await cancelSubscription(ctx.user.id);
+        return { success: true };
+      } catch (error) {
+        console.error("Failed to cancel subscription:", error);
+        throw error;
+      }
     }),
   }),
 });
