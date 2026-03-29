@@ -103,11 +103,13 @@ export default function Write() {
 
       toast.success("信件已发送，AI正在生成回信...");
       setContent("");
+      setSelectedEmotions([]);
+      setIsPublic(false);
       
-      // Navigate to letter detail page
+      // Navigate back to home after success
       setTimeout(() => {
-        navigate(`/letter/${result.id}`);
-      }, 1000);
+        navigate("/");
+      }, 1500);
     } catch (error: any) {
       toast.error(error.message || "发送失败，请重试");
     } finally {
