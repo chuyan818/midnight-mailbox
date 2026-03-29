@@ -175,3 +175,22 @@
     }
   }
 }
+
+/* Midnight Mailbox Custom Styles */
+::-webkit-scrollbar {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+::-webkit-scrollbar-track {
+  background: #1C1F4A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FFD580;
+  border-radius: 0.25rem;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFC857;
+}

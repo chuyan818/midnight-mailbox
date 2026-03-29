@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, letters, emotions, memberships, subscriptionRecords, InsertMembership } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -18,6 +18,9 @@ export async function getDb() {
   return _db;
 }
 
+/**
+ * Upsert user - create or update user record
+ */
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
@@ -71,12 +74,24 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     await db.insert(users).values(values).onDuplicateKeyUpdate({
       set: updateSet,
     });
+    
+    // Create membership record if not exists
+    const newUser = await getUserByOpenId(user.openId);
+    if (newUser) {
+      const existingMembership = await getUserMembership(newUser.id);
+      if (!existingMembership) {
+        await upsertMembership(newUser.id, { membershipType: 'free' });
+      }
+    }
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
   }
 }
 
+/**
+ * Get user by OpenId
+ */
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) {
@@ -89,4 +104,217 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * Get user by ID
+ */
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Create a new letter
+ */
+export async function createLetter(userId: number, letterData: {
+  content: string;
+  backgroundType?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(letters).values({
+    userId,
+    content: letterData.content,
+    backgroundType: letterData.backgroundType,
+  });
+  
+  return result;
+}
+
+/**
+ * Update letter with emotion analysis and AI reply
+ */
+export async function updateLetterWithAnalysis(letterId: number, data: {
+  emotionScore: number;
+  emotionType: string;
+  keywords: string[];
+  reply: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(letters)
+    .set({
+      emotionScore: data.emotionScore,
+      emotionType: data.emotionType,
+      keywords: data.keywords,
+      reply: data.reply,
+      replyGeneratedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(letters.id, letterId));
+}
+
+/**
+ * Get user's letters with pagination
+ */
+export async function getUserLetters(userId: number, limit: number = 20, offset: number = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.select()
+    .from(letters)
+    .where(eq(letters.userId, userId))
+    .orderBy((t) => t.createdAt)
+    .limit(limit)
+    .offset(offset);
+  
+  return result;
+}
+
+/**
+ * Get letter by ID
+ */
+export async function getLetterById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select()
+    .from(letters)
+    .where(eq(letters.id, id))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Get user's membership
+ */
+export async function getUserMembership(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select()
+    .from(memberships)
+    .where(eq(memberships.userId, userId))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Create or update user membership
+ */
+export async function upsertMembership(userId: number, membershipData: Partial<InsertMembership>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const existing = await getUserMembership(userId);
+  
+  if (existing) {
+    await db.update(memberships)
+      .set({
+        ...membershipData,
+        updatedAt: new Date(),
+      })
+      .where(eq(memberships.userId, userId));
+  } else {
+    await db.insert(memberships).values({
+      userId,
+      membershipType: 'free',
+      ...membershipData,
+    });
+  }
+}
+
+/**
+ * Check if user can write letter (daily limit for free users)
+ */
+export async function canUserWriteLetter(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return true;
+  
+  const membership = await getUserMembership(userId);
+  if (!membership) return true; // Default allow
+  
+  // Free users: 1 letter per day
+  if (membership.membershipType === 'free') {
+    const today = new Date().toISOString().split('T')[0];
+    const lastLetterDate = membership.lastLetterDate?.toISOString().split('T')[0];
+    
+    if (lastLetterDate === today && membership.dailyLetterCount >= 1) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Increment user's daily letter count
+ */
+export async function incrementDailyLetterCount(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const today = new Date();
+  const membership = await getUserMembership(userId);
+  
+  if (membership) {
+    const lastLetterDate = membership.lastLetterDate ? new Date(membership.lastLetterDate) : null;
+    const todayStr = today.toISOString().split('T')[0];
+    const lastLetterStr = lastLetterDate ? lastLetterDate.toISOString().split('T')[0] : null;
+    
+    const newCount = lastLetterStr === todayStr ? membership.dailyLetterCount + 1 : 1;
+    
+    await db.update(memberships)
+      .set({
+        dailyLetterCount: newCount,
+        lastLetterDate: today,
+        updatedAt: new Date(),
+      })
+      .where(eq(memberships.userId, userId));
+  }
+}
+
+/**
+ * Get user's emotions for the past N days
+ */
+export async function getUserEmotionsTrend(userId: number, days: number = 7) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  const result = await db.select()
+    .from(emotions)
+    .innerJoin(letters, eq(emotions.letterId, letters.id))
+    .where(eq(letters.userId, userId))
+    .orderBy((t) => t.emotions.createdAt);
+  
+  return result;
+}
+
+/**
+ * Create subscription record
+ */
+export async function createSubscriptionRecord(userId: number, data: {
+  membershipType: string;
+  amount: number;
+  stripePaymentIntentId?: string;
+  status: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.insert(subscriptionRecords).values({
+    userId,
+    membershipType: data.membershipType,
+    amount: data.amount.toString(),
+    stripePaymentIntentId: data.stripePaymentIntentId,
+    status: data.status,
+  });
+}
