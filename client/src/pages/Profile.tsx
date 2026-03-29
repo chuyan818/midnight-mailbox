@@ -17,7 +17,8 @@ export default function Profile() {
 
   const upgradeMutation = trpc.membership.upgrade.useMutation();
   const cancelMutation = trpc.membership.cancel.useMutation();
-  const createCheckoutMutation = trpc.subscription.createCheckoutSession.useMutation();
+  const monthlyCheckoutMutation = trpc.subscription.createCheckoutSession.useMutation();
+  const yearlyCheckoutMutation = trpc.subscription.createCheckoutSession.useMutation();
 
   if (!isAuthenticated) {
     return (
@@ -34,7 +35,8 @@ export default function Profile() {
 
   const handleUpgrade = async (planType: "monthly" | "yearly") => {
     try {
-      const result = await createCheckoutMutation.mutateAsync({
+      const mutation = planType === 'monthly' ? monthlyCheckoutMutation : yearlyCheckoutMutation;
+      const result = await mutation.mutateAsync({
         planType,
         successUrl: `${window.location.origin}/profile?success=true`,
         cancelUrl: `${window.location.origin}/profile?canceled=true`,
@@ -231,9 +233,9 @@ export default function Profile() {
                     <Button
                       className="w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
                       onClick={() => handleUpgrade("monthly")}
-                      disabled={createCheckoutMutation.isPending as any}
+                      disabled={monthlyCheckoutMutation.isPending as any}
                     >
-                      {createCheckoutMutation.isPending ? "处理中..." : "升级为月会员"}
+                      {monthlyCheckoutMutation.isPending ? "处理中..." : "升级为月会员"}
                     </Button>
                   </div>
 
@@ -258,9 +260,9 @@ export default function Profile() {
                     <Button
                       className="w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
                       onClick={() => handleUpgrade("yearly")}
-                      disabled={createCheckoutMutation.isPending as any}
+                      disabled={yearlyCheckoutMutation.isPending as any}
                     >
-                      {createCheckoutMutation.isPending ? "处理中..." : "升级为年会员"}
+                      {yearlyCheckoutMutation.isPending ? "处理中..." : "升级为年会员"}
                     </Button>
                   </div>
                 </div>
