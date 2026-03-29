@@ -24,6 +24,7 @@ import {
   checkContentSafety,
   detectLanguage,
 } from "./llm-hybrid";
+import { createTestCheckoutSession } from "./test-payment";
 
 // Emotion types
 const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫", "压力", "思念"] as const;
@@ -240,11 +241,9 @@ export const appRouter = router({
         cancelUrl: z.string(),
       }))
       .mutation(async ({ ctx, input }) => {
-        // Import Stripe utilities
-        const { createCheckoutSession } = await import('./stripe');
-        
         try {
-          const session = await createCheckoutSession(
+          // 使用测试模式支付
+          const session = await createTestCheckoutSession(
             ctx.user.id,
             input.planType,
             input.successUrl,
