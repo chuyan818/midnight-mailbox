@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
 import "@/styles/theme-animations.css";
+import { DynamicStarryBackground, DynamicPetalBackground, DynamicLeafBackground, DynamicLightBackground } from "@/components/DynamicStarryBackground";
 
 type BackgroundType = "星空漫漫" | "牛皮纸" | "樱花来信" | "秋日落信" | "节日灯火";
 
@@ -209,76 +210,10 @@ export default function Write() {
             {/* Preview */}
             <div className={`w-full rounded-lg p-8 mb-6 min-h-[400px] flex flex-col ${selectedBg?.bg} shadow-xl relative overflow-hidden ${selectedBg?.themeClass}`}>
               {/* 动画背景层 */}
-              <div className="absolute inset-0 opacity-40 pointer-events-none">
-                {selectedBackground === "星空漫漫" && (
-                  <>
-                    {Array.from({ length: 25 }).map((_, i) => (
-                      <div
-                        key={`star-${i}`}
-                        className="star absolute rounded-full bg-white"
-                        style={{
-                          width: Math.random() * 2 + 1 + 'px',
-                          height: Math.random() * 2 + 1 + 'px',
-                          left: Math.random() * 100 + '%',
-                          top: Math.random() * 100 + '%',
-                          animation: `star-twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
-                          animationDelay: Math.random() * 5 + 's',
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-                {selectedBackground === "樱花来信" && (
-                  <>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div
-                        key={`petal-${i}`}
-                        className="petal absolute w-4 h-4 rounded-full"
-                        style={{
-                          backgroundColor: '#ff69b4',
-                          left: Math.random() * 100 + '%',
-                          animation: `petal-fall ${5 + Math.random() * 2}s ease-in linear forwards`,
-                          animationDelay: Math.random() * 5 + 's',
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-                {selectedBackground === "秋日落信" && (
-                  <>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div
-                        key={`leaf-${i}`}
-                        className="leaf absolute w-6 h-6"
-                        style={{
-                          backgroundColor: '#ff9800',
-                          left: Math.random() * 100 + '%',
-                          clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 50% 75%, 18% 100%, 0% 38%)',
-                          animation: `leaf-fall ${6 + Math.random() * 2}s ease-in linear forwards`,
-                          animationDelay: Math.random() * 7 + 's',
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-                {selectedBackground === "节日灯火" && (
-                  <>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div
-                        key={`light-${i}`}
-                        className="light absolute w-3 h-3 rounded-full"
-                        style={{
-                          backgroundColor: '#ffeb3b',
-                          left: (i * 16) + '%',
-                          top: '20%',
-                          animation: `light-flicker ${2 + Math.random() * 1}s ease-in-out infinite`,
-                          animationDelay: Math.random() * 3 + 's',
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
-              </div>
+              {selectedBackground === "星空漫漫" && <DynamicStarryBackground starCount={30} maxAnimationDuration={5} />}
+              {selectedBackground === "樱花来信" && <DynamicPetalBackground petalCount={6} maxAnimationDuration={8} />}
+              {selectedBackground === "秋日落信" && <DynamicLeafBackground leafCount={5} maxAnimationDuration={10} />}
+              {selectedBackground === "节日灯火" && <DynamicLightBackground lightCount={8} maxAnimationDuration={4} />}
               
               {/* 文字内容层 */}
               <div className="flex-1 text-gray-800 dark:text-white whitespace-pre-wrap break-words font-serif text-sm leading-relaxed relative z-10">
