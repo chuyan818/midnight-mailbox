@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Share2, Heart, Copy, Check } from "lucide-react";
+import { Share2, Heart, Copy, Check, X } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface Quote {
@@ -32,16 +32,78 @@ export default function DailyQuote() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = () => {
-    const text = `"${quote.content}"\n\n来自深夜信箱 - 今日最孤独的句子`;
-    if (navigator.share) {
-      navigator.share({
-        title: "深夜信箱 - 今日一句",
-        text: text,
-      });
-    } else {
-      handleCopy();
+  const [showShareOptions, setShowShareOptions] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const qrContainerRef = useRef<HTMLDivElement>(null);
+  const shareOptionsRef = useRef<HTMLDivElement>(null);
+
+  const quoteUrl = `${window.location.origin}/quote/${quote.id}`;
+  const quoteText = quote.content;
+
+  useEffect(() => {
+    // 点击外部关闭分享选项
+    const handleClickOutside = (e: MouseEvent) => {
+      if (shareOptionsRef.current && !shareOptionsRef.current.contains(e.target as Node)) {
+        setShowShareOptions(false);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  const handleShare = (platform: string) => {
+    let url = "";
+    const encodedUrl = encodeURIComponent(quoteUrl);
+    const encodedText = encodeURIComponent(quoteText);
+
+    switch (platform) {
+      case "wechat":
+        setShowQRCode(true);
+        // 使用QRCode库生成二维码
+        if (qrContainerRef.current) {
+          qrContainerRef.current.innerHTML = "";
+          // 动态加载QRCode库
+          const script = document.createElement("script");
+          script.src = "https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js";
+          script.onload = () => {
+            if (qrContainerRef.current) {
+              new (window as any).QRCode(qrContainerRef.current, {
+                text: quoteUrl,
+                width: 150,
+                height: 150,
+              });
+            }
+          };
+          document.body.appendChild(script);
+        }
+        break;
+      case "weibo":
+        url = `https://service.weibo.com/share/share.php?title=${encodedText}&url=${encodedUrl}`;
+        window.open(url, "_blank");
+        break;
+      case "line":
+        url = `https://social-plugins.line.me/lineit/share?url=${encodedUrl}`;
+        window.open(url, "_blank");
+        break;
+      case "twitter":
+        url = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+        window.open(url, "_blank");
+        break;
+      case "facebook":
+        url = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+        window.open(url, "_blank");
+        break;
+      case "whatsapp":
+        url = `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`;
+        window.open(url, "_blank");
+        break;
+      case "copy":
+        navigator.clipboard.writeText(quoteUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        break;
     }
+    setShowShareOptions(false);
   };
 
   const emotionColors: Record<string, { bg: string; text: string; light: string }> = {
@@ -137,13 +199,75 @@ export default function DailyQuote() {
 
             {/* Action Buttons */}
             <div className="flex flex-col md:flex-row gap-4 pt-4">
-              <Button
-                className="flex-1 bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 font-semibold py-6"
-                onClick={handleShare}
-              >
-                <Share2 className="w-5 h-5 mr-2" />
-                分享这句话
-              </Button>
+              <div className="flex-1 relative" ref={shareOptionsRef}>
+                <Button
+                  className="w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 font-semibold py-6"
+                  onClick={() => setShowShareOptions(!showShareOptions)}
+                >
+                  <Share2 className="w-5 h-5 mr-2" />
+                  分享这句话
+                </Button>
+                {showShareOptions && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-[#1C1F4A] border border-white/20 rounded-lg shadow-lg z-10 overflow-hidden">
+                    <button
+                      onClick={() => handleShare("wechat")}
+                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors"
+                    >
+                      微信好友/朋友圈
+                    </button>
+                    <button
+                      onClick={() => handleShare("weibo")}
+                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
+                    >
+                      微博
+                    </button>
+                    <button
+                      onClick={() => handleShare("line")}
+                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
+                    >
+                      LINE
+                    </button>
+                    <button
+                      onClick={() => handleShare("twitter")}
+                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
+                    >
+                      Twitter
+                    </button>
+                    <button
+                      onClick={() => handleShare("facebook")}
+                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
+                    >
+                      Facebook
+                    </button>
+                    <button
+                      onClick={() => handleShare("whatsapp")}
+                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
+                    >
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => handleShare("copy")}
+                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
+                    >
+                      复制链接
+                    </button>
+                  </div>
+                )}
+                {showQRCode && (
+                  <div className="absolute top-full left-0 mt-2 bg-[#1C1F4A] border border-white/20 rounded-lg shadow-lg p-4 z-10">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-white text-sm">微信扫一扫</span>
+                      <button
+                        onClick={() => setShowQRCode(false)}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div ref={qrContainerRef} className="flex justify-center" />
+                  </div>
+                )}
+              </div>
               <Button
                 variant="outline"
                 className="flex-1 border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 font-semibold py-6"
