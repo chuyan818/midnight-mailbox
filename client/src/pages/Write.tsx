@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
+import "@/styles/theme-animations.css";
 
 type BackgroundType = "星空漫漫" | "牛皮纸" | "樱花来信" | "秋日落信" | "节日灯火";
 
@@ -16,36 +17,41 @@ const EMOTION_TAGS = [
   { label: "希望", emoji: "✨" },
 ];
 
-const BACKGROUNDS: { type: BackgroundType; label: string; bg: string; description: string }[] = [
+const BACKGROUNDS: { type: BackgroundType; label: string; bg: string; description: string; themeClass: string }[] = [
   {
     type: "星空漫漫",
     label: "星空漫漫",
     bg: "bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F]",
     description: "深邃的星空，无尽的思念",
+    themeClass: "theme-starry-night",
   },
   {
     type: "牛皮纸",
     label: "牛皮纸",
     bg: "bg-gradient-to-br from-[#D4A574] to-[#C9935F]",
     description: "温暖的纸张，岁月的痕迹",
+    themeClass: "theme-vintage-kraft",
   },
   {
     type: "樱花来信",
     label: "樱花来信",
     bg: "bg-gradient-to-br from-[#FFE5EC] via-[#FFD4E5] to-[#FFC0D9]",
     description: "粉色的梦幻，春日的温柔",
+    themeClass: "theme-cherry-blossom",
   },
   {
     type: "秋日落信",
     label: "秋日落信",
     bg: "bg-gradient-to-br from-[#FF9B50] via-[#FF7E5F] to-[#FFA500]",
     description: "金色的落日，夕阳的思绪",
+    themeClass: "theme-autumn-leaves",
   },
   {
     type: "节日灯火",
     label: "节日灯火",
     bg: "bg-gradient-to-br from-[#FFD700] via-[#FF6B6B] to-[#4ECDC4]",
     description: "彩色的灯火，节日的温暖",
+    themeClass: "theme-festive-lights",
   },
 ];
 
@@ -91,8 +97,6 @@ export default function Write() {
       toast.error("信件内容至少需要10个字符");
       return;
     }
-
-
 
     setIsSubmitting(true);
     try {
@@ -162,7 +166,26 @@ export default function Write() {
                       : "border-white/20 hover:border-white/40"
                   }`}
                 >
-                  <div className={`w-full h-16 rounded-md mb-3 ${bg.bg}`} />
+                  <div className={`w-full h-16 rounded-md mb-3 ${bg.bg} ${bg.themeClass} relative overflow-hidden`}>
+                    {/* 预览动画 */}
+                    {bg.type === "星空漫漫" && (
+                      <>
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <div
+                            key={`preview-star-${i}`}
+                            className="star absolute rounded-full bg-white"
+                            style={{
+                              width: Math.random() * 1.5 + 0.5 + 'px',
+                              height: Math.random() * 1.5 + 0.5 + 'px',
+                              left: Math.random() * 100 + '%',
+                              top: Math.random() * 100 + '%',
+                              animationDelay: Math.random() * 3 + 's',
+                            }}
+                          />
+                        ))}
+                      </>
+                    )}
+                  </div>
                   <h3 className="font-semibold text-white text-sm">{bg.label}</h3>
                   <p className="text-xs text-gray-400 mt-1">{bg.description}</p>
                 </button>
@@ -184,8 +207,77 @@ export default function Write() {
           {/* Right: Letter Writing */}
           <div className="lg:col-span-2">
             {/* Preview */}
-            <div className={`w-full rounded-lg p-8 mb-6 min-h-[400px] flex flex-col ${selectedBg?.bg} shadow-xl`}>
-              <div className="flex-1 text-gray-800 dark:text-white whitespace-pre-wrap break-words font-serif text-sm leading-relaxed">
+            <div className={`w-full rounded-lg p-8 mb-6 min-h-[400px] flex flex-col ${selectedBg?.bg} shadow-xl relative overflow-hidden ${selectedBg?.themeClass}`}>
+              {/* 动画背景层 */}
+              <div className="absolute inset-0 opacity-40 pointer-events-none">
+                {selectedBackground === "星空漫漫" && (
+                  <>
+                    {Array.from({ length: 25 }).map((_, i) => (
+                      <div
+                        key={`star-${i}`}
+                        className="star absolute rounded-full bg-white"
+                        style={{
+                          width: Math.random() * 2 + 1 + 'px',
+                          height: Math.random() * 2 + 1 + 'px',
+                          left: Math.random() * 100 + '%',
+                          top: Math.random() * 100 + '%',
+                          animationDelay: Math.random() * 5 + 's',
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+                {selectedBackground === "樱花来信" && (
+                  <>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div
+                        key={`petal-${i}`}
+                        className="petal absolute w-4 h-4 rounded-full"
+                        style={{
+                          backgroundColor: '#ff69b4',
+                          left: Math.random() * 100 + '%',
+                          animationDelay: Math.random() * 5 + 's',
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+                {selectedBackground === "秋日落信" && (
+                  <>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div
+                        key={`leaf-${i}`}
+                        className="leaf absolute w-6 h-6"
+                        style={{
+                          backgroundColor: '#ff9800',
+                          left: Math.random() * 100 + '%',
+                          clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 50% 75%, 18% 100%, 0% 38%)',
+                          animationDelay: Math.random() * 7 + 's',
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+                {selectedBackground === "节日灯火" && (
+                  <>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={`light-${i}`}
+                        className="light absolute w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor: '#ffeb3b',
+                          left: (i * 16) + '%',
+                          top: '20%',
+                          animationDelay: Math.random() * 3 + 's',
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
+              
+              {/* 文字内容层 */}
+              <div className="flex-1 text-gray-800 dark:text-white whitespace-pre-wrap break-words font-serif text-sm leading-relaxed relative z-10">
                 {content || (
                   <span className="text-gray-500 dark:text-gray-400 italic">
                     在这里开始写下你的心事...
@@ -249,48 +341,22 @@ export default function Write() {
                     </div>
                     <div className="text-xs text-gray-400">
                       {isPublic
-                        ? "这封信会发布到公共信箱，其他用户可以看到并点亮星星"
-                        : "这封信只有你能看到"}
+                        ? "所有人都可以看到你的信件和回信"
+                        : "只有你可以看到你的信件和回信"}
                     </div>
                   </div>
                 </button>
               </div>
 
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-400">
-                  {content.length === 0 && "开始写信..."}
-                  {content.length > 0 && content.length < 10 && (
-                    <span className="text-yellow-400">至少需要10个字符</span>
-                  )}
-                  {content.length >= 10 && selectedEmotions.length > 0 && (
-                    <span className="text-green-400">✓ 可以发送</span>
-                  )}
-                </div>
-
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || content.length < 10 || selectedEmotions.length === 0}
-                  className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Send className="w-4 h-4" />
-                  {isSubmitting ? "发送中..." : "发送信件"}
-                </Button>
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="mt-8 p-6 rounded-lg bg-white/5 border border-white/10 space-y-3">
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-[#FFD580]" />
-                关于深夜信箱
-              </h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                你的信件将被完全匿名处理。我们的AI"夜航人"会认真读你的信，用温柔、理解的语气给你回信。
-                不会有评判，不会有说教，只有陪伴和理解。
-              </p>
-              <p className="text-xs text-gray-500">
-                如果你有自伤倾向或需要专业心理健康帮助，请联系相关专业机构。
-              </p>
+              {/* Submit Button */}
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting || !content.trim()}
+                className="w-full bg-[#FFD580] hover:bg-[#FFC850] text-[#0B0F2F] font-semibold py-3 rounded-lg flex items-center justify-center gap-2"
+              >
+                <Send className="w-5 h-5" />
+                {isSubmitting ? "发送中..." : "发送信件"}
+              </Button>
             </div>
           </div>
         </div>
