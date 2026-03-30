@@ -1,61 +1,239 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { useLocation } from "wouter";
+import { useLocation as useWouterLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
-import "@/styles/theme-animations.css";
-import { DynamicStarryBackground, DynamicPetalBackground, DynamicLeafBackground, DynamicLightBackground } from "@/components/DynamicStarryBackground";
-import { DynamicKraftBackground } from "@/components/DynamicKraftBackground";
 
 type BackgroundType = "星空漫漫" | "牛皮纸" | "樱花来信" | "秋日落信" | "节日灯火";
 
 const EMOTION_TAGS = [
-  { label: "孤独", emoji: "😔" },
-  { label: "压力", emoji: "😰" },
-  { label: "想念", emoji: "💭" },
-  { label: "遗憾", emoji: "😞" },
-  { label: "希望", emoji: "✨" },
+  { emoji: "😢", label: "伤心" },
+  { emoji: "😔", label: "失落" },
+  { emoji: "😰", label: "焦虑" },
+  { emoji: "😡", label: "愤怒" },
+  { emoji: "😕", label: "困惑" },
+  { emoji: "🥺", label: "委屈" },
+  { emoji: "😴", label: "疲惫" },
+  { emoji: "😌", label: "平静" },
 ];
 
-const BACKGROUNDS: { type: BackgroundType; label: string; bg: string; description: string; themeClass: string }[] = [
+const BACKGROUNDS: Array<{
+  type: BackgroundType;
+  label: string;
+  bg: string;
+  description: string;
+}> = [
   {
     type: "星空漫漫",
     label: "星空漫漫",
-    bg: "bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F]",
-    description: "深邃的星空，无尽的思念",
-    themeClass: "theme-starry-night",
+    bg: "bg-gradient-to-br from-[#0b1a2a] to-[#000814]",
+    description: "深蓝星空，安静治愈",
   },
   {
     type: "牛皮纸",
     label: "牛皮纸",
     bg: "bg-gradient-to-br from-[#D4A574] to-[#C9935F]",
     description: "温暖的纸张，岁月的痕迹",
-    themeClass: "theme-vintage-kraft",
   },
   {
     type: "樱花来信",
     label: "樱花来信",
     bg: "bg-gradient-to-br from-[#FFE5EC] via-[#FFD4E5] to-[#FFC0D9]",
     description: "粉色的梦幻，春日的温柔",
-    themeClass: "theme-cherry-blossom",
   },
   {
     type: "秋日落信",
     label: "秋日落信",
     bg: "bg-gradient-to-br from-[#FF9B50] via-[#FF7E5F] to-[#FFA500]",
     description: "金色的落日，夕阳的思绪",
-    themeClass: "theme-autumn-leaves",
   },
   {
     type: "节日灯火",
     label: "节日灯火",
     bg: "bg-gradient-to-br from-[#FFD700] via-[#FF6B6B] to-[#4ECDC4]",
     description: "彩色的灯火，节日的温暖",
-    themeClass: "theme-festive-lights",
   },
 ];
+
+// 动画函数
+function clearBackground() {
+  const bg = document.getElementById("bgLayer");
+  if (bg) bg.innerHTML = "";
+}
+
+function createStars() {
+  clearBackground();
+  const bg = document.getElementById("bgLayer");
+  if (!bg) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    .star {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 4s infinite;
+    }
+    @keyframes twinkle {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+  `;
+  bg.appendChild(style);
+
+  for (let i = 0; i < 30; i++) {
+    let star = document.createElement("div");
+    star.className = "star";
+    star.style.top = Math.random() * 100 + "%";
+    star.style.left = Math.random() * 100 + "%";
+    star.style.animationDelay = Math.random() * 5 + "s";
+    bg.appendChild(star);
+  }
+}
+
+function createPetals() {
+  clearBackground();
+  const bg = document.getElementById("bgLayer");
+  if (!bg) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    .petal {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #ffb6c1;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(45deg);
+      opacity: 0.8;
+      animation: sakuraFall linear infinite;
+    }
+    @keyframes sakuraFall {
+      0% {
+        transform: translateY(-40px) translateX(0px) rotate(0deg);
+        opacity: 0;
+      }
+      50% {
+        transform: translateY(250px) translateX(20px) rotate(180deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(500px) translateX(-20px) rotate(360deg);
+        opacity: 0;
+      }
+    }
+  `;
+  bg.appendChild(style);
+
+  for (let i = 0; i < 6; i++) {
+    let petal = document.createElement("div");
+    petal.className = "petal";
+    petal.style.left = Math.random() * 100 + "%";
+    petal.style.animationDuration = 6 + Math.random() * 3 + "s";
+    petal.style.animationDelay = Math.random() * 5 + "s";
+    bg.appendChild(petal);
+  }
+}
+
+function createLeaves() {
+  clearBackground();
+  const bg = document.getElementById("bgLayer");
+  if (!bg) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    .leaf {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #d97706;
+      border-radius: 30% 0 30% 0;
+      animation: leafFall linear infinite;
+    }
+    @keyframes leafFall {
+      0% {
+        transform: translateY(-40px) rotate(0deg);
+      }
+      100% {
+        transform: translateY(500px) rotate(360deg);
+      }
+    }
+  `;
+  bg.appendChild(style);
+
+  for (let i = 0; i < 5; i++) {
+    let leaf = document.createElement("div");
+    leaf.className = "leaf";
+    leaf.style.left = Math.random() * 100 + "%";
+    leaf.style.animationDuration = 7 + Math.random() * 3 + "s";
+    bg.appendChild(leaf);
+  }
+}
+
+function createLights() {
+  clearBackground();
+  const bg = document.getElementById("bgLayer");
+  if (!bg) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    .light {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: gold;
+      border-radius: 50%;
+      animation: lightBlink 2s infinite;
+    }
+    @keyframes lightBlink {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+  `;
+  bg.appendChild(style);
+
+  for (let i = 0; i < 10; i++) {
+    let light = document.createElement("div");
+    light.className = "light";
+    light.style.top = Math.random() * 100 + "%";
+    light.style.left = Math.random() * 100 + "%";
+    light.style.animationDelay = Math.random() * 2 + "s";
+    bg.appendChild(light);
+  }
+}
+
+function createPaperBreath() {
+  clearBackground();
+  const bg = document.getElementById("bgLayer");
+  if (!bg) return;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    .paper {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(#d6b98c, #caa472);
+      animation: paperBreath 6s infinite;
+    }
+    @keyframes paperBreath {
+      0% { filter: brightness(1); }
+      50% { filter: brightness(1.03); }
+      100% { filter: brightness(1); }
+    }
+  `;
+  bg.appendChild(style);
+
+  let paper = document.createElement("div");
+  paper.className = "paper";
+  bg.appendChild(paper);
+}
 
 export default function Write() {
   const { isAuthenticated } = useAuth();
@@ -76,14 +254,33 @@ export default function Write() {
 
   const createLetterMutation = trpc.letter.create.useMutation();
 
+  // 当选中背景改变时，更新动画
+  useEffect(() => {
+    switch (selectedBackground) {
+      case "星空漫漫":
+        createStars();
+        break;
+      case "牛皮纸":
+        createPaperBreath();
+        break;
+      case "樱花来信":
+        createPetals();
+        break;
+      case "秋日落信":
+        createLeaves();
+        break;
+      case "节日灯火":
+        createLights();
+        break;
+    }
+  }, [selectedBackground]);
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
-        <div className="text-center text-white">
-          <p className="mb-4">请先登录</p>
-          <Button onClick={() => navigate("/")} className="bg-[#FFD580] text-[#0B0F2F]">
-            返回首页
-          </Button>
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-white mb-4">请先登录</h1>
+          <p className="text-gray-400">登录后即可开始写信</p>
         </div>
       </div>
     );
@@ -92,11 +289,6 @@ export default function Write() {
   const handleSubmit = async () => {
     if (!content.trim()) {
       toast.error("请输入信件内容");
-      return;
-    }
-
-    if (content.length < 10) {
-      toast.error("信件内容至少需要10个字符");
       return;
     }
 
@@ -111,7 +303,7 @@ export default function Write() {
       setContent("");
       setSelectedEmotions([]);
       setIsPublic(false);
-      
+
       // Navigate back to home after success
       setTimeout(() => {
         navigate("/");
@@ -168,26 +360,7 @@ export default function Write() {
                       : "border-white/20 hover:border-white/40"
                   }`}
                 >
-                  <div className={`w-full h-16 rounded-md mb-3 ${bg.bg} ${bg.themeClass} relative overflow-hidden`}>
-                    {/* 预览动画 */}
-                    {bg.type === "星空漫漫" && (
-                      <>
-                        {Array.from({ length: 8 }).map((_, i) => (
-                          <div
-                            key={`preview-star-${i}`}
-                            className="star absolute rounded-full bg-white"
-                            style={{
-                              width: Math.random() * 1.5 + 0.5 + 'px',
-                              height: Math.random() * 1.5 + 0.5 + 'px',
-                              left: Math.random() * 100 + '%',
-                              top: Math.random() * 100 + '%',
-                              animationDelay: Math.random() * 3 + 's',
-                            }}
-                          />
-                        ))}
-                      </>
-                    )}
-                  </div>
+                  <div className={`w-full h-16 rounded-md mb-3 ${bg.bg} relative overflow-hidden`} />
                   <h3 className="font-semibold text-white text-sm">{bg.label}</h3>
                   <p className="text-xs text-gray-400 mt-1">{bg.description}</p>
                 </button>
@@ -198,7 +371,6 @@ export default function Write() {
             <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-400 space-y-2">
               <p className="font-semibold text-white">💡 小贴士</p>
               <ul className="space-y-1 text-xs">
-                <li>• 10-5000字之间</li>
                 <li>• 完全匿名</li>
                 <li>• 支持多种情绪表达</li>
                 <li>• 会获得温暖回信</li>
@@ -209,16 +381,10 @@ export default function Write() {
           {/* Right: Letter Writing */}
           <div className="lg:col-span-2">
             {/* Preview */}
-            <div className={`w-full rounded-lg p-8 mb-6 min-h-[400px] flex flex-col ${selectedBg?.bg} shadow-xl relative overflow-hidden ${selectedBg?.themeClass}`}>
+            <div className={`w-full rounded-lg p-8 mb-6 min-h-[400px] flex flex-col ${selectedBg?.bg} shadow-xl relative overflow-hidden`}>
               {/* 动画背景层 */}
-              <div className="absolute inset-0 pointer-events-none z-0">
-                {selectedBackground === "星空漫漫" && <DynamicStarryBackground starCount={30} maxAnimationDuration={5} />}
-                {selectedBackground === "牛皮纸" && <DynamicKraftBackground />}
-                {selectedBackground === "樱花来信" && <DynamicPetalBackground petalCount={6} maxAnimationDuration={8} />}
-                {selectedBackground === "秋日落信" && <DynamicLeafBackground leafCount={5} maxAnimationDuration={10} />}
-                {selectedBackground === "节日灯火" && <DynamicLightBackground lightCount={8} maxAnimationDuration={4} />}
-              </div>
-              
+              <div id="bgLayer" className="absolute inset-0 pointer-events-none" />
+
               {/* 文字内容层 */}
               <div className="flex-1 text-gray-800 dark:text-white whitespace-pre-wrap break-words font-serif text-sm leading-relaxed relative z-10">
                 {content || (
@@ -234,21 +400,21 @@ export default function Write() {
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value.slice(0, 5000))}
-                placeholder="亲爱的夜航人，我想和你分享我的心事..."
-                className="w-full h-48 p-4 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:border-[#FFD580] focus:outline-none resize-none"
+                placeholder="倾诉你的秘密、烦恼、想法...（最多5000字）"
+                className="w-full h-32 p-4 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#FFD580] focus:ring-1 focus:ring-[#FFD580]/50 resize-none"
               />
 
               {/* Emotion Tags */}
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-300">
-                  标记你的情绪（必需）
+                  你现在的心情
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {EMOTION_TAGS.map((tag) => (
                     <button
                       key={tag.label}
                       onClick={() => toggleEmotion(tag.label)}
-                      className={`px-4 py-2 rounded-full border-2 transition-all text-sm font-medium ${
+                      className={`px-3 py-2 rounded-full border-2 transition-all text-sm ${
                         selectedEmotions.includes(tag.label)
                           ? "border-[#FFD580] bg-[#FFD580]/20 text-[#FFD580]"
                           : "border-white/10 bg-white/5 text-gray-300 hover:border-white/20"
