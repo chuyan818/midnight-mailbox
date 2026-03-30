@@ -221,6 +221,7 @@ export default function Write() {
                           height: Math.random() * 2 + 1 + 'px',
                           left: Math.random() * 100 + '%',
                           top: Math.random() * 100 + '%',
+                          animation: `star-twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
                           animationDelay: Math.random() * 5 + 's',
                         }}
                       />
@@ -236,6 +237,7 @@ export default function Write() {
                         style={{
                           backgroundColor: '#ff69b4',
                           left: Math.random() * 100 + '%',
+                          animation: `petal-fall ${5 + Math.random() * 2}s ease-in linear forwards`,
                           animationDelay: Math.random() * 5 + 's',
                         }}
                       />
@@ -252,6 +254,7 @@ export default function Write() {
                           backgroundColor: '#ff9800',
                           left: Math.random() * 100 + '%',
                           clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 50% 75%, 18% 100%, 0% 38%)',
+                          animation: `leaf-fall ${6 + Math.random() * 2}s ease-in linear forwards`,
                           animationDelay: Math.random() * 7 + 's',
                         }}
                       />
@@ -268,6 +271,7 @@ export default function Write() {
                           backgroundColor: '#ffeb3b',
                           left: (i * 16) + '%',
                           top: '20%',
+                          animation: `light-flicker ${2 + Math.random() * 1}s ease-in-out infinite`,
                           animationDelay: Math.random() * 3 + 's',
                         }}
                       />
