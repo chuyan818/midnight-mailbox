@@ -29,6 +29,13 @@
       "when": 1774751598089,
       "tag": "0003_majestic_namor",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1774778054378,
+      "tag": "0004_wide_zodiak",
+      "breakpoints": true
     }
   ]
 }

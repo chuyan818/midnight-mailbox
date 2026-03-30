@@ -15,6 +15,13 @@ import PublicMailbox from "./pages/PublicMailbox";
 import DailyQuote from "./pages/DailyQuote";
 import TimeCapsule from "./pages/TimeCapsule";
 import EmotionPlanet from "./pages/EmotionPlanet";
+import { AdminDashboard } from "./pages/AdminDashboard";
+import { AdminUsers } from "./pages/AdminUsers";
+import { AdminLetters } from "./pages/AdminLetters";
+import { AdminReports } from "./pages/AdminReports";
+import { AdminEmotions } from "./pages/AdminEmotions";
+import { AdminMembers } from "./pages/AdminMembers";
+import { AdminSettings } from "./pages/AdminSettings";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -30,6 +37,14 @@ function Router() {
       <Route path={"/daily-quote"} component={DailyQuote} />
       <Route path={"/time-capsule"} component={TimeCapsule} />
       <Route path={"/emotion-planet"} component={EmotionPlanet} />
+      {/* Admin Routes */}
+      <Route path={"/admin"} component={AdminDashboard} />
+      <Route path={"/admin/users"} component={AdminUsers} />
+      <Route path={"/admin/letters"} component={AdminLetters} />
+      <Route path={"/admin/reports"} component={AdminReports} />
+      <Route path={"/admin/emotions"} component={AdminEmotions} />
+      <Route path={"/admin/members"} component={AdminMembers} />
+      <Route path={"/admin/settings"} component={AdminSettings} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

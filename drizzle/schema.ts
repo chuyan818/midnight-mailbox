@@ -179,3 +179,97 @@ export const emotionStars = mysqlTable("emotion_stars", {
 
 export type EmotionStar = typeof emotionStars.$inferSelect;
 export type InsertEmotionStar = typeof emotionStars.$inferInsert;
+
+/**
+ * Reports table - stores user reports/complaints
+ */
+export const reports = mysqlTable("reports", {
+  id: int("id").autoincrement().primaryKey(),
+  reporterId: int("reporterId").notNull(),
+  targetType: mysqlEnum("targetType", ["letter", "user", "comment"]).notNull(),
+  targetId: int("targetId").notNull(),
+  reason: varchar("reason", { length: 100 }).notNull(),
+  description: text("description"),
+  status: mysqlEnum("status", ["pending", "reviewing", "resolved", "dismissed"]).default("pending").notNull(),
+  handledBy: int("handledBy"),
+  handledAt: timestamp("handledAt"),
+  resolution: text("resolution"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Report = typeof reports.$inferSelect;
+export type InsertReport = typeof reports.$inferInsert;
+
+/**
+ * Daily stats table - stores daily statistics for dashboard
+ */
+export const dailyStats = mysqlTable("daily_stats", {
+  id: int("id").autoincrement().primaryKey(),
+  date: date("date").notNull().unique(),
+  totalUsers: int("totalUsers").default(0).notNull(),
+  newUsers: int("newUsers").default(0).notNull(),
+  totalLetters: int("totalLetters").default(0).notNull(),
+  newLetters: int("newLetters").default(0).notNull(),
+  publicLetters: int("publicLetters").default(0).notNull(),
+  totalStars: int("totalStars").default(0).notNull(),
+  newStars: int("newStars").default(0).notNull(),
+  vipCount: int("vipCount").default(0).notNull(),
+  revenue: decimal("revenue", { precision: 12, scale: 2 }).default("0").notNull(),
+  reportCount: int("reportCount").default(0).notNull(),
+  bannedUsers: int("bannedUsers").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DailyStat = typeof dailyStats.$inferSelect;
+export type InsertDailyStat = typeof dailyStats.$inferInsert;
+
+/**
+ * Admin users table - stores admin account information
+ */
+export const adminUsers = mysqlTable("admin_users", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  role: mysqlEnum("role", ["admin", "moderator", "analyst"]).default("admin").notNull(),
+  permissions: json("permissions"),
+  lastLoginAt: timestamp("lastLoginAt"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type InsertAdminUser = typeof adminUsers.$inferInsert;
+
+/**
+ * System config table - stores system-wide configuration
+ */
+export const systemConfigs = mysqlTable("system_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value").notNull(),
+  type: mysqlEnum("type", ["string", "number", "boolean", "json"]).default("string").notNull(),
+  description: text("description"),
+  updatedBy: int("updatedBy"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SystemConfig = typeof systemConfigs.$inferSelect;
+export type InsertSystemConfig = typeof systemConfigs.$inferInsert;
+
+/**
+ * Operation logs table - stores admin operation logs
+ */
+export const operationLogs = mysqlTable("operation_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  adminId: int("adminId").notNull(),
+  action: varchar("action", { length: 100 }).notNull(),
+  targetType: varchar("targetType", { length: 50 }),
+  targetId: int("targetId"),
+  details: json("details"),
+  ipAddress: varchar("ipAddress", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OperationLog = typeof operationLogs.$inferSelect;
+export type InsertOperationLog = typeof operationLogs.$inferInsert;

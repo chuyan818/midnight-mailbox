@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { adminRouter } from "./routers/admin";
 import {
   getUserById,
   createLetter,
@@ -49,6 +50,7 @@ async function getDbConnection() {
  */
 export const appRouter = router({
   system: systemRouter,
+  admin: adminRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
