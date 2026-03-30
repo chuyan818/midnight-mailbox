@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
 import "@/styles/theme-animations.css";
 import { DynamicStarryBackground, DynamicPetalBackground, DynamicLeafBackground, DynamicLightBackground } from "@/components/DynamicStarryBackground";
+import { DynamicKraftBackground } from "@/components/DynamicKraftBackground";
 
 type BackgroundType = "星空漫漫" | "牛皮纸" | "樱花来信" | "秋日落信" | "节日灯火";
 
@@ -211,6 +212,7 @@ export default function Write() {
             <div className={`w-full rounded-lg p-8 mb-6 min-h-[400px] flex flex-col ${selectedBg?.bg} shadow-xl relative overflow-hidden ${selectedBg?.themeClass}`}>
               {/* 动画背景层 */}
               {selectedBackground === "星空漫漫" && <DynamicStarryBackground starCount={30} maxAnimationDuration={5} />}
+              {selectedBackground === "牛皮纸" && <DynamicKraftBackground />}
               {selectedBackground === "樱花来信" && <DynamicPetalBackground petalCount={6} maxAnimationDuration={8} />}
               {selectedBackground === "秋日落信" && <DynamicLeafBackground leafCount={5} maxAnimationDuration={10} />}
               {selectedBackground === "节日灯火" && <DynamicLightBackground lightCount={8} maxAnimationDuration={4} />}
