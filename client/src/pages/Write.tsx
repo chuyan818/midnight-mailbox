@@ -176,37 +176,54 @@ function createLeaves() {
   }
 }
 
-function createLights() {
+function createLanterns() {
   clearBackground();
   const bg = document.getElementById("bgLayer");
   if (!bg) return;
 
   const style = document.createElement("style");
   style.textContent = `
-    .light {
+    .lantern {
       position: absolute;
-      width: 6px;
-      height: 6px;
-      background: gold;
-      border-radius: 50%;
-      animation: lightBlink 2s infinite;
+      width: 18px;
+      height: 24px;
+      background: linear-gradient(#ff4d4d, #cc0000);
+      border-radius: 6px;
+      box-shadow: 0 0 8px rgba(255,120,0,0.6);
+      pointer-events: none;
+      animation: lanternSwing 4s ease-in-out infinite;
+      transform-origin: center top;
     }
-    @keyframes lightBlink {
-      0% { opacity: 0.4; }
-      50% { opacity: 1; }
-      100% { opacity: 0.4; }
+    .lantern::before {
+      content: "";
+      position: absolute;
+      width: 2px;
+      height: 6px;
+      background: #999;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    @keyframes lanternSwing {
+      0% { transform: rotate(-3deg); }
+      50% { transform: rotate(3deg); }
+      100% { transform: rotate(-3deg); }
     }
   `;
   bg.appendChild(style);
 
-  for (let i = 0; i < 10; i++) {
-    let light = document.createElement("div");
-    light.className = "light";
-    light.style.top = Math.random() * 100 + "%";
-    light.style.left = Math.random() * 100 + "%";
-    light.style.animationDelay = Math.random() * 2 + "s";
-    bg.appendChild(light);
+  for (let i = 0; i < 8; i++) {
+    let lantern = document.createElement("div");
+    lantern.className = "lantern";
+    lantern.style.top = Math.random() * 60 + "%";
+    lantern.style.left = Math.random() * 100 + "%";
+    lantern.style.animationDelay = Math.random() * 3 + "s";
+    bg.appendChild(lantern);
   }
+}
+
+function createLights() {
+  createLanterns();
 }
 
 function createPaperBreath() {
@@ -216,22 +233,40 @@ function createPaperBreath() {
 
   const style = document.createElement("style");
   style.textContent = `
-    .paper {
+    .paper-bg {
       width: 100%;
       height: 100%;
-      background: linear-gradient(#d6b98c, #caa472);
-      animation: paperBreath 6s infinite;
+      background: linear-gradient(to bottom, #d6b98c, #caa472);
+      animation: paperBreath 10s ease-in-out infinite;
+      position: relative;
+    }
+    .paper-bg::after {
+      content: "";
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      top: -50%;
+      left: -50%;
+      background: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.3;
+      animation: paperTextureMove 20s linear infinite;
+      pointer-events: none;
     }
     @keyframes paperBreath {
       0% { filter: brightness(1); }
-      50% { filter: brightness(1.03); }
+      50% { filter: brightness(1.05); }
       100% { filter: brightness(1); }
+    }
+    @keyframes paperTextureMove {
+      0% { transform: translate(0px, 0px); }
+      100% { transform: translate(40px, 40px); }
     }
   `;
   bg.appendChild(style);
 
   let paper = document.createElement("div");
-  paper.className = "paper";
+  paper.className = "paper-bg";
   bg.appendChild(paper);
 }
 
