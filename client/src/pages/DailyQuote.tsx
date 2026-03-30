@@ -215,25 +215,7 @@ export default function DailyQuote() {
           </div>
         </div>
 
-        {/* Share Card Template */}
-        <div className="mt-12 space-y-4">
-          <h2 className="text-xl font-semibold">分享卡片</h2>
-          <div
-            className="rounded-lg p-8 text-center space-y-4"
-            style={{
-              background: `linear-gradient(135deg, ${colors.bg}40 0%, ${colors.bg}10 100%)`,
-              border: `2px solid ${colors.bg}`,
-            }}
-          >
-            <div className="text-gray-300 text-sm">深夜信箱</div>
-            <p className="text-2xl font-light text-white leading-relaxed">
-              "{quote.content}"
-            </p>
-            <div className="text-gray-400 text-sm">
-              今日最孤独的句子 · {new Date(quote.date).toLocaleDateString("zh-CN")}
-            </div>
-          </div>
-        </div>
+
       </div>
     </div>
   );
