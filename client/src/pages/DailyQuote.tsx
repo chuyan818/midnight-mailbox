@@ -77,14 +77,6 @@ export default function DailyQuote() {
           document.body.appendChild(script);
         }
         break;
-      case "qq":
-        url = `https://connect.qq.com/widget/shareqq/index.html?url=${encodedUrl}&title=${encodedText}&summary=${encodedText}`;
-        window.open(url, "_blank");
-        break;
-      case "qzone":
-        url = `https://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=${encodedUrl}&title=${encodedText}&summary=${encodedText}`;
-        window.open(url, "_blank");
-        break;
       case "weibo":
         url = `https://service.weibo.com/share/share.php?title=${encodedText}&url=${encodedUrl}`;
         window.open(url, "_blank");
@@ -222,18 +214,6 @@ export default function DailyQuote() {
                       className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors"
                     >
                       微信好友/朋友圈
-                    </button>
-                    <button
-                      onClick={() => handleShare("qq")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
-                    >
-                      QQ
-                    </button>
-                    <button
-                      onClick={() => handleShare("qzone")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
-                    >
-                      QQ空间
                     </button>
                     <button
                       onClick={() => handleShare("weibo")}
