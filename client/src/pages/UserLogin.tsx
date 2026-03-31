@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Github, Chrome, Apple } from 'lucide-react';
@@ -18,6 +19,7 @@ interface Star {
 }
 
 export default function UserLogin() {
+  const [, navigate] = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -79,13 +81,15 @@ export default function UserLogin() {
     e.preventDefault();
     setIsLoading(true);
     
+    // 模拟登录请求
     setTimeout(() => {
       setIsLoading(false);
       setIsSuccess(true);
       
+      // 登录成功后1.5秒跳转到首页
       setTimeout(() => {
-        setIsSuccess(false);
-      }, 2000);
+        navigate('/');
+      }, 1500);
     }, 1500);
   };
 
