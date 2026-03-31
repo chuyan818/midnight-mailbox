@@ -34,8 +34,10 @@ export default function DailyQuote() {
 
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
   const qrContainerRef = useRef<HTMLDivElement>(null);
   const shareOptionsRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   const quoteUrl = `${window.location.origin}/quote/${quote.id}`;
   const quoteText = quote.content;
@@ -101,6 +103,7 @@ export default function DailyQuote() {
         navigator.clipboard.writeText(quoteUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+        setShowShareCard(true);
         break;
     }
     setShowShareOptions(false);
@@ -265,6 +268,45 @@ export default function DailyQuote() {
                       </button>
                     </div>
                     <div ref={qrContainerRef} className="flex justify-center" />
+                  </div>
+                )}
+                {showShareCard && (
+                  <div className="absolute top-full left-0 mt-2 bg-[#1C1F4A] border border-white/20 rounded-lg shadow-lg p-4 z-10 w-80" ref={shareCardRef}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-white text-sm font-semibold">分享链接</span>
+                      <button
+                        onClick={() => setShowShareCard(false)}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="bg-white/5 rounded p-3 border border-white/10">
+                        <p className="text-xs text-gray-400 mb-2">分享链接</p>
+                        <p className="text-white text-sm break-all font-mono">{quoteUrl}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(quoteUrl);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="w-full bg-[#FFD580] hover:bg-[#FFD580]/90 text-black font-semibold py-2 rounded transition-colors flex items-center justify-center gap-2"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            已复制
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            复制链接
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
