@@ -12,7 +12,7 @@ export default function Home() {
     if (isAuthenticated) {
       navigate("/write");
     } else {
-      window.location.href = getLoginUrl();
+      navigate("/user-login");
     }
   };
 
@@ -56,7 +56,7 @@ export default function Home() {
             ) : (
               <Button
                 className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
-                onClick={() => window.location.href = getLoginUrl()}
+                onClick={() => navigate("/user-login")}
               >
                 登录
               </Button>
@@ -155,16 +155,7 @@ export default function Home() {
                   时间胶囊
                 </Button>
               )}
-              {!isAuthenticated && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 text-base font-semibold px-8 py-6"
-                  onClick={() => window.location.href = getLoginUrl()}
-                >
-                  登录账户
-                </Button>
-              )}
+
             </div>
 
             {/* Pricing Preview */}
@@ -236,7 +227,7 @@ export default function Home() {
                       if (isAuthenticated) {
                         navigate("/profile");
                       } else {
-                        window.location.href = getLoginUrl();
+                        navigate("/user-login");
                       }
                     }}
                   >
