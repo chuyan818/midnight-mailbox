@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react';
 
 interface MousePosition {
   x: number;
@@ -69,26 +69,34 @@ export default function Login() {
   return (
     <div 
       ref={containerRef}
-      className="min-h-screen bg-[#020617] flex items-center justify-center p-4 overflow-hidden"
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 overflow-hidden"
     >
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-20 w-72 h-72 bg-[#6366F1]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-[#38BDF8]/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        {/* 标题 */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-white mb-2">深夜信箱</h1>
-          <p className="text-[#38BDF8] text-sm">一个温暖的深夜陪伴</p>
+        {/* 顶部管理员标识 */}
+        <div className="flex items-center justify-center mb-8">
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <Shield className="w-4 h-4 text-blue-400" />
+            <span className="text-sm text-blue-400 font-medium">管理员后台</span>
+          </div>
         </div>
 
-        {/* 小信使角色 */}
+        {/* 标题 */}
+        <div className="text-center mb-12">
+          <h1 className="text-3xl font-bold text-white mb-2">深夜信箱</h1>
+          <p className="text-slate-400 text-sm">管理员登录</p>
+        </div>
+
+        {/* 小信使角色（简化版本） */}
         <div className="flex justify-center mb-12">
           <div 
             ref={characterRef}
-            className="relative w-48 h-56"
+            className="relative w-32 h-40"
           >
             {/* 角色容器 */}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -100,20 +108,20 @@ export default function Login() {
                 }}
               >
                 {/* 头部主体 */}
-                <div className="w-20 h-24 bg-gradient-to-b from-[#6366F1] to-[#6366F1]/80 rounded-3xl relative shadow-lg">
+                <div className="w-16 h-20 bg-gradient-to-b from-blue-400 to-blue-500 rounded-2xl relative shadow-lg">
                   {/* 眼睛 */}
-                  <div className="absolute top-6 left-0 right-0 flex justify-center gap-3">
-                    <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                      isPasswordFocused ? 'bg-[#020617] translate-y-2' : 'bg-white'
+                  <div className="absolute top-5 left-0 right-0 flex justify-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                      isPasswordFocused ? 'bg-slate-900 translate-y-1' : 'bg-white'
                     }`} />
-                    <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                      isPasswordFocused ? 'bg-[#020617] translate-y-2' : 'bg-white'
+                    <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                      isPasswordFocused ? 'bg-slate-900 translate-y-1' : 'bg-white'
                     }`} />
                   </div>
 
                   {/* 嘴巴 */}
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                    <div className={`w-6 h-1 bg-white rounded-full transition-all duration-300 ${
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+                    <div className={`w-4 h-0.5 bg-white rounded-full transition-all duration-300 ${
                       isSuccess ? 'scale-y-150' : ''
                     }`} />
                   </div>
@@ -121,39 +129,39 @@ export default function Login() {
                   {/* 信封遮挡眼睛动画 */}
                   {isPasswordFocused && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-12 h-8 bg-white rounded-sm shadow-md transform -rotate-12 animate-bounce" />
+                      <div className="w-10 h-6 bg-white rounded-sm shadow-md transform -rotate-12 animate-bounce" />
                     </div>
                   )}
                 </div>
 
                 {/* 围巾 */}
-                <div className="w-24 h-6 bg-gradient-to-r from-[#38BDF8] to-[#38BDF8]/60 rounded-b-2xl -mt-2 relative">
-                  <div className="absolute -left-2 top-1/2 w-3 h-3 bg-[#38BDF8]/60 rounded-full" />
-                  <div className="absolute -right-2 top-1/2 w-3 h-3 bg-[#38BDF8]/60 rounded-full" />
+                <div className="w-20 h-5 bg-gradient-to-r from-cyan-400 to-cyan-500 rounded-b-xl -mt-1 relative">
+                  <div className="absolute -left-1.5 top-1/2 w-2 h-2 bg-cyan-400 rounded-full" />
+                  <div className="absolute -right-1.5 top-1/2 w-2 h-2 bg-cyan-400 rounded-full" />
                 </div>
               </div>
 
               {/* 身体 */}
-              <div className="w-16 h-20 bg-gradient-to-b from-[#6366F1]/60 to-[#6366F1]/40 rounded-2xl mt-2 relative">
+              <div className="w-12 h-14 bg-gradient-to-b from-blue-400/60 to-blue-500/40 rounded-xl mt-1 relative">
                 {/* 手臂 */}
-                <div className="absolute top-4 -left-4 w-4 h-12 bg-[#6366F1]/50 rounded-full" />
-                <div className="absolute top-4 -right-4 w-4 h-12 bg-[#6366F1]/50 rounded-full" />
+                <div className="absolute top-3 -left-3 w-3 h-10 bg-blue-400/50 rounded-full" />
+                <div className="absolute top-3 -right-3 w-3 h-10 bg-blue-400/50 rounded-full" />
               </div>
 
               {/* 信封（手中） */}
-              <div className={`absolute bottom-8 right-0 w-12 h-8 bg-white rounded-sm shadow-lg transition-all duration-500 ${
+              <div className={`absolute bottom-6 right-0 w-10 h-6 bg-white rounded-sm shadow-lg transition-all duration-500 ${
                 isSuccess ? 'animate-bounce translate-y-2 opacity-0' : 'opacity-100'
               }`}>
-                <div className="w-full h-1/2 bg-gradient-to-b from-white to-[#E5E7EB]" />
-                <div className="w-full h-1/2 bg-[#F3F4F6]" />
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-2 bg-[#38BDF8]" />
+                <div className="w-full h-1/2 bg-gradient-to-b from-white to-slate-100" />
+                <div className="w-full h-1/2 bg-slate-50" />
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-0.5 h-1.5 bg-blue-400" />
               </div>
 
               {/* 抛出的信封动画 */}
               {isSuccess && (
                 <>
-                  <div className="absolute top-0 right-0 w-8 h-6 bg-white rounded-sm shadow-lg animate-[fly_1s_ease-out_forwards]" />
-                  <div className="absolute top-2 right-2 w-8 h-6 bg-white rounded-sm shadow-lg animate-[fly_1.2s_ease-out_0.1s_forwards]" />
+                  <div className="absolute top-0 right-0 w-7 h-5 bg-white rounded-sm shadow-lg animate-[fly_1s_ease-out_forwards]" />
+                  <div className="absolute top-1 right-1 w-7 h-5 bg-white rounded-sm shadow-lg animate-[fly_1.2s_ease-out_0.1s_forwards]" />
                 </>
               )}
             </div>
@@ -166,29 +174,30 @@ export default function Login() {
           <div className="relative">
             <Input
               type="email"
-              placeholder="请输入邮箱"
+              placeholder="管理员邮箱"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-white/10 border-[#38BDF8]/30 text-white placeholder:text-white/40 pl-10 h-12 rounded-lg focus:border-[#38BDF8] focus:bg-white/15 transition-colors"
+              className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 pl-10 h-11 rounded-lg focus:border-blue-500 focus:bg-slate-800/80 focus:ring-1 focus:ring-blue-500/50 transition-colors"
               required
             />
-            <Mail className="absolute left-3 top-3.5 w-5 h-5 text-[#38BDF8]" />
+            <Mail className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
           </div>
 
           {/* 密码输入 */}
           <div className="relative">
             <Input
               type={showPassword ? 'text' : 'password'}
-              placeholder="请输入密码"
+              placeholder="管理员密码"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="bg-white/10 border-[#38BDF8]/30 text-white placeholder:text-white/40 pl-10 pr-10 h-12 rounded-lg focus:border-[#38BDF8] focus:bg-white/15 transition-colors"
+              className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 pl-10 pr-10 h-11 rounded-lg focus:border-blue-500 focus:bg-slate-800/80 focus:ring-1 focus:ring-blue-500/50 transition-colors"
               required
             />
+            <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3.5 text-[#38BDF8] hover:text-[#38BDF8]/80 transition-colors"
+              className="absolute right-3 top-3 text-slate-500 hover:text-slate-400 transition-colors"
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -198,15 +207,15 @@ export default function Login() {
           <Button
             type="submit"
             disabled={isLoading || isSuccess}
-            className="w-full h-12 bg-gradient-to-r from-[#6366F1] to-[#6366F1]/80 hover:from-[#6366F1]/90 hover:to-[#6366F1]/70 text-white font-semibold rounded-lg transition-all duration-300 disabled:opacity-50"
+            className="w-full h-11 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? '登录中...' : isSuccess ? '✓ 登录成功' : '登录'}
+            {isLoading ? '登录中...' : isSuccess ? '✓ 登录成功' : '管理员登录'}
           </Button>
         </form>
 
-        {/* 底部链接 */}
-        <div className="mt-6 text-center text-sm text-white/60">
-          <p>还没有账号？<a href="#" className="text-[#38BDF8] hover:text-[#38BDF8]/80 transition-colors">立即注册</a></p>
+        {/* 底部提示 */}
+        <div className="mt-6 text-center text-xs text-slate-500">
+          <p>仅限授权管理员访问</p>
         </div>
       </div>
 
@@ -218,7 +227,7 @@ export default function Login() {
             opacity: 1;
           }
           100% {
-            transform: translateX(100px) translateY(-200px) rotate(45deg);
+            transform: translateX(80px) translateY(-160px) rotate(45deg);
             opacity: 0;
           }
         }
