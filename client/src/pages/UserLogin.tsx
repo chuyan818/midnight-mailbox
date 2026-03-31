@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, Eye, EyeOff, Github, Chrome, Apple } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Chrome, MessageCircle, Smartphone } from 'lucide-react';
 
 interface MousePosition {
   x: number;
@@ -276,19 +276,19 @@ export default function UserLogin() {
             </button>
             <button
               type="button"
-              onClick={() => handleThirdPartyLogin('github')}
+              onClick={() => handleThirdPartyLogin('line')}
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-              title="GitHub登录"
+              title="LINE登录"
             >
-              <Github className="w-5 h-5 text-slate-600" />
+              <MessageCircle className="w-5 h-5 text-slate-600" />
             </button>
             <button
               type="button"
-              onClick={() => handleThirdPartyLogin('apple')}
+              onClick={() => handleThirdPartyLogin('wechat')}
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-              title="Apple登录"
+              title="微信登录"
             >
-              <Apple className="w-5 h-5 text-slate-600" />
+              <Smartphone className="w-5 h-5 text-slate-600" />
             </button>
           </div>
 
