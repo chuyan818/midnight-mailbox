@@ -2,7 +2,22 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, Eye, EyeOff, Chrome, MessageCircle, Smartphone } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Chrome } from 'lucide-react';
+
+// LINE图标组件
+const LineIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+    <path d="M19.365 9.863c.349-1.926.055-3.359-.955-4.183-1.867-1.498-5.73.205-8.427 3.922 0 0-1.631 2.151-2.155 2.886-.59.879-.455 1.922.3 2.529.12.098.237.187.347.268-1.626.269-3.626.879-4.773 1.707-1.516 1.123-1.617 2.764-.3 4.304 1.616 1.932 5.908 1.617 9.613-1.035 0 0 1.632-1.348 2.155-2.155.59-.879.455-1.922-.3-2.529-.12-.098-.237-.187-.347-.268 1.626-.269 3.626-.879 4.773-1.707 1.516-1.123 1.617-2.764.3-4.304zm-9.613 6.73c-2.886 2.155-6.493 2.348-7.609 1.348-.732-.617-.732-2.035.349-3.359 1.081-1.324 3.359-2.035 5.908-2.035.349 0 .698.027 1.047.082-1.081 1.348-1.932 2.886-2.155 3.922-.055.349.027.698.349.879.322.18.698.18.879 0 .18-.18 1.031-1.517 2.112-2.865.592.592.864 1.184.864 1.776 0 .592-.271 1.184-.864 1.776-.592.592-1.184.864-1.776.864-.592 0-1.184-.271-1.776-.864zm7.609-1.348c-.732.617-2.035 1.031-3.584 1.031-.349 0-.698-.027-1.047-.082 1.081-1.348 1.932-2.886 2.155-3.922.055-.349-.027-.698-.349-.879-.322-.18-.698-.18-.879 0-.18.18-1.031 1.517-2.112 2.865-.592-.592-.864-1.184-.864-1.776 0-.592.271-1.184.864-1.776.592-.592 1.184-.864 1.776-.864.592 0 1.184.271 1.776.864 1.081 1.081 1.932 2.613 2.155 3.922.055.349-.027.698-.349.879.322.18.698.18.879 0z" />
+  </svg>
+);
+
+// 微信图标组件
+const WeChatIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+    <path d="M8.5 11.5c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5zm6 0c.828 0 1.5-.672 1.5-1.5s-.672-1.5-1.5-1.5-1.5.672-1.5 1.5.672 1.5 1.5 1.5z" />
+    <path d="M12 2C6.48 2 2 5.58 2 10c0 2.54 1.19 4.81 3.04 6.27.21 1.58.67 2.99 1.69 3.95-.02-.01 2.29-1.44 3.27-2.04 1.09.21 2.21.32 3.35.32 5.52 0 10-3.58 10-8s-4.48-8-10-8zm0 14c-1.11 0-2.19-.11-3.25-.32l-1.44.91c-.81.51-1.54 1.01-1.84 1.18-.12-.44-.3-1.12-.42-2.05-1.59-1.2-2.61-2.92-2.61-4.82 0-3.86 3.59-7 8-7s8 3.14 8 7-3.59 7-8 7z" />
+  </svg>
+);
 
 interface MousePosition {
   x: number;
@@ -280,7 +295,7 @@ export default function UserLogin() {
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
               title="LINE登录"
             >
-              <MessageCircle className="w-5 h-5 text-slate-600" />
+              <LineIcon className="w-5 h-5 text-slate-600" />
             </button>
             <button
               type="button"
@@ -288,7 +303,7 @@ export default function UserLogin() {
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
               title="微信登录"
             >
-              <Smartphone className="w-5 h-5 text-slate-600" />
+              <WeChatIcon className="w-5 h-5 text-slate-600" />
             </button>
           </div>
 
