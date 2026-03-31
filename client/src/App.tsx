@@ -22,12 +22,14 @@ import { AdminReports } from "./pages/AdminReports";
 import { AdminEmotions } from "./pages/AdminEmotions";
 import { AdminMembers } from "./pages/AdminMembers";
 import { AdminSettings } from "./pages/AdminSettings";
+import Login from "./pages/Login";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"\\"} component={Home} />
+      <Route path={"/login"} component={Login} />
       <Route path={"/write"} component={Write} />
       <Route path={"/letter/:id"} component={Letter} />
       <Route path={"/mailbox"} component={Mailbox} />
