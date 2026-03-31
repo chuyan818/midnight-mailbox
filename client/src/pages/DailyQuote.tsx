@@ -33,11 +33,7 @@ export default function DailyQuote() {
   };
 
   const [showShareOptions, setShowShareOptions] = useState(false);
-  const [showQRCode, setShowQRCode] = useState(false);
-  const [showShareCard, setShowShareCard] = useState(false);
-  const qrContainerRef = useRef<HTMLDivElement>(null);
   const shareOptionsRef = useRef<HTMLDivElement>(null);
-  const shareCardRef = useRef<HTMLDivElement>(null);
 
   const quoteUrl = `${window.location.origin}/quote/${quote.id}`;
   const quoteText = quote.content;
@@ -60,24 +56,10 @@ export default function DailyQuote() {
 
     switch (platform) {
       case "wechat":
-        setShowQRCode(true);
-        // 使用QRCode库生成二维码
-        if (qrContainerRef.current) {
-          qrContainerRef.current.innerHTML = "";
-          // 动态加载QRCode库
-          const script = document.createElement("script");
-          script.src = "https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js";
-          script.onload = () => {
-            if (qrContainerRef.current) {
-              new (window as any).QRCode(qrContainerRef.current, {
-                text: quoteUrl,
-                width: 150,
-                height: 150,
-              });
-            }
-          };
-          document.body.appendChild(script);
-        }
+        // 微信分享 - 显示分享链接
+        navigator.clipboard.writeText(quoteUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
         break;
       case "weibo":
         url = `https://service.weibo.com/share/share.php?title=${encodedText}&url=${encodedUrl}`;
@@ -103,11 +85,21 @@ export default function DailyQuote() {
         navigator.clipboard.writeText(quoteUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        setShowShareCard(true);
         break;
     }
     setShowShareOptions(false);
   };
+
+  
+const shareplatforms = [
+  { id: 'wechat', name: '微信', icon: '🟢', emoji: '💬' },
+  { id: 'weibo', name: '微博', icon: '🔴', emoji: '📱' },
+  { id: 'line', name: 'LINE', icon: '🟢', emoji: '💚' },
+  { id: 'twitter', name: 'Twitter', icon: '🔵', emoji: '𝕏' },
+  { id: 'facebook', name: 'Facebook', icon: '🔵', emoji: 'f' },
+  { id: 'whatsapp', name: 'WhatsApp', icon: '🟢', emoji: '💬' },
+  { id: 'copy', name: '复制链接', icon: '🔗', emoji: '📋' },
+];
 
   const emotionColors: Record<string, { bg: string; text: string; light: string }> = {
     孤独: { bg: "#9370DB", text: "#E6D5FF", light: "#9370DB20" },
@@ -205,109 +197,55 @@ export default function DailyQuote() {
               <div className="flex-1 relative" ref={shareOptionsRef}>
                 <Button
                   className="w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 font-semibold py-6"
-                  onClick={() => setShowShareOptions(!showShareOptions)}
+                  onClick={() => setShowShareOptions(true)}
                 >
                   <Share2 className="w-5 h-5 mr-2" />
                   分享这句话
                 </Button>
                 {showShareOptions && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-[#1C1F4A] border border-white/20 rounded-lg shadow-lg z-10 overflow-hidden">
-                    <button
-                      onClick={() => handleShare("wechat")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors"
-                    >
-                      微信好友/朋友圈
-                    </button>
-                    <button
-                      onClick={() => handleShare("weibo")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
-                    >
-                      微博
-                    </button>
-                    <button
-                      onClick={() => handleShare("line")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
-                    >
-                      LINE
-                    </button>
-                    <button
-                      onClick={() => handleShare("twitter")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
-                    >
-                      Twitter
-                    </button>
-                    <button
-                      onClick={() => handleShare("facebook")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
-                    >
-                      Facebook
-                    </button>
-                    <button
-                      onClick={() => handleShare("whatsapp")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
-                    >
-                      WhatsApp
-                    </button>
-                    <button
-                      onClick={() => handleShare("copy")}
-                      className="w-full text-left px-4 py-3 hover:bg-white/10 text-white text-sm transition-colors border-t border-white/10"
-                    >
-                      复制链接
-                    </button>
-                  </div>
-                )}
-                {showQRCode && (
-                  <div className="absolute top-full left-0 mt-2 bg-[#1C1F4A] border border-white/20 rounded-lg shadow-lg p-4 z-10">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-white text-sm">微信扫一扫</span>
-                      <button
-                        onClick={() => setShowQRCode(false)}
-                        className="text-gray-400 hover:text-white"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div ref={qrContainerRef} className="flex justify-center" />
-                  </div>
-                )}
-                {showShareCard && (
-                  <div className="absolute top-full left-0 mt-2 bg-[#1C1F4A] border border-white/20 rounded-lg shadow-lg p-4 z-10 w-80" ref={shareCardRef}>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-white text-sm font-semibold">分享链接</span>
-                      <button
-                        onClick={() => setShowShareCard(false)}
-                        className="text-gray-400 hover:text-white"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="bg-white/5 rounded p-3 border border-white/10">
-                        <p className="text-xs text-gray-400 mb-2">分享链接</p>
-                        <p className="text-white text-sm break-all font-mono">{quoteUrl}</p>
+                  <>
+                    <div 
+                      className="fixed inset-0 bg-black/50 z-40"
+                      onClick={() => setShowShareOptions(false)}
+                    />
+                    <div className="fixed bottom-0 left-0 right-0 bg-[#1C1F4A] rounded-t-3xl shadow-2xl z-50"
+                         style={{height: '45vh'}}>
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                        <span className="text-white text-lg font-semibold">分享到</span>
+                        <button
+                          onClick={() => setShowShareOptions(false)}
+                          className="text-gray-400 hover:text-white transition-colors"
+                        >
+                          <X className="w-6 h-6" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(quoteUrl);
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        }}
-                        className="w-full bg-[#FFD580] hover:bg-[#FFD580]/90 text-black font-semibold py-2 rounded transition-colors flex items-center justify-center gap-2"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            已复制
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-4 h-4" />
-                            复制链接
-                          </>
-                        )}
-                      </button>
+                      <div className="px-6 py-8 overflow-y-auto" style={{height: 'calc(45vh - 120px)'}}>
+                        <div className="grid grid-cols-3 gap-6">
+                          {shareplatforms.map((platform) => (
+                            <button
+                              key={platform.id}
+                              onClick={() => {
+                                handleShare(platform.id);
+                                setShowShareOptions(false);
+                              }}
+                              className="flex flex-col items-center gap-3 p-4 rounded-lg hover:bg-white/10 transition-all active:scale-95"
+                            >
+                              <div className="text-4xl">{platform.emoji}</div>
+                              <span className="text-white text-sm font-medium text-center">{platform.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 px-6 py-4 border-t border-white/10 bg-[#1C1F4A]">
+                        <button
+                          onClick={() => setShowShareOptions(false)}
+                          className="w-full py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold transition-colors"
+                        >
+                          取消
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
               <Button
