@@ -24,6 +24,7 @@ import { AdminMembers } from "./pages/AdminMembers";
 import { AdminSettings } from "./pages/AdminSettings";
 import Login from "./pages/Login";
 import UserLogin from "./pages/UserLogin";
+import Register from "./pages/Register";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -32,6 +33,7 @@ function Router() {
       <Route path={"\\"} component={Home} />
       <Route path={"/login"} component={Login} />
       <Route path={"/user-login"} component={UserLogin} />
+      <Route path={"/register"} component={Register} />
       <Route path={"/write"} component={Write} />
       <Route path={"/letter/:id"} component={Letter} />
       <Route path={"/mailbox"} component={Mailbox} />
