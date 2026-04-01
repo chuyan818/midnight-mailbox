@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Chrome, Check, ChevronDown } from 'lucide-react';
+import { trpc } from '@/lib/trpc';
 
 // LINE图标组件
 const LineIcon = ({ className }: { className?: string }) => (
@@ -87,15 +88,27 @@ export default function Register() {
 
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true);
-      // 模拟注册请求
-      setTimeout(() => {
+      try {
+        // 调用注册接口
+        const result = await trpc.auth.register.useMutation().mutateAsync({
+          email,
+          password,
+          confirmPassword,
+        });
+        
+        if (result.success) {
+          setIsSuccess(true);
+          // 1.5秒后跳转到首页
+          setTimeout(() => {
+            navigate('/');
+          }, 1500);
+        }
+      } catch (error: any) {
+        const errorMessage = error?.message || '注册失败，请重试';
+        setErrors({ submit: errorMessage });
+      } finally {
         setIsLoading(false);
-        setIsSuccess(true);
-        // 1.5秒后跳转到首页
-        setTimeout(() => {
-          navigate('/');
-        }, 1500);
-      }, 1500);
+      }
     }
   };
 

@@ -26,6 +26,7 @@ import {
   detectLanguage,
 } from "./llm-hybrid";
 import { createTestCheckoutSession } from "./test-payment";
+import { users } from "../drizzle/schema";
 
 // Emotion types
 const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫", "压力", "思念"] as const;
@@ -60,6 +61,44 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    register: publicProcedure
+      .input(z.object({
+        email: z.string().email("Invalid email address"),
+        password: z.string().min(8, "Password must be at least 8 characters"),
+        confirmPassword: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Validate passwords match
+        if (input.password !== input.confirmPassword) {
+          throw new Error("Passwords do not match");
+        }
+
+        // Check if user already exists
+        const db = await getDbConnection();
+        const existingUsers = await db.select().from(users).where(eq(users.email, input.email));
+
+        if (existingUsers.length > 0) {
+          throw new Error("Email already registered");
+        }
+
+        // Create new user with a unique openId
+        const openId = `email_${input.email}_${Date.now()}`;
+        await db.insert(users).values({
+          openId,
+          email: input.email,
+          name: input.email.split('@')[0],
+          loginMethod: "email",
+        });
+
+        // Fetch the created user
+        const newUsers = await db.select().from(users).where(eq(users.openId, openId));
+        const newUser = newUsers[0];
+
+        return {
+          success: true,
+          user: newUser,
+        };
+      }),
   }),
 
   user: router({
