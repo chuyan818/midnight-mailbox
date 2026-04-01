@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearchParams } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, Eye, EyeOff, Chrome } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Chrome, AlertCircle, CheckCircle } from 'lucide-react';
 
 // LINE图标组件
 const LineIcon = ({ className }: { className?: string }) => (
@@ -35,16 +35,34 @@ interface Star {
 
 export default function UserLogin() {
   const [, navigate] = useLocation();
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(() => searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [mousePos, setMousePos] = useState<MousePosition>({ x: 0, y: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const spiritRef = useRef<HTMLDivElement>(null);
   const leftSectionRef = useRef<HTMLDivElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
   const [stars, setStars] = useState<Star[]>([]);
+
+  // 验证邮箱格式
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // 当邮箱自动填充时，焦点移到密码输入框
+  useEffect(() => {
+    if (searchParams.get('email') && passwordInputRef.current) {
+      setTimeout(() => {
+        passwordInputRef.current?.focus();
+      }, 100);
+    }
+  }, [searchParams]);
 
   // 初始化星空
   useEffect(() => {
@@ -94,6 +112,27 @@ export default function UserLogin() {
   // 处理登录
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+
+    // 验证邮箱
+    if (!email) {
+      newErrors.email = '请输入邮箱地址';
+    } else if (!validateEmail(email)) {
+      newErrors.email = '请输入有效的邮箱地址';
+    }
+
+    // 验证密码
+    if (!password) {
+      newErrors.password = '请输入密码';
+    } else if (password.length < 6) {
+      newErrors.password = '密码至少6位';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     setIsLoading(true);
     
     // 模拟登录请求
@@ -113,6 +152,26 @@ export default function UserLogin() {
     console.log(`Logging in with ${provider}`);
     // TODO: 实现第三方登录逻辑
   };
+
+  // 邮箱输入变化处理
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (errors.email) {
+      setErrors({ ...errors, email: '' });
+    }
+  };
+
+  // 密码输入变化处理
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (errors.password) {
+      setErrors({ ...errors, password: '' });
+    }
+  };
+
+  // 检查邮箱是否有效
+  const isEmailValid = email && validateEmail(email);
+  const isPasswordValid = password && password.length >= 6;
 
   const spiritPos = calculateSpiritPosition(mousePos.x, mousePos.y);
 
@@ -216,21 +275,46 @@ export default function UserLogin() {
                 type="email"
                 placeholder="请输入邮箱"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 pl-10 h-12 rounded-lg focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all"
+                onChange={(e) => handleEmailChange(e.target.value)}
+                className={`bg-slate-50 border-2 text-slate-900 placeholder:text-slate-400 pl-10 h-12 rounded-lg transition-all ${
+                  errors.email 
+                    ? 'border-red-500 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20' 
+                    : isEmailValid
+                    ? 'border-green-500 focus:border-green-500 focus:bg-white focus:ring-2 focus:ring-green-500/20'
+                    : 'border-slate-200 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20'
+                }`}
                 required
               />
               <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+              {isEmailValid && !errors.email && (
+                <CheckCircle className="absolute right-3 top-3.5 w-5 h-5 text-green-500" />
+              )}
+              {errors.email && (
+                <AlertCircle className="absolute right-3 top-3.5 w-5 h-5 text-red-500" />
+              )}
+              {errors.email && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             {/* 密码输入 */}
             <div className="relative">
               <Input
+                ref={passwordInputRef}
                 type={showPassword ? 'text' : 'password'}
                 placeholder="请输入密码"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 pl-10 pr-10 h-12 rounded-lg focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all"
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                className={`bg-slate-50 border-2 text-slate-900 placeholder:text-slate-400 pl-10 pr-10 h-12 rounded-lg transition-all ${
+                  errors.password 
+                    ? 'border-red-500 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20' 
+                    : isPasswordValid
+                    ? 'border-green-500 focus:border-green-500 focus:bg-white focus:ring-2 focus:ring-green-500/20'
+                    : 'border-slate-200 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20'
+                }`}
                 required
               />
               <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
@@ -241,6 +325,17 @@ export default function UserLogin() {
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
+              {isPasswordValid && !errors.password && (
+                <div className="absolute right-12 top-3.5">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                </div>
+              )}
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.password}
+                </p>
+              )}
             </div>
 
             {/* 记住密码 */}
@@ -254,9 +349,13 @@ export default function UserLogin() {
                 />
                 <span className="text-sm text-slate-600">记住我</span>
               </label>
-              <a href="#" className="text-sm text-purple-600 hover:text-purple-700 transition-colors">
+              <button
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                className="text-sm text-purple-600 hover:text-purple-700 transition-colors bg-none border-none cursor-pointer p-0"
+              >
                 忘记密码？
-              </a>
+              </button>
             </div>
 
             {/* 登录按钮 */}
