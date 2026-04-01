@@ -1,8 +1,10 @@
+'use client';
+
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, Eye, EyeOff, Chrome, Check, ChevronDown } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Chrome, Check } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 
 // LINE图标组件
@@ -23,15 +25,18 @@ const WeChatIcon = ({ className }: { className?: string }) => (
 export default function Register() {
   const [, navigate] = useLocation();
   const [email, setEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const [showPasswordRules, setShowPasswordRules] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [verificationCodeSent, setVerificationCodeSent] = useState(false);
+  const [verificationCountdown, setVerificationCountdown] = useState(0);
+  const [dailyCodeCount, setDailyCodeCount] = useState(0);
 
   // 验证邮箱格式
   const validateEmail = (email: string) => {
@@ -41,155 +46,251 @@ export default function Register() {
 
   // 验证密码规则
   const validatePassword = (pwd: string) => {
-    return pwd.length >= 8 && /[a-zA-Z]/.test(pwd) && /\d/.test(pwd);
+    return pwd.length >= 6 && /[a-zA-Z]/.test(pwd) && /\d/.test(pwd);
   };
 
   // 检查密码强度
   const getPasswordStrength = (pwd: string) => {
     if (!pwd) return 'none';
-    if (pwd.length < 8) return 'weak';
-    if (/[a-zA-Z]/.test(pwd) && /\d/.test(pwd) && /[!@#$%^&*]/.test(pwd)) return 'strong';
-    if (/[a-zA-Z]/.test(pwd) && /\d/.test(pwd)) return 'medium';
-    return 'weak';
+    if (pwd.length < 6) return 'weak';
+    if (pwd.length < 8) return 'medium';
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd) && /\d/.test(pwd) && /[!@#$%^&*]/.test(pwd)) {
+      return 'strong';
+    }
+    return 'medium';
   };
 
-  // 处理表单提交
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 获取密码强度颜色
+  const getStrengthColor = (strength: string) => {
+    switch (strength) {
+      case 'weak':
+        return 'text-red-500';
+      case 'medium':
+        return 'text-yellow-500';
+      case 'strong':
+        return 'text-green-500';
+      default:
+        return 'text-gray-400';
+    }
+  };
+
+  // 获取密码强度中文
+  const getStrengthText = (strength: string) => {
+    switch (strength) {
+      case 'weak':
+        return '弱';
+      case 'medium':
+        return '中';
+      case 'strong':
+        return '强';
+      default:
+        return '';
+    }
+  };
+
+  // 发送验证码
+  const handleSendVerificationCode = async () => {
+    if (!validateEmail(email)) {
+      setErrors({ ...errors, email: '请输入有效的邮箱地址' });
+      return;
+    }
+
+    if (verificationCountdown > 0) {
+      setErrors({ ...errors, verificationCode: '请等待倒计时结束后再发送' });
+      return;
+    }
+
+    if (dailyCodeCount >= 10) {
+      setErrors({ ...errors, verificationCode: '今天已达到发送上限（10次）' });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // 模拟发送验证码
+      // 实际应调用后端API
+      setVerificationCodeSent(true);
+      setVerificationCountdown(60);
+      setDailyCodeCount(dailyCodeCount + 1);
+      setErrors({ ...errors, verificationCode: '' });
+
+      // 倒计时
+      const interval = setInterval(() => {
+        setVerificationCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 处理注册
+  const handleRegister = async () => {
     const newErrors: Record<string, string> = {};
 
     // 验证邮箱
     if (!email) {
-      newErrors.email = '请输入邮箱';
+      newErrors.email = '请输入邮箱地址';
     } else if (!validateEmail(email)) {
-      newErrors.email = '邮箱格式不正确';
+      newErrors.email = '请输入有效的邮箱地址';
+    }
+
+    // 验证验证码
+    if (!verificationCode) {
+      newErrors.verificationCode = '请输入验证码';
     }
 
     // 验证密码
     if (!password) {
       newErrors.password = '请设置密码';
     } else if (!validatePassword(password)) {
-      newErrors.password = '密码至少8位，需包含字母和数字';
+      newErrors.password = '密码至少6位，包含字母和数字';
     }
 
     // 验证确认密码
     if (!confirmPassword) {
-      newErrors.confirmPassword = '请再次输入密码';
+      newErrors.confirmPassword = '请确认密码';
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = '两次输入的密码不一致';
     }
 
     // 验证协议
     if (!agreeTerms) {
-      newErrors.terms = '请同意用户协议和隐私政策';
+      newErrors.agreeTerms = '请同意用户协议和隐私政策';
     }
 
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length === 0) {
-      setIsLoading(true);
-      try {
-        // 调用注册接口
-        const result = await trpc.auth.register.useMutation().mutateAsync({
-          email,
-          password,
-          confirmPassword,
-        });
-        
-        if (result.success) {
-          setIsSuccess(true);
-          // 1.5秒后跳转到首页
-          setTimeout(() => {
-            navigate('/');
-          }, 1500);
-        }
-      } catch (error: any) {
-        const errorMessage = error?.message || '注册失败，请重试';
-        setErrors({ submit: errorMessage });
-      } finally {
-        setIsLoading(false);
-      }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
     }
-  };
 
-  // 处理第三方登录
-  const handleThirdPartyRegister = (provider: string) => {
-    console.log(`使用 ${provider} 注册`);
-    // TODO: 实现第三方注册逻辑
+    setIsLoading(true);
+    try {
+      // 调用注册接口
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setIsSuccess(true);
+
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
+    } catch (error) {
+      setErrors({ submit: '注册失败，请重试' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const passwordStrength = getPasswordStrength(password);
-  const strengthColors = {
-    none: 'bg-slate-200',
-    weak: 'bg-red-500',
-    medium: 'bg-yellow-500',
-    strong: 'bg-green-500',
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        {/* 顶部标题 */}
+        {/* 标题 */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">创建账户</h1>
-          <p className="text-slate-400 text-sm">仅需几秒即可完成注册</p>
+          <h1 className="text-3xl font-bold text-white mb-2">创建你的账号</h1>
+          <p className="text-gray-400 text-sm">今晚，让情绪有个地方安放。</p>
         </div>
 
-        {/* 注册表单 */}
-        <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-          {/* 邮箱输入 */}
+        {/* 表单 */}
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 space-y-4">
+          {/* 邮箱地址 */}
           <div>
-            <div className="relative">
-              <Input
-                type="email"
-                placeholder="请输入邮箱"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 pl-10 h-12 rounded-lg focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all ${
-                  errors.email ? 'border-red-500' : ''
-                }`}
-              />
-              <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
-            </div>
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            <label className="flex items-center text-white text-sm mb-2">
+              <Mail className="w-4 h-4 mr-2 text-blue-400" />
+              邮箱地址
+            </label>
+            <Input
+              type="email"
+              placeholder="请输入邮箱地址"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors({ ...errors, email: '' });
+              }}
+              className="bg-white/5 border-white/20 text-white placeholder:text-gray-500"
+            />
+            {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
           </div>
 
-          {/* 密码设置 */}
+          {/* 验证码 */}
           <div>
+            <label className="flex items-center text-white text-sm mb-2">
+              <Mail className="w-4 h-4 mr-2 text-blue-400" />
+              验证码
+            </label>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="输入验证码"
+                value={verificationCode}
+                onChange={(e) => {
+                  setVerificationCode(e.target.value);
+                  if (errors.verificationCode) setErrors({ ...errors, verificationCode: '' });
+                }}
+                className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 flex-1"
+              />
+              <Button
+                onClick={handleSendVerificationCode}
+                disabled={isLoading || verificationCountdown > 0 || !validateEmail(email)}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 whitespace-nowrap"
+              >
+                {verificationCountdown > 0 ? `${verificationCountdown}s` : '发送验证码'}
+              </Button>
+            </div>
+            {errors.verificationCode && <p className="text-red-400 text-xs mt-1">{errors.verificationCode}</p>}
+            {dailyCodeCount > 0 && (
+              <p className="text-gray-400 text-xs mt-1">
+                今天已发送 {dailyCodeCount}/10 次
+              </p>
+            )}
+          </div>
+
+          {/* 设置密码 */}
+          <div>
+            <label className="flex items-center text-white text-sm mb-2">
+              <Lock className="w-4 h-4 mr-2 text-blue-400" />
+              设置密码
+            </label>
             <div className="relative">
               <Input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="请设置密码"
+                placeholder="至少6位"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 pl-10 pr-10 h-12 rounded-lg focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all ${
-                  errors.password ? 'border-red-500' : ''
-                }`}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors({ ...errors, password: '' });
+                }}
+                className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 pr-10"
               />
-              <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
               <button
-                type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+            {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
 
-            {/* 密码强度指示 */}
+            {/* 密码强度提示 */}
             {password && (
-              <div className="mt-2 space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden">
-                    <div className={`h-full ${strengthColors[passwordStrength]} transition-all`} style={{
-                      width: passwordStrength === 'none' ? '0%' : passwordStrength === 'weak' ? '33%' : passwordStrength === 'medium' ? '66%' : '100%'
-                    }} />
-                  </div>
-                  <span className="text-xs text-slate-500">
-                    {passwordStrength === 'weak' && '弱'}
-                    {passwordStrength === 'medium' && '中'}
-                    {passwordStrength === 'strong' && '强'}
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-gray-400 text-xs">密码强度：</span>
+                <div className="flex gap-1">
+                  <span className={`text-xs font-medium ${getStrengthColor('weak')} ${passwordStrength === 'weak' ? 'opacity-100' : 'opacity-40'}`}>
+                    弱
+                  </span>
+                  <span className="text-gray-500">|</span>
+                  <span className={`text-xs font-medium ${getStrengthColor('medium')} ${passwordStrength === 'medium' ? 'opacity-100' : 'opacity-40'}`}>
+                    中
+                  </span>
+                  <span className="text-gray-500">|</span>
+                  <span className={`text-xs font-medium ${getStrengthColor('strong')} ${passwordStrength === 'strong' ? 'opacity-100' : 'opacity-40'}`}>
+                    强
                   </span>
                 </div>
               </div>
@@ -198,136 +299,88 @@ export default function Register() {
 
           {/* 确认密码 */}
           <div>
+            <label className="flex items-center text-white text-sm mb-2">
+              <Lock className="w-4 h-4 mr-2 text-blue-400" />
+              确认密码
+            </label>
             <div className="relative">
               <Input
                 type={showConfirmPassword ? 'text' : 'password'}
-                placeholder="再次输入密码"
+                placeholder="再输入一次密码"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 pl-10 pr-10 h-12 rounded-lg focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all ${
-                  errors.confirmPassword ? 'border-red-500' : ''
-                }`}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
+                }}
+                className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 pr-10"
               />
-              <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
               <button
-                type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               >
-                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+            {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
           </div>
 
-          {/* 密码规则提示 */}
-          <div className="bg-slate-100 rounded-lg">
-            <button
-              type="button"
-              onClick={() => setShowPasswordRules(!showPasswordRules)}
-              className="w-full flex items-center justify-between px-4 py-3 text-slate-700 hover:bg-slate-200 transition-colors rounded-lg"
-            >
-              <span className="text-sm font-medium">密码规则</span>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showPasswordRules ? 'rotate-180' : ''}`} />
-            </button>
-            {showPasswordRules && (
-              <div className="px-4 pb-3 space-y-2 text-xs text-slate-600">
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span>至少 8 位字符</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span>包含字母（A-Z, a-z）</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span>包含数字（0-9）</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 隐私协议勾选 */}
-          <div>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="w-5 h-5 rounded border-slate-300 text-purple-500 focus:ring-purple-500 mt-0.5 flex-shrink-0"
-              />
-              <span className="text-sm text-slate-600">
-                我已阅读并同意
-                <a href="#" className="text-purple-600 hover:text-purple-700 font-semibold mx-1">《用户协议》</a>
-                和
-                <a href="#" className="text-purple-600 hover:text-purple-700 font-semibold mx-1">《隐私政策》</a>
-              </span>
+          {/* 协议勾选 */}
+          <div className="flex items-start gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="terms"
+              checked={agreeTerms}
+              onChange={(e) => {
+                setAgreeTerms(e.target.checked);
+                if (errors.agreeTerms) setErrors({ ...errors, agreeTerms: '' });
+              }}
+              className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5 text-blue-500"
+            />
+            <label htmlFor="terms" className="text-gray-300 text-sm">
+              我已阅读并同意
+              <a href="#" className="text-blue-400 hover:text-blue-300 mx-1">
+                《用户协议》
+              </a>
+              和
+              <a href="#" className="text-blue-400 hover:text-blue-300 mx-1">
+                《隐私政策》
+              </a>
             </label>
-            {errors.terms && <p className="text-red-500 text-xs mt-1">{errors.terms}</p>}
           </div>
+          {errors.agreeTerms && <p className="text-red-400 text-xs">{errors.agreeTerms}</p>}
 
-          {/* 注册按钮 */}
+          {/* 创建账号按钮 */}
           <Button
-            type="submit"
+            onClick={handleRegister}
             disabled={isLoading || isSuccess}
-            className={`w-full h-12 rounded-lg font-semibold text-white transition-all ${
-              isSuccess
-                ? 'bg-green-500 hover:bg-green-600'
-                : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600'
-            }`}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium py-3 rounded-lg mt-6"
           >
-            {isLoading ? '注册中...' : isSuccess ? '✓ 注册成功' : '立即注册'}
+            {isSuccess ? (
+              <span className="flex items-center justify-center gap-2">
+                <Check className="w-4 h-4" />
+                注册成功
+              </span>
+            ) : isLoading ? (
+              '创建中...'
+            ) : (
+              '创建账号'
+            )}
           </Button>
-        </form>
 
-        {/* 切换登录链接 */}
-        <div className="text-center mb-6">
-          <p className="text-slate-600 text-sm">
-            已有账号？
-            <a href="/user-login" className="text-purple-600 hover:text-purple-700 font-semibold transition-colors ml-1">
-              去登录 →
-            </a>
-          </p>
+          {/* 已有账号链接 */}
+          <div className="text-center pt-4">
+            <span className="text-gray-400 text-sm">
+              已有账号？
+              <a href="/user-login" className="text-blue-400 hover:text-blue-300 ml-1">
+                立即登录 →
+              </a>
+            </span>
+          </div>
         </div>
 
-        {/* 分隔线 */}
-        <div className="relative flex justify-center text-sm mb-6">
-          <span className="px-2 bg-slate-800 text-slate-500">或使用其他账号注册</span>
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-slate-700" />
-        </div>
-
-        {/* 第三方登录 */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <button
-            type="button"
-            onClick={() => handleThirdPartyRegister('google')}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-600 rounded-lg hover:bg-slate-700 transition-colors"
-            title="Google注册"
-          >
-            <Chrome className="w-5 h-5 text-slate-400" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleThirdPartyRegister('line')}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-600 rounded-lg hover:bg-slate-700 transition-colors"
-            title="LINE注册"
-          >
-            <LineIcon className="w-5 h-5 text-slate-400" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleThirdPartyRegister('wechat')}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-600 rounded-lg hover:bg-slate-700 transition-colors"
-            title="微信注册"
-          >
-            <WeChatIcon className="w-5 h-5 text-slate-400" />
-          </button>
-        </div>
-
-        {/* 底部Footer */}
-        <div className="text-center text-xs text-slate-500">
-          <p>© 2026 深夜信箱 · <a href="#" className="hover:text-slate-400">隐私政策</a> · <a href="#" className="hover:text-slate-400">服务条款</a></p>
+        {/* Footer */}
+        <div className="text-center mt-8 text-gray-500 text-xs">
+          <p>© 2026 深夜信箱 · 隐私政策 · 服务条款</p>
         </div>
       </div>
     </div>

@@ -311,9 +311,13 @@ export default function UserLogin() {
           <div className="text-center">
             <p className="text-slate-600 text-sm">
               还没有账号？
-              <a href="#" className="text-purple-600 hover:text-purple-700 font-semibold transition-colors ml-1">
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="text-purple-600 hover:text-purple-700 font-semibold transition-colors ml-1 bg-none border-none cursor-pointer p-0"
+              >
                 立即注册
-              </a>
+              </button>
             </p>
           </div>
         </div>
