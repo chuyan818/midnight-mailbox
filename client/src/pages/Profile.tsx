@@ -322,6 +322,23 @@ export default function Profile() {
               </div>
             </div>
 
+            {/* Premium Support */}
+            {currentType === "yearly" && (
+              <div className="p-6 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30">
+                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-purple-400" />
+                  优先客服支持
+                </h2>
+                <p className="text-sm text-gray-300 mb-4">作为年会员，您享有24小时优先客服支持权益</p>
+                <Button
+                  className="w-full bg-purple-600 text-white hover:bg-purple-700"
+                  onClick={() => navigate("/premium-support")}
+                >
+                  查看客服支持
+                </Button>
+              </div>
+            )}
+
             {/* Settings Section */}
             {currentType !== "free" && (
               <div className="p-6 rounded-lg bg-white/5 border border-white/10">
@@ -338,19 +355,19 @@ export default function Profile() {
             )}
 
             {/* Navigation */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <Button
                 variant="outline"
-                className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 flex-1"
+                className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 flex-1 min-w-[120px]"
                 onClick={() => navigate("/report")}
               >
                 查看情绪报告
               </Button>
               <Button
-                className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 flex-1"
+                className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 flex-1 min-w-[120px]"
                 onClick={() => navigate("/mailbox")}
               >
-                查看信箱
+                返回信箱
               </Button>
             </div>
           </>

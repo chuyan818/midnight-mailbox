@@ -69,13 +69,22 @@ export default function Mailbox() {
             </Button>
             <h1 className="text-2xl font-bold text-white">我的信箱</h1>
           </div>
-          <Button
-            className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 flex items-center gap-2"
-            onClick={() => navigate("/write")}
-          >
-            <Plus className="w-4 h-4" />
-            写新信
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10"
+              onClick={() => navigate("/profile")}
+            >
+              个人中心
+            </Button>
+            <Button
+              className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 flex items-center gap-2"
+              onClick={() => navigate("/write")}
+            >
+              <Plus className="w-4 h-4" />
+              写新信
+            </Button>
+          </div>
         </div>
       </div>
 

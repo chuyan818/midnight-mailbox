@@ -339,9 +339,9 @@ export default function Write() {
       setSelectedEmotions([]);
       setIsPublic(false);
 
-      // Navigate back to home after success
+      // Navigate to letter detail page to show the AI response
       setTimeout(() => {
-        navigate("/");
+        navigate(`/letter/${result.id}`);
       }, 1500);
     } catch (error: any) {
       toast.error(error.message || "发送失败，请重试");

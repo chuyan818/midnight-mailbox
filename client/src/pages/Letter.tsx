@@ -266,16 +266,23 @@ export default function Letter() {
         </div>
 
         {/* Navigation */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <Button
             variant="outline"
-            className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 flex-1"
+            className="border-purple-400 text-purple-400 hover:bg-purple-400/10 flex-1 min-w-[120px]"
+            onClick={() => navigate(`/report?letterId=${letterId}`)}
+          >
+            查看情绪报告
+          </Button>
+          <Button
+            variant="outline"
+            className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 flex-1 min-w-[120px]"
             onClick={() => navigate("/write")}
           >
             再写一封信
           </Button>
           <Button
-            className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 flex-1"
+            className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 flex-1 min-w-[120px]"
             onClick={() => navigate("/mailbox")}
           >
             查看我的信箱
