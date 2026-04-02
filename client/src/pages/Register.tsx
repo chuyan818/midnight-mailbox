@@ -31,6 +31,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -171,6 +172,15 @@ export default function Register() {
 
     setIsLoading(true);
     try {
+      // 处理"记住我"功能
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email);
+        localStorage.setItem('rememberMe', 'true');
+      } else {
+        localStorage.removeItem('rememberedEmail');
+        localStorage.setItem('rememberMe', 'false');
+      }
+      
       // 调用注册接口
       await new Promise((resolve) => setTimeout(resolve, 1500));
       setIsSuccess(true);
@@ -323,6 +333,20 @@ export default function Register() {
               </button>
             </div>
             {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
+          </div>
+
+          {/* 记住我 */}
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="rememberMe"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-white/20 bg-white/5 text-blue-500"
+            />
+            <label htmlFor="rememberMe" className="text-gray-400 text-sm">
+              记住我
+            </label>
           </div>
 
           {/* 协议勾选 */}

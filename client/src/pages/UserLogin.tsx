@@ -36,10 +36,23 @@ interface Star {
 export default function UserLogin() {
   const [, navigate] = useLocation();
   const [searchParams] = useSearchParams();
-  const [email, setEmail] = useState(() => searchParams.get('email') || '');
+  const [email, setEmail] = useState(() => {
+    const paramEmail = searchParams.get('email');
+    if (paramEmail) return paramEmail;
+    // 从localStorage读取记住的邮箱
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('rememberedEmail') || '';
+    }
+    return '';
+  });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('rememberMe') === 'true';
+    }
+    return false;
+  });
   const [mousePos, setMousePos] = useState<MousePosition>({ x: 0, y: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -135,6 +148,15 @@ export default function UserLogin() {
 
     setIsLoading(true);
     
+    // 处理"记住我"功能
+    if (rememberMe) {
+      localStorage.setItem('rememberedEmail', email);
+      localStorage.setItem('rememberMe', 'true');
+    } else {
+      localStorage.removeItem('rememberedEmail');
+      localStorage.setItem('rememberMe', 'false');
+    }
+    
     // 模拟登录请求
     setTimeout(() => {
       setIsLoading(false);
@@ -149,8 +171,18 @@ export default function UserLogin() {
 
   // 处理第三方登录
   const handleThirdPartyLogin = (provider: string) => {
-    console.log(`Logging in with ${provider}`);
-    // TODO: 实现第三方登录逻辑
+    setIsLoading(true);
+    
+    // 模拟第三方登录
+    setTimeout(() => {
+      setIsLoading(false);
+      setIsSuccess(true);
+      
+      // 登录成功后1.5秒跳转到首页
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
+    }, 2000);
   };
 
   // 邮箱输入变化处理

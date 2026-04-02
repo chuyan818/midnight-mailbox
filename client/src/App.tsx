@@ -26,6 +26,7 @@ import Login from "./pages/Login";
 import UserLogin from "./pages/UserLogin";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
+import SecuritySettings from "./pages/SecuritySettings";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -36,6 +37,7 @@ function Router() {
       <Route path={"/user-login"} component={UserLogin} />
       <Route path={"/register"} component={Register} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
+      <Route path={"/security-settings"} component={SecuritySettings} />
       <Route path={"/write"} component={Write} />
       <Route path={"/letter/:id"} component={Letter} />
       <Route path={"/mailbox"} component={Mailbox} />
