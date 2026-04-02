@@ -150,11 +150,15 @@ export default function UserLogin() {
     
     // 处理"记住我"功能
     if (rememberMe) {
+      // 保存邮箱和记住我状态
       localStorage.setItem('rememberedEmail', email);
       localStorage.setItem('rememberMe', 'true');
+      localStorage.setItem('rememberMeTimestamp', new Date().toISOString());
     } else {
+      // 清除已记住的邮箱
       localStorage.removeItem('rememberedEmail');
-      localStorage.setItem('rememberMe', 'false');
+      localStorage.removeItem('rememberMe');
+      localStorage.removeItem('rememberMeTimestamp');
     }
     
     // 模拟登录请求
@@ -370,7 +374,7 @@ export default function UserLogin() {
               )}
             </div>
 
-            {/* 记住密码 */}
+            {/* 记住我 */}
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -381,13 +385,31 @@ export default function UserLogin() {
                 />
                 <span className="text-sm text-slate-600">记住我</span>
               </label>
-              <button
-                type="button"
-                onClick={() => navigate('/forgot-password')}
-                className="text-sm text-purple-600 hover:text-purple-700 transition-colors bg-none border-none cursor-pointer p-0"
-              >
-                忘记密码？
-              </button>
+              <div className="flex items-center gap-3">
+                {localStorage.getItem('rememberMe') === 'true' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('rememberedEmail');
+                      localStorage.removeItem('rememberMe');
+                      localStorage.removeItem('rememberMeTimestamp');
+                      setEmail('');
+                      setRememberMe(false);
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                    title="清除已记住的邮箱"
+                  >
+                    清除
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
+                >
+                  忘记密码？
+                </button>
+              </div>
             </div>
 
             {/* 登录按钮 */}

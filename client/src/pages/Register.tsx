@@ -176,9 +176,11 @@ export default function Register() {
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', email);
         localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('rememberMeTimestamp', new Date().toISOString());
       } else {
         localStorage.removeItem('rememberedEmail');
-        localStorage.setItem('rememberMe', 'false');
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('rememberMeTimestamp');
       }
       
       // 调用注册接口
