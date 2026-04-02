@@ -411,3 +411,67 @@
 - [x] 实现功能权限检查中间件
 - [x] 测试完整的会员体系流程
 - [x] 测试升级会员的功能解锁
+
+
+## 第三十四阶段：会员徽章和身份标识系统
+- [ ] 设计会员徽章UI（免费/标准/高级三个等级）
+- [ ] 创建会员徽章配置文件（badge-config.ts）
+- [ ] 创建会员徽章组件（MembershipBadge.tsx）
+- [ ] 在个人资料页面集成徽章展示
+- [ ] 添加徽章的悬停提示信息
+- [ ] 测试徽章展示效果
+
+## 第三十五阶段：会员到期提醒功能
+- [ ] 在数据库中添加会员到期提醒记录表
+- [ ] 创建会员到期提醒逻辑（membership-expiry-reminder.ts）
+- [ ] 实现前7天提醒功能
+- [ ] 实现前3天提醒功能
+- [ ] 创建后端定时任务检查会员到期
+- [ ] 实现站内信通知发送
+- [ ] 测试提醒功能
+
+## 第三十六阶段：高级会员优先客服支持
+- [ ] 在会员配置中添加客服支持权益定义
+- [ ] 创建客服支持权益页面（PremiumSupport.tsx）
+- [ ] 在个人资料页面展示客服支持信息
+- [ ] 创建客服联系表单（仅高级会员可用）
+- [ ] 实现客服支持优先级标记
+- [ ] 测试权益展示和表单提交
+
+
+## 第三十四阶段：会员徽章和身份标识系统
+- [x] 设计会员徽章UI（免费/标准/高级三个等级）
+- [x] 创建会员徽章配置文件（badge-config.ts）
+- [x] 创建会员徽章组件（MembershipBadge.tsx）
+- [x] 在个人资料页面集成徽章展示（集成指南已创建）
+- [x] 添加徽章的悬停提示信息
+- [x] 编写会员徽章测试用例
+
+## 第三十五阶段：会员到期提醒功能
+- [x] 创建会员到期提醒逻辑（membership-expiry-reminder.ts）
+- [x] 实现前7天提醒功能
+- [x] 实现前3天提醒功能
+- [x] 创建后端提醒路由（membership-reminder-router.ts）
+- [x] 实现站内信通知发送接口
+- [x] 编写到期提醒测试用例
+- [ ] 配置定时任务检查会员到期（需要在服务器启动时注册）
+
+## 第三十六阶段：高级会员优先客服支持
+- [x] 在会员配置中添加客服支持权益定义
+- [x] 创建客服支持权益页面（PremiumSupport.tsx）
+- [x] 在个人资料页面展示客服支持信息（集成指南已创建）
+- [x] 创建客服联系表单（仅高级会员可用）
+- [x] 实现客服支持优先级标记
+- [x] 编写优先客服支持测试用例
+- [ ] 集成真实的客服系统（需要后端实现）
+
+## 新增文件清单
+- server/badge-config.ts - 会员徽章配置和权益定义
+- server/membership-config.ts - 会员权限配置系统
+- server/membership-limits.ts - 会员功能限制逻辑
+- server/membership-expiry-reminder.ts - 会员到期提醒系统
+- server/membership-reminder-router.ts - 会员到期提醒路由
+- server/membership-features.test.ts - 会员功能单元测试（25个测试用例，全部通过）
+- client/src/components/MembershipBadge.tsx - 会员徽章组件
+- client/src/pages/PremiumSupport.tsx - 高级会员优先客服支持页面
+- PROFILE_INTEGRATION_GUIDE.md - Profile.tsx集成指南
