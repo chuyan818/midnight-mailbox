@@ -146,7 +146,7 @@ export const appRouter = router({
   letter: router({
     create: protectedProcedure
       .input(z.object({
-        content: z.string().min(10).max(5000),
+        content: z.string().min(1).max(5000),
         backgroundType: z.enum(BACKGROUND_TYPES).optional(),
       }))
       .mutation(async ({ ctx, input }) => {

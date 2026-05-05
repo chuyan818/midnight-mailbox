@@ -110,7 +110,7 @@ export const v2Router = router({
     create: protectedProcedure
       .input(
         z.object({
-          content: z.string().min(10).max(5000),
+          content: z.string().min(1).max(5000),
           openDate: z.date(),
           autoReply: z.string().optional(),
         })
@@ -198,7 +198,7 @@ export const v2Router = router({
     create: protectedProcedure
       .input(
         z.object({
-          content: z.string().min(10).max(5000),
+          content: z.string().min(1).max(5000),
           backgroundType: z.string().optional(),
           emotionTags: z.array(z.string()).optional(),
           isPublic: z.boolean().default(false),
