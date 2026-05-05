@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from 'react';
 import { useRoute } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -48,10 +48,24 @@ export default function Letter() {
   }
 
   const letterId = parseInt(params?.id as string);
-  const { data: letter, isLoading, error } = trpc.letter.get.useQuery(
+  const { data: letter, isLoading, error, refetch } = trpc.letter.get.useQuery(
     { id: letterId },
-    { enabled: !!letterId }
+    { 
+      enabled: !!letterId,
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    }
   );
+
+  // 自动重试逻辑
+  React.useEffect(() => {
+    if (error && letterId) {
+      const timer = setTimeout(() => {
+        refetch();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, letterId, refetch]);
 
   if (isLoading) {
     return (
@@ -59,21 +73,25 @@ export default function Letter() {
         <div className="text-center text-white space-y-4">
           <Loader2 className="w-12 h-12 animate-spin mx-auto text-[#FFD580]" />
           <p>AI正在生成温暖的回信...</p>
+          <p className="text-sm text-gray-400">请稍候，这通常需要几秒钟</p>
         </div>
       </div>
     );
   }
 
-  if (error || !letter) {
+  // 如果查询出错但仍在重试，显示加载状态而不是错误
+  if (error && !letter) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
         <div className="text-center text-white space-y-4">
-          <p className="text-lg">信件未找到或已删除</p>
+          <Loader2 className="w-12 h-12 animate-spin mx-auto text-[#FFD580]" />
+          <p>正在加载信件...</p>
+          <p className="text-sm text-gray-400">如果长时间未加载，请</p>
           <Button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/mailbox")}
             className="bg-[#FFD580] text-[#0B0F2F]"
           >
-            返回首页
+            返回信箱
           </Button>
         </div>
       </div>
@@ -81,13 +99,18 @@ export default function Letter() {
   }
 
   const handleCopyReply = () => {
-    if (letter.reply) {
+    if (letter?.reply) {
       navigator.clipboard.writeText(letter.reply);
       setIsCopied(true);
       toast.success("已复制到剪贴板");
       setTimeout(() => setIsCopied(false), 2000);
     }
   };
+
+  // 添加letter的非空检查
+  if (!letter) {
+    return null; // 不应该到达这里，因为前面已经检查过了
+  }
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -160,20 +183,20 @@ export default function Letter() {
 
               <div className={`w-full rounded-lg p-8 min-h-[300px] flex flex-col ${getBackgroundStyle(letter.backgroundType || undefined)} shadow-xl`}>
             <div className="flex-1 text-gray-800 dark:text-white whitespace-pre-wrap break-words font-serif text-base leading-relaxed">
-              {letter.content}
+              {letter?.content}
             </div>
             <div className="mt-6 pt-4 border-t border-white/20 text-xs text-gray-600 dark:text-gray-400">
-              {new Date(letter.createdAt).toLocaleString("zh-CN")}
+              {letter?.createdAt ? new Date(letter.createdAt).toLocaleString("zh-CN") : '加载中...'}
             </div>
           </div>
 
           {/* Emotion Analysis */}
-          {letter.emotionScore !== null && (
+          {letter?.emotionScore !== null && letter?.emotionScore !== undefined && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 rounded-lg bg-white/5 border border-white/10">
                 <p className="text-xs text-gray-400 mb-2">情绪类型</p>
                 <p className="text-lg font-semibold text-[#FFD580]">
-                  {letter.emotionType || "未分析"}
+                  {letter?.emotionType || "未分析"}
                 </p>
               </div>
 
@@ -183,11 +206,11 @@ export default function Letter() {
                   <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-[#FFD580] to-[#FFC857] h-full"
-                      style={{ width: `${(letter.emotionScore || 0) / 100 * 100}%` }}
+                      style={{ width: `${(letter?.emotionScore || 0) / 100 * 100}%` }}
                     />
                   </div>
                   <span className="text-lg font-semibold text-[#FFD580]">
-                    {letter.emotionScore || 0}
+                    {letter?.emotionScore || 0}
                   </span>
                 </div>
               </div>
@@ -195,8 +218,8 @@ export default function Letter() {
               <div className="p-4 rounded-lg bg-white/5 border border-white/10">
                 <p className="text-xs text-gray-400 mb-2">关键词</p>
                 <div className="flex flex-wrap gap-1">
-                  {letter.keywords && Array.isArray(letter.keywords) ? (
-                    letter.keywords.slice(0, 3).map((keyword: string, idx: number) => (
+                  {letter?.keywords && Array.isArray(letter.keywords) ? (
+                    letter?.keywords?.slice(0, 3).map((keyword: string, idx: number) => (
                       <span
                         key={idx}
                         className="px-2 py-1 text-xs bg-[#FFD580]/20 text-[#FFD580] rounded-full"
@@ -220,10 +243,10 @@ export default function Letter() {
             <Heart className="w-5 h-5 text-[#FFD580]" />
           </h2>
 
-          {letter.reply ? (
+          {letter?.reply ? (
             <div className="space-y-4">
               <div className="p-8 rounded-lg bg-white/5 border border-[#FFD580]/30 shadow-lg min-h-[300px]">
-                <TypewriterText text={letter.reply} speed={20} />
+                <TypewriterText text={letter?.reply || ''} speed={20} />
               </div>
 
               <div className="flex gap-3">
