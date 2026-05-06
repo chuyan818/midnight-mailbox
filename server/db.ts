@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, letters, emotions, memberships, subscriptionRecords, InsertMembership } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -124,13 +124,28 @@ export async function createLetter(userId: number, letterData: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(letters).values({
+  // 插入信件
+  await db.insert(letters).values({
     userId,
     content: letterData.content,
     backgroundType: letterData.backgroundType,
   });
   
-  return result;
+  // 查询最新创建的信件以获取ID
+  const createdLetters = await db.select()
+    .from(letters)
+    .where(eq(letters.userId, userId))
+    .orderBy(desc(letters.createdAt))
+    .limit(1);
+  
+  if (createdLetters.length === 0) {
+    throw new Error("Failed to create letter");
+  }
+  
+  return {
+    id: createdLetters[0].id,
+    insertId: createdLetters[0].id,
+  };
 }
 
 /**
