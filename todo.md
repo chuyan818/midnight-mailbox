@@ -503,3 +503,10 @@
 - [x] 实现响应式设计
 - [x] 添加动画效果（月亮、星星等）
 - [x] 更新App.tsx路由指向新页面
+
+## 第四十阶段：会员中心导航链接修复
+- [x] 修复Profile.tsx的JSX语法错误
+- [x] 在Profile页面头部添加"会员中心"导航按钮
+- [x] 移除未使用的LanguageContext依赖
+- [x] 验证会员中心页面导航链接正常工作
+- [x] 测试Profile页面到MembershipCenter页面的导航流程
