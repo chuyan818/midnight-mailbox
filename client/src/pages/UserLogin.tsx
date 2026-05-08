@@ -334,6 +334,18 @@ export default function UserLogin() {
                   {errors.email}
                 </p>
               )}
+              {email && !isEmailValid && !errors.email && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  请输入有效的邮箱地址
+                </p>
+              )}
+              {isEmailValid && !errors.email && (
+                <p className="text-green-500 text-xs mt-1 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  邮箱格式正确
+                </p>
+              )}
             </div>
 
             {/* 密码输入 */}
@@ -370,6 +382,17 @@ export default function UserLogin() {
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {errors.password}
+                </p>
+              )}
+              {password && password.length < 6 && !errors.password && (
+                <p className="text-yellow-600 text-xs mt-1 flex items-center gap-1">
+                  密码至少需要 6 位
+                </p>
+              )}
+              {isPasswordValid && !errors.password && (
+                <p className="text-green-500 text-xs mt-1 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  密码格式正确
                 </p>
               )}
             </div>

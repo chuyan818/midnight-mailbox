@@ -228,6 +228,15 @@ export default function Register() {
               className="bg-white/5 border-white/20 text-white placeholder:text-gray-500"
             />
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+            {email && !validateEmail(email) && (
+              <p className="text-red-400 text-xs mt-1">请输入有效的邮箱地址</p>
+            )}
+            {email && validateEmail(email) && (
+              <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                邮箱格式正确
+              </p>
+            )}
           </div>
 
           {/* 验证码 */}
@@ -256,6 +265,15 @@ export default function Register() {
               </Button>
             </div>
             {errors.verificationCode && <p className="text-red-400 text-xs mt-1">{errors.verificationCode}</p>}
+            {verificationCode && verificationCode.length !== 6 && (
+              <p className="text-red-400 text-xs mt-1">验证码应为6位数字</p>
+            )}
+            {verificationCode && verificationCode.length === 6 && /^\d{6}$/.test(verificationCode) && (
+              <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                验证码格式正确
+              </p>
+            )}
             {dailyCodeCount > 0 && (
               <p className="text-gray-400 text-xs mt-1">
                 今天已发送 {dailyCodeCount}/10 次
@@ -335,6 +353,15 @@ export default function Register() {
               </button>
             </div>
             {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-red-400 text-xs mt-1">两次输入的密码不一致</p>
+            )}
+            {confirmPassword && password === confirmPassword && (
+              <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                密码一致
+              </p>
+            )}
           </div>
 
           {/* 记住我 */}
