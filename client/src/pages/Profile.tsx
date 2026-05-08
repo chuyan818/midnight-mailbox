@@ -218,7 +218,6 @@ export default function Profile() {
             </p>
           </div>
             <Button 
-              onClick={() => navigate("/membership-center")}
               className="mt-3 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857] text-sm h-8"
             >
               延长续费购样件
@@ -226,15 +225,7 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* 查看会员权益链接 */}
-        <div className="mb-8 text-center">
-          <button 
-            onClick={() => navigate("/membership-center")}
-            className="text-sm text-[#FFD580] hover:text-[#FFC857] transition"
-          >
-            查看会员权益 →
-          </button>
-        </div>
+
 
         {/* 更多设置 */}
         <div className="mb-8 p-6 rounded-lg bg-white/5 border border-white/10">

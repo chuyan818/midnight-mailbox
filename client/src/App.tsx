@@ -27,7 +27,6 @@ import UserLogin from "./pages/UserLogin";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import SecuritySettings from "./pages/SecuritySettings";
-import MembershipCenter from "./pages/MembershipCenter";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -44,7 +43,7 @@ function Router() {
       <Route path={"/mailbox"} component={Mailbox} />
       <Route path={"/report"} component={Report} />
       <Route path={"/profile"} component={Profile} />
-      <Route path={"/membership-center"} component={MembershipCenter} />
+
       <Route path={"/public-mailbox"} component={PublicMailbox} />
       <Route path={"/daily-quote"} component={DailyQuote} />
       <Route path={"/time-capsule"} component={TimeCapsule} />
