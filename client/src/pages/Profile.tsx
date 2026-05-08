@@ -2,29 +2,47 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, LogOut, Crown, Calendar, Globe } from "lucide-react";
+import {
+  ArrowLeft,
+  Settings,
+  Mail,
+  TrendingUp,
+  Clock,
+  Crown,
+  Globe,
+  Bell,
+  Lock,
+  HelpCircle,
+  Info,
+  Home,
+  MessageSquare,
+  Sparkles,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
-
+import { useState, useMemo } from "react";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
-  const { data: profile, isLoading } = trpc.user.getProfile.useQuery(undefined, {
-    enabled: isAuthenticated,
-  });
-
-  const upgradeMutation = trpc.membership.upgrade.useMutation();
-  const cancelMutation = trpc.membership.cancel.useMutation();
-  const monthlyCheckoutMutation = trpc.subscription.createCheckoutSession.useMutation();
-  const yearlyCheckoutMutation = trpc.subscription.createCheckoutSession.useMutation();
+  const { data: profile, isLoading } = trpc.user.getProfile.useQuery(
+    undefined,
+    {
+      enabled: isAuthenticated,
+    }
+  );
 
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
         <div className="text-center text-white">
           <p className="mb-4">请先登录</p>
-          <Button onClick={() => navigate("/")} className="bg-[#FFD580] text-[#0B0F2F]">
+          <Button
+            onClick={() => navigate("/")}
+            className="bg-[#FFD580] text-[#0B0F2F]"
+          >
             返回首页
           </Button>
         </div>
@@ -32,323 +50,285 @@ export default function Profile() {
     );
   }
 
-  const handleUpgrade = async (planType: "monthly" | "yearly") => {
-    try {
-      const mutation = planType === 'monthly' ? monthlyCheckoutMutation : yearlyCheckoutMutation;
-      const result = await mutation.mutateAsync({
-        planType,
-        successUrl: `${window.location.origin}/profile?success=true`,
-        cancelUrl: `${window.location.origin}/profile?canceled=true`,
-      });
-      // 在新标签页打开Stripe Checkout
-      window.open(result.url, '_blank');
-      toast.success('正在跳转到支付页面...');
-    } catch (error: any) {
-      toast.error(error.message || "创建支付会话失败");
-    }
+  // 模拟数据
+  const stats = {
+    messages: 28,
+    emotionScore: 8.7,
+    unread: 12,
+    lastActive: "23:45",
+    joinDays: 23,
+    currentMood: "虽然孤独",
+    nickname: user?.email?.split("@")[0] || "用户",
+    quote: "你是否写过了，但仍请我救了？谢谢你一直在这里。",
   };
 
-  const handleCancel = async () => {
-    if (confirm("确定要取消会员吗？")) {
-      try {
-        await cancelMutation.mutateAsync();
-        toast.success("已取消会员");
-      } catch (error: any) {
-        toast.error(error.message || "取消失败");
-      }
-    }
+  const emotionTrend = [
+    { date: "5/16", value: 6.5 },
+    { date: "5/17", value: 7.2 },
+    { date: "5/18", value: 6.8 },
+    { date: "5/19", value: 8.1 },
+    { date: "5/20", value: 7.9 },
+    { date: "5/21", value: 8.5 },
+    { date: "今天", value: 8.7 },
+  ];
+
+  const weekStats = {
+    letters: 4,
+    weekChange: "+20%",
+    depth: "3.2小时",
+    depthChange: "+15%",
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/");
-    } catch (error: any) {
-      toast.error("登出失败");
-    }
-  };
+  const moodOptions = [
+    { emoji: "😊", label: "愉好" },
+    { emoji: "😐", label: "平静" },
+    { emoji: "😢", label: "低落" },
+  ];
 
-  const membershipInfo = {
-    free: {
-      name: "免费版",
-      color: "text-gray-400",
-      bgColor: "bg-gray-500/10",
-      borderColor: "border-gray-500/20",
-      features: [
-        "每天1封信",
-        "AI温暖回信",
-        "基础情绪分析",
-      ],
-    },
-    monthly: {
-      name: "月会员",
-      color: "text-[#FFD580]",
-      bgColor: "bg-[#FFD580]/10",
-      borderColor: "border-[#FFD580]/20",
-      features: [
-        "无限写信",
-        "AI温暖回信",
-        "完整情绪分析",
-        "7天情绪趋势",
-        "关键词提取",
-      ],
-    },
-    yearly: {
-      name: "年会员",
-      color: "text-[#FFD580]",
-      bgColor: "bg-[#FFD580]/10",
-      borderColor: "border-[#FFD580]/20",
-      features: [
-        "无限写信",
-        "AI温暖回信",
-        "完整情绪分析",
-        "7天情绪趋势",
-        "关键词提取",
-        "优先支持",
-      ],
-    },
-  };
+  const settingsMenu = [
+    { icon: Globe, label: "语言设置", value: "中文 (简体)" },
+    { icon: Bell, label: "通知设置" },
+    { icon: Lock, label: "隐私设置" },
+    { icon: HelpCircle, label: "帮助与反馈" },
+    { icon: Info, label: "关于深夜信箱", value: "v1.2.0" },
+  ];
 
-  const currentType = (profile?.membership?.membershipType || "free") as keyof typeof membershipInfo;
-  const currentInfo = membershipInfo[currentType];
+  const bottomNav = [
+    { icon: Home, label: "首页", path: "/" },
+    { icon: Mail, label: "信箱", path: "/mailbox" },
+    { icon: Sparkles, label: "对话精选", path: "/featured" },
+    { icon: User, label: "我的", path: "/profile", active: true },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F]">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0B0F2F]/80 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/")}
-              className="text-white hover:bg-white/10"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="text-2xl font-bold text-white">个人中心</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 flex items-center gap-2"
-              onClick={() => navigate("/membership-center")}
-            >
-              <Crown className="w-4 h-4" />
-              会员中心
-            </Button>
-            <Button
-              variant="outline"
-              className="border-red-500 text-red-400 hover:bg-red-500/10 flex items-center gap-2"
-              onClick={handleLogout}
-            >
-              <LogOut className="w-4 h-4" />
-              登出
-            </Button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] text-white pb-24">
+      {/* 顶部导航栏 */}
+      <div className="sticky top-0 z-50 bg-gradient-to-b from-[#0B0F2F]/95 to-[#0B0F2F]/80 backdrop-blur-sm border-b border-white/10 px-4 py-4 flex items-center justify-between">
+              <button
+                onClick={() => navigate("/")}
+                className="p-2 hover:bg-white/10 rounded-lg transition"
+              >
+                <ArrowLeft size={24} />
+              </button>
+        <h1 className="text-lg font-semibold">个人中心</h1>
+        <button className="p-2 hover:bg-white/10 rounded-lg transition">
+          <Settings size={24} />
+        </button>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-[#FFD580]" />
+      {/* 用户信息卡片 */}
+      <div className="px-4 py-6 space-y-4">
+        <div className="bg-gradient-to-br from-[#1C1F4A]/80 to-[#2D2F5A]/80 border border-white/10 rounded-2xl p-6">
+          <div className="flex gap-4">
+            {/* 头像 */}
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#FFD580] to-[#FF9F43] flex items-center justify-center flex-shrink-0 border-2 border-white/20">
+              <span className="text-3xl font-bold text-[#0B0F2F]">
+                {stats.nickname.charAt(0).toUpperCase()}
+              </span>
+            </div>
+
+            {/* 用户信息 */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-xl font-bold">{stats.nickname}</h2>
+                <span className="text-sm text-[#FFD580]">👋</span>
+              </div>
+              <p className="text-sm text-white/60 mb-3">
+                在深夜写信的第 {stats.joinDays} 天
+              </p>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm">今晚的你，状态：虽然孤独</span>
+                <span className="text-lg">🌙</span>
+              </div>
+              <p className="text-xs text-white/50 italic max-w-xs">
+                "{stats.quote}"
+              </p>
+              <p className="text-xs text-white/40 mt-2 text-right">
+                — 你的信箱
+              </p>
+            </div>
           </div>
-        ) : (
-          <>
-            {/* User Info */}
-            <div className="p-6 rounded-lg bg-white/5 border border-white/10">
-              <h2 className="text-lg font-semibold text-white mb-4">账户信息</h2>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-400">用户名</p>
-                  <p className="text-lg text-white font-semibold">{user?.name || "未设置"}</p>
+        </div>
+
+        {/* 统计数据区 */}
+        <div className="grid grid-cols-4 gap-3">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+            <Mail size={20} className="mx-auto mb-2 text-[#FFD580]" />
+            <p className="text-xl font-bold">{stats.messages}</p>
+            <p className="text-xs text-white/60">总信件数</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+            <TrendingUp size={20} className="mx-auto mb-2 text-[#FFD580]" />
+            <p className="text-xl font-bold">{stats.emotionScore}</p>
+            <p className="text-xs text-white/60">平均情绪值</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+            <MessageSquare size={20} className="mx-auto mb-2 text-[#FFD580]" />
+            <p className="text-xl font-bold">{stats.unread}</p>
+            <p className="text-xs text-white/60">待读信件</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+            <Clock size={20} className="mx-auto mb-2 text-[#FFD580]" />
+            <p className="text-xl font-bold">{stats.lastActive}</p>
+            <p className="text-xs text-white/60">最后活跃</p>
+          </div>
+        </div>
+
+        {/* 情绪热盐图 */}
+        <div className="bg-gradient-to-br from-[#1C1F4A]/80 to-[#2D2F5A]/80 border border-white/10 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold mb-4">情绪热盐 (最近7天)</h3>
+
+          {/* 情绪趋势图 */}
+          <div className="mb-6">
+            <div className="flex items-end justify-between gap-2 h-32">
+              {emotionTrend.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex-1 flex flex-col items-center gap-2"
+                >
+                  <div
+                    className="w-full bg-gradient-to-t from-[#FFD580] to-[#FF9F43] rounded-t-lg transition-all hover:opacity-80"
+                    style={{
+                      height: `${(item.value / 10) * 100}%`,
+                      minHeight: "4px",
+                    }}
+                  />
+                  <span className="text-xs text-white/60">{item.date}</span>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-400">邮箱</p>
-                  <p className="text-lg text-white font-semibold">{user?.email || "未设置"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">加入时间</p>
-                  <p className="text-lg text-white font-semibold">
-                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("zh-CN") : "未知"}
-                  </p>
+              ))}
+            </div>
+          </div>
+
+          {/* 情绪选择 */}
+          <div className="space-y-3">
+            {moodOptions.map((mood) => (
+              <div key={mood.label} className="flex items-center gap-3">
+                <span className="text-2xl">{mood.emoji}</span>
+                <span className="text-sm text-white/70 flex-1">{mood.label}</span>
+                <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#FFD580] to-[#FF9F43]"
+                    style={{ width: `${Math.random() * 80 + 20}%` }}
+                  />
                 </div>
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
 
-            {/* Current Membership */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">当前会员</h2>
-              <div className={`p-6 rounded-lg ${currentInfo.bgColor} border ${currentInfo.borderColor}`}>
-                <div className="flex items-start justify-between mb-4">
+        {/* 本周写信统计 */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-gradient-to-br from-[#1C1F4A]/80 to-[#2D2F5A]/80 border border-white/10 rounded-2xl p-4">
+            <p className="text-sm text-white/60 mb-2">本周写信统计</p>
+            <p className="text-3xl font-bold mb-1">{weekStats.letters}封</p>
+            <p className="text-xs text-[#FFD580]">比上周 {weekStats.weekChange}</p>
+          </div>
+          <div className="bg-gradient-to-br from-[#1C1F4A]/80 to-[#2D2F5A]/80 border border-white/10 rounded-2xl p-4">
+            <p className="text-sm text-white/60 mb-2">深度情绪停留时长</p>
+            <p className="text-3xl font-bold mb-1">{weekStats.depth}</p>
+            <p className="text-xs text-[#FFD580]">比上周 {weekStats.depthChange}</p>
+          </div>
+        </div>
+
+        {/* 当前版本卡片 */}
+        <div className="bg-gradient-to-br from-[#1C1F4A]/80 to-[#2D2F5A]/80 border border-white/10 rounded-2xl p-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-white/60 mb-2">当前版本</p>
+              <p className="text-lg font-semibold">免费版</p>
+              <p className="text-xs text-white/50">基础特性</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-white/60 mb-2">你可以享受</p>
+              <p className="text-xs text-white/70 leading-relaxed">
+                独播视频回应、让每一封信都得到深层分析
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 升级建议卡片 */}
+        <div className="bg-gradient-to-br from-[#2D2F5A]/80 to-[#1C1F4A]/80 border border-[#FFD580]/20 rounded-2xl p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm text-white/60 mb-2">升级建议</p>
+              <p className="text-sm text-white/80">
+                你可以享受独播视频回应，让每一封信都得到深层分析
+              </p>
+            </div>
+            <Button className="bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857] whitespace-nowrap flex-shrink-0">
+              延长续费购样件
+            </Button>
+          </div>
+          <button className="text-sm text-[#FFD580] mt-4 hover:text-[#FFC857] transition">
+            查看会员权益 →
+          </button>
+        </div>
+
+        {/* 更多设置 */}
+        <div className="bg-gradient-to-br from-[#1C1F4A]/80 to-[#2D2F5A]/80 border border-white/10 rounded-2xl p-6">
+          <h3 className="text-lg font-semibold mb-4">更多设置</h3>
+          <div className="space-y-3">
+            {settingsMenu.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={idx}
+                  className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-lg transition"
+                >
                   <div className="flex items-center gap-3">
-                    <Crown className={`w-6 h-6 ${currentInfo.color}`} />
-                    <div>
-                      <h3 className={`text-xl font-bold ${currentInfo.color}`}>{currentInfo.name}</h3>
-                      {profile?.membership?.membershipExpiry && (
-                        <p className="text-sm text-gray-400 flex items-center gap-1 mt-1">
-                          <Calendar className="w-4 h-4" />
-                          有效期至 {new Date(profile.membership.membershipExpiry).toLocaleDateString("zh-CN")}
-                        </p>
-                      )}
-                    </div>
+                    <Icon size={20} className="text-[#FFD580]" />
+                    <span className="text-sm">{item.label}</span>
                   </div>
-                  {currentType !== "free" && (
-                    <Button
-                      variant="outline"
-                      className="border-red-500 text-red-400 hover:bg-red-500/10"
-                      onClick={handleCancel}
-                      disabled={cancelMutation.isPending as any}
-                    >
-                      {cancelMutation.isPending ? "取消中..." : "取消会员"}
-                    </Button>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold text-white mb-3">包含功能：</p>
-                  {currentInfo.features.map((feature, idx) => (
-                    <p key={idx} className="text-sm text-gray-300 flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${currentInfo.color}`} />
-                      {feature}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Upgrade Options */}
-            {currentType === "free" && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-white">升级会员</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Monthly */}
-                  <div className="p-6 rounded-lg bg-[#FFD580]/10 border border-[#FFD580]/30 space-y-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-[#FFD580]">月会员</h3>
-                      <p className="text-3xl font-bold text-white mt-2">¥29</p>
-                      <p className="text-sm text-gray-400 mt-1">/月</p>
-                    </div>
-                    <ul className="space-y-2">
-                      {membershipInfo.monthly.features.map((feature, idx) => (
-                        <li key={idx} className="text-sm text-gray-300 flex items-center gap-2">
-                          <span className="w-2 h-2 bg-[#FFD580] rounded-full" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      className="w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
-                      onClick={() => handleUpgrade("monthly")}
-                      disabled={monthlyCheckoutMutation.isPending as any}
-                    >
-                      {monthlyCheckoutMutation.isPending ? "处理中..." : "升级为月会员"}
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    {item.value && (
+                      <span className="text-xs text-white/50">{item.value}</span>
+                    )}
+                    <span className="text-white/30">›</span>
                   </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-                  {/* Yearly */}
-                  <div className="p-6 rounded-lg bg-[#FFD580]/10 border border-[#FFD580]/30 space-y-4 relative">
-                    <div className="absolute -top-3 -right-3 bg-[#FFD580] text-[#0B0F2F] px-3 py-1 rounded-full text-xs font-bold">
-                      省¥60
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-[#FFD580]">年会员</h3>
-                      <p className="text-3xl font-bold text-white mt-2">¥288</p>
-                      <p className="text-sm text-gray-400 mt-1">/年</p>
-                    </div>
-                    <ul className="space-y-2">
-                      {membershipInfo.yearly.features.map((feature, idx) => (
-                        <li key={idx} className="text-sm text-gray-300 flex items-center gap-2">
-                          <span className="w-2 h-2 bg-[#FFD580] rounded-full" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      className="w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
-                      onClick={() => handleUpgrade("yearly")}
-                      disabled={yearlyCheckoutMutation.isPending as any}
-                    >
-                      {yearlyCheckoutMutation.isPending ? "处理中..." : "升级为年会员"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+        {/* 登出按钮 */}
+        <Button
+          onClick={async () => {
+            try {
+              await logout();
+              navigate("/");
+            } catch (error: any) {
+              toast.error("登出失败");
+            }
+          }}
+          className="w-full bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30"
+        >
+          登出账户
+        </Button>
+      </div>
 
-
-
-            {/* Statistics */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">我的数据</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-center">
-                  <p className="text-3xl font-bold text-[#FFD580]">0</p>
-                  <p className="text-sm text-gray-400 mt-2">总信件数</p>
-                </div>
-                <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-center">
-                  <p className="text-3xl font-bold text-[#FFD580]">0</p>
-                  <p className="text-sm text-gray-400 mt-2">平均情绪评分</p>
-                </div>
-                <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-center">
-                  <p className="text-3xl font-bold text-[#FFD580]">0</p>
-                  <p className="text-sm text-gray-400 mt-2">连续写信天数</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Premium Support */}
-            {currentType === "yearly" && (
-              <div className="p-6 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30">
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-purple-400" />
-                  优先客服支持
-                </h2>
-                <p className="text-sm text-gray-300 mb-4">作为年会员，您享有24小时优先客服支持权益</p>
-                <Button
-                  className="w-full bg-purple-600 text-white hover:bg-purple-700"
-                  onClick={() => navigate("/premium-support")}
-                >
-                  查看客服支持
-                </Button>
-              </div>
-            )}
-
-            {/* Settings Section */}
-            {currentType !== "free" && (
-              <div className="p-6 rounded-lg bg-white/5 border border-white/10">
-                <h2 className="text-lg font-semibold text-white mb-4">会员管理</h2>
-                <Button
-                  variant="outline"
-                  className="border-red-500 text-red-400 hover:bg-red-500/10"
-                  onClick={handleCancel}
-                  disabled={cancelMutation.isPending as any}
-                >
-                  {cancelMutation.isPending ? "处理中..." : "取消会员"}
-                </Button>
-              </div>
-            )}
-
-            {/* Navigation */}
-            <div className="flex gap-3 flex-wrap">
-              <Button
-                variant="outline"
-                className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10 flex-1 min-w-[120px]"
-                onClick={() => navigate("/report")}
+      {/* 底部导航栏 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#0B0F2F]/95 to-[#0B0F2F]/80 backdrop-blur-sm border-t border-white/10 px-4 py-3">
+        <div className="flex items-center justify-around">
+          {bottomNav.map((item, idx) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={idx}
+                onClick={() => navigate(item.path)}
+                className={`flex flex-col items-center gap-1 p-2 transition ${
+                  item.active
+                    ? "text-[#FFD580]"
+                    : "text-white/60 hover:text-white/80"
+                }`}
               >
-                查看情绪报告
-              </Button>
-              <Button
-                className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 flex-1 min-w-[120px]"
-                onClick={() => navigate("/mailbox")}
-              >
-                返回信箱
-              </Button>
-            </div>
-          </>
-        )}
+                <Icon size={24} />
+                <span className="text-xs">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
