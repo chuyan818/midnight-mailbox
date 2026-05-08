@@ -211,13 +211,16 @@ export default function Profile() {
           </div>
 
           <div className="p-4 rounded-lg bg-white/5 border border-white/10 flex flex-col justify-between">
-            <div>
-              <p className="text-xs text-white/60 mb-2">你可以享受</p>
-              <p className="text-xs text-white/70">
-                独播视频回应，让每一封信都得到深层分析
-              </p>
-            </div>
-            <Button className="mt-3 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857] text-sm h-8">
+          <div>
+            <p className="text-xs text-white/60 mb-2">你可以享受</p>
+            <p className="text-xs text-white/70">
+              独播视频回应，让每一封信都得到深层分析
+            </p>
+          </div>
+            <Button 
+              onClick={() => navigate("/membership-center")}
+              className="mt-3 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857] text-sm h-8"
+            >
               延长续费购样件
             </Button>
           </div>
@@ -225,7 +228,10 @@ export default function Profile() {
 
         {/* 查看会员权益链接 */}
         <div className="mb-8 text-center">
-          <button className="text-sm text-[#FFD580] hover:text-[#FFC857] transition">
+          <button 
+            onClick={() => navigate("/membership-center")}
+            className="text-sm text-[#FFD580] hover:text-[#FFC857] transition"
+          >
             查看会员权益 →
           </button>
         </div>
