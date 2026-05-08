@@ -541,3 +541,10 @@
 - [x] 在Profile页面中添加"查看会员权益"链接的跳转功能
 - [x] 验证续费按钮和链接跳转到/membership-center页面
 - [x] 测试Profile页面到MembershipCenter页面的续费流程
+
+## 第四十四阶段：删除MembershipCenter页面
+- [x] 删除MembershipCenter.tsx页面文件
+- [x] 从 App.tsx 中移除MembershipCenter的导入
+- [x] 从 App.tsx 中移除/membership-center路由
+- [x] 从 Profile.tsx 中移除会员中心的跳转链接
+- [x] 验证项目编译正常，无错误

@@ -188,8 +188,8 @@ export default function Register() {
       setIsSuccess(true);
 
       setTimeout(() => {
-        // 注册成功后自动跳转到登录页面并填充邮箱
-        navigate(`/user-login?email=${encodeURIComponent(email)}`);
+        // 注册成功后自动跳转到首页
+        navigate('/');
       }, 1500);
     } catch (error) {
       setErrors({ submit: '注册失败，请重试' });
