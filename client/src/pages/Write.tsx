@@ -6,6 +6,9 @@ import { useLocation as useWouterLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
+import { LetterSendingAnimation } from "@/components/LetterSendingAnimation";
+import { ShareDialog } from "@/components/ShareDialog";
+import { SaveTemplateDialog } from "@/components/SaveTemplateDialog";
 
 type BackgroundType = "星空漫漫" | "牛皮纸" | "樱花来信" | "秋日落信" | "节日灯火";
 
@@ -278,6 +281,10 @@ export default function Write() {
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSendingAnimation, setShowSendingAnimation] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [lastLetterId, setLastLetterId] = useState<string>("");
 
   const toggleEmotion = (emotion: string) => {
     setSelectedEmotions((prev) =>
@@ -328,25 +335,44 @@ export default function Write() {
     }
 
     setIsSubmitting(true);
+    setShowSendingAnimation(true);
     try {
       const result = await createLetterMutation.mutateAsync({
         content,
         backgroundType: selectedBackground,
       });
 
-      toast.success("信件已发送，AI正在生成回信...");
-      setContent("");
-      setSelectedEmotions([]);
-      setIsPublic(false);
-
-      // Navigate to letter detail page to show the AI response
-      setTimeout(() => {
-        navigate(`/letter/${result.id}`);
-      }, 1500);
+      setLastLetterId(result.id);
+      // 动画完成后显示分享和模板保存选项
     } catch (error: any) {
+      setShowSendingAnimation(false);
       toast.error(error.message || "发送失败，请重试");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAnimationComplete = () => {
+    setShowSendingAnimation(false);
+    // 显示分享对话框
+    setShowShareDialog(true);
+  };
+
+  const handleShareDialogClose = () => {
+    setShowShareDialog(false);
+    // 显示模板保存对话框
+    setShowTemplateDialog(true);
+  };
+
+  const handleTemplateDialogClose = () => {
+    setShowTemplateDialog(false);
+    // 重置表单
+    setContent("");
+    setSelectedEmotions([]);
+    setIsPublic(false);
+    // 导航到信件详情页
+    if (lastLetterId) {
+      navigate(`/letter/${lastLetterId}`);
     }
   };
 
@@ -354,6 +380,29 @@ export default function Write() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F]">
+      {/* 发送动画 */}
+      <LetterSendingAnimation
+        isVisible={showSendingAnimation}
+        onAnimationComplete={handleAnimationComplete}
+      />
+
+      {/* 分享对话框 */}
+      <ShareDialog
+        isOpen={showShareDialog}
+        onClose={handleShareDialogClose}
+        letterId={lastLetterId}
+        content={content}
+      />
+
+      {/* 模板保存对话框 */}
+      <SaveTemplateDialog
+        isOpen={showTemplateDialog}
+        onClose={handleTemplateDialogClose}
+        content={content}
+        backgroundType={selectedBackground}
+        emotions={selectedEmotions}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-20 bg-[#0B0F2F]/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -364,12 +413,9 @@ export default function Write() {
               onClick={() => navigate("/")}
               className="text-white hover:bg-white/10"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft size={24} />
             </Button>
             <h1 className="text-2xl font-bold text-white">写信</h1>
-          </div>
-          <div className="text-sm text-gray-400">
-            {content.length} / 5000
           </div>
         </div>
       </div>
@@ -377,131 +423,100 @@ export default function Write() {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left: Background Selection */}
-          <div className="lg:col-span-1 space-y-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#FFD580]" />
-              选择信纸
-            </h2>
+          {/* Left: Letter Preview */}
+          <div className="lg:col-span-2">
+            <div
+              className={`${selectedBg?.bg} rounded-lg p-8 min-h-[500px] flex flex-col justify-between relative overflow-hidden`}
+            >
+              {/* Background animations */}
+              <div id="bgLayer" className="absolute inset-0"></div>
 
-            <div className="space-y-3">
-              {BACKGROUNDS.map((bg) => (
-                <button
-                  key={bg.type}
-                  onClick={() => setSelectedBackground(bg.type)}
-                  className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                    selectedBackground === bg.type
-                      ? "border-[#FFD580] bg-white/10"
-                      : "border-white/20 hover:border-white/40"
-                  }`}
-                >
-                  <div className={`w-full h-16 rounded-md mb-3 ${bg.bg} relative overflow-hidden`} />
-                  <h3 className="font-semibold text-white text-sm">{bg.label}</h3>
-                  <p className="text-xs text-gray-400 mt-1">{bg.description}</p>
-                </button>
-              ))}
-            </div>
+              {/* Letter content */}
+              <div className="relative z-10">
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="在这里写下你的心事..."
+                  className="w-full h-80 bg-transparent text-white placeholder-gray-400 resize-none focus:outline-none text-lg leading-relaxed"
+                />
+              </div>
 
-            {/* Tips */}
-            <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-400 space-y-2">
-              <p className="font-semibold text-white">💡 小贴士</p>
-              <ul className="space-y-1 text-xs">
-                <li>• 完全匿名</li>
-                <li>• 支持多种情绪表达</li>
-                <li>• 会获得温暖回信</li>
-              </ul>
+              {/* Letter footer */}
+              <div className="relative z-10 text-right text-gray-300 text-sm">
+                {new Date().toLocaleDateString("zh-CN")}
+              </div>
             </div>
           </div>
 
-          {/* Right: Letter Writing */}
-          <div className="lg:col-span-2">
-            {/* Preview */}
-            <div className={`w-full rounded-lg p-8 mb-6 min-h-[400px] flex flex-col ${selectedBg?.bg} shadow-xl relative overflow-hidden`}>
-              {/* 动画背景层 */}
-              <div id="bgLayer" className="absolute inset-0 pointer-events-none" />
-
-              {/* 文字内容层 */}
-              <div className="flex-1 text-gray-800 dark:text-white whitespace-pre-wrap break-words font-serif text-sm leading-relaxed relative z-10">
-                {content || (
-                  <span className="text-gray-500 dark:text-gray-400 italic">
-                    在这里开始写下你的心事...
-                  </span>
-                )}
+          {/* Right: Controls */}
+          <div className="space-y-6">
+            {/* Background Selection */}
+            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4">选择信纸</h3>
+              <div className="space-y-2">
+                {BACKGROUNDS.map((bg) => (
+                  <button
+                    key={bg.type}
+                    onClick={() => setSelectedBackground(bg.type)}
+                    className={`w-full text-left px-4 py-2 rounded-lg transition ${
+                      selectedBackground === bg.type
+                        ? "bg-[#8B5CF6] text-white"
+                        : "bg-white/5 text-gray-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {bg.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Input */}
-            <div className="space-y-4">
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value.slice(0, 5000))}
-                placeholder="倾诉你的秘密、烦恼、想法...（最多5000字）"
-                className="w-full h-32 p-4 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#FFD580] focus:ring-1 focus:ring-[#FFD580]/50 resize-none"
-              />
-
-              {/* Emotion Tags */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-300">
-                  你现在的心情
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {EMOTION_TAGS.map((tag) => (
-                    <button
-                      key={tag.label}
-                      onClick={() => toggleEmotion(tag.label)}
-                      className={`px-3 py-2 rounded-full border-2 transition-all text-sm ${
-                        selectedEmotions.includes(tag.label)
-                          ? "border-[#FFD580] bg-[#FFD580]/20 text-[#FFD580]"
-                          : "border-white/10 bg-white/5 text-gray-300 hover:border-white/20"
-                      }`}
-                    >
-                      {tag.emoji} {tag.label}
-                    </button>
-                  ))}
-                </div>
+            {/* Emotion Tags */}
+            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4">当前情绪</h3>
+              <div className="grid grid-cols-4 gap-2">
+                {EMOTION_TAGS.map((tag) => (
+                  <button
+                    key={tag.label}
+                    onClick={() => toggleEmotion(tag.label)}
+                    className={`text-2xl p-2 rounded-lg transition ${
+                      selectedEmotions.includes(tag.label)
+                        ? "bg-[#8B5CF6] scale-110"
+                        : "bg-white/5 hover:bg-white/10"
+                    }`}
+                    title={tag.label}
+                  >
+                    {tag.emoji}
+                  </button>
+                ))}
               </div>
-
-              {/* Public Option */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-300">
-                  分享设置
-                </label>
-                <button
-                  onClick={() => setIsPublic(!isPublic)}
-                  className={`w-full p-4 rounded-lg border-2 transition-all flex items-center gap-3 ${
-                    isPublic
-                      ? "border-[#FFD580] bg-[#FFD580]/10"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
-                  }`}
-                >
-                  {isPublic ? (
-                    <Globe className="w-5 h-5 text-[#FFD580]" />
-                  ) : (
-                    <Lock className="w-5 h-5 text-gray-400" />
-                  )}
-                  <div className="text-left">
-                    <div className="font-medium text-white">
-                      {isPublic ? "公开分享" : "仅自己可见"}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      {isPublic
-                        ? "所有人都可以看到你的信件和回信"
-                        : "只有你可以看到你的信件和回信"}
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting || !content.trim()}
-                className="w-full bg-[#FFD580] hover:bg-[#FFC850] text-[#0B0F2F] font-semibold py-3 rounded-lg flex items-center justify-center gap-2"
-              >
-                <Send className="w-5 h-5" />
-                {isSubmitting ? "发送中..." : "发送信件"}
-              </Button>
             </div>
+
+            {/* Privacy Settings */}
+            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4">隐私设置</h3>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-gray-300 flex items-center gap-2">
+                  {isPublic ? <Globe size={16} /> : <Lock size={16} />}
+                  {isPublic ? "公开分享" : "仅自己可见"}
+                </span>
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !content.trim()}
+              className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:bg-gray-600 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2"
+            >
+              <Send size={20} />
+              {isSubmitting ? "发送中..." : "发送信件"}
+            </Button>
           </div>
         </div>
       </div>
