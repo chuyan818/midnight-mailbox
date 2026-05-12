@@ -567,3 +567,14 @@
 - [x] 测试分享功能
 - [x] 测试模板保存功能
 - [x] 进行集成测试
+
+## 第四十七阶段：完整的模板功能实现
+- [x] 添加letterTemplates数据库表
+- [x] 执行数据库迁移
+- [x] 实现后端tRPC接口（create、list、get、delete、update）
+- [x] 在server/db.ts中添加模板查询函数
+- [x] 修改SaveTemplateDialog使用后端API
+- [x] 创建TemplateSelector组件用于加载模板
+- [x] 在Write.tsx中集成TemplateSelector
+- [x] 验证项目编译正常
+- [x] 测试模板保存和加载功能

@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import MembershipBadge from "@/components/MembershipBadge";
 import {
   ArrowLeft,
   Settings,
@@ -78,7 +79,11 @@ export default function Profile() {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* 用户信息卡片 */}
-        <div className="mb-8 p-6 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg font-bold">晚上好，van chu</h2>
+                <span>👋</span>
+                <MembershipBadge tier="standard" size="small" showTooltip={true} />
+              </div>
           <div className="flex items-start gap-4">
             {/* 头像 */}
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#FFD580] to-[#FF9F43] flex items-center justify-center flex-shrink-0 border-2 border-white/20">
@@ -90,6 +95,7 @@ export default function Profile() {
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-lg font-bold">晚上好，van chu</h2>
                 <span>👋</span>
+                <MembershipBadge tier="standard" size="small" showTooltip={true} />
               </div>
               <p className="text-xs text-white/60 mb-2">在深夜写信的第 23 天</p>
               <p className="text-xs text-white/70">
