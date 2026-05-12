@@ -17,6 +17,11 @@ import {
   getUserEmotionsTrend,
   createSubscriptionRecord,
   getDb,
+  createLetterTemplate,
+  getUserLetterTemplates,
+  getLetterTemplateById,
+  deleteLetterTemplate,
+  updateLetterTemplate,
 } from "./db";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
@@ -314,6 +319,83 @@ export const appRouter = router({
         throw error;
       }
     }),
+  }),
+
+  templates: router({
+    create: protectedProcedure
+      .input(z.object({
+        templateName: z.string().min(1, "Template name is required"),
+        content: z.string().min(1, "Content is required"),
+        backgroundType: z.string(),
+        emotionTags: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          await createLetterTemplate(ctx.user.id, {
+            templateName: input.templateName,
+            content: input.content,
+            backgroundType: input.backgroundType,
+            emotionTags: input.emotionTags,
+          });
+          return { success: true, message: "Template saved successfully" };
+        } catch (error) {
+          console.error("Failed to create template:", error);
+          throw error;
+        }
+      }),
+
+    list: protectedProcedure.query(async ({ ctx }) => {
+      try {
+        return await getUserLetterTemplates(ctx.user.id);
+      } catch (error) {
+        console.error("Failed to get templates:", error);
+        throw error;
+      }
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        try {
+          const template = await getLetterTemplateById(input.id, ctx.user.id);
+          if (!template) throw new Error("Template not found");
+          return template;
+        } catch (error) {
+          console.error("Failed to get template:", error);
+          throw error;
+        }
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          await deleteLetterTemplate(input.id, ctx.user.id);
+          return { success: true, message: "Template deleted successfully" };
+        } catch (error) {
+          console.error("Failed to delete template:", error);
+          throw error;
+        }
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        templateName: z.string().optional(),
+        content: z.string().optional(),
+        backgroundType: z.string().optional(),
+        emotionTags: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const { id, ...updateData } = input;
+          await updateLetterTemplate(id, ctx.user.id, updateData);
+          return { success: true, message: "Template updated successfully" };
+        } catch (error) {
+          console.error("Failed to update template:", error);
+          throw error;
+        }
+      }),
   }),
 });
 

@@ -9,6 +9,7 @@ import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
 import { LetterSendingAnimation } from "@/components/LetterSendingAnimation";
 import { ShareDialog } from "@/components/ShareDialog";
 import { SaveTemplateDialog } from "@/components/SaveTemplateDialog";
+import { TemplateSelector } from "@/components/TemplateSelector";
 
 type BackgroundType = "星空漫漫" | "牛皮纸" | "樱花来信" | "秋日落信" | "节日灯火";
 
@@ -450,6 +451,19 @@ export default function Write() {
 
           {/* Right: Controls */}
           <div className="space-y-6">
+            {/* Template Selector */}
+            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4">快速加载</h3>
+              <TemplateSelector
+                onLoadTemplate={(templateContent, templateBg, templateEmotions) => {
+                  setContent(templateContent);
+                  setSelectedBackground(templateBg as BackgroundType);
+                  setSelectedEmotions(templateEmotions);
+                  toast.success("模板已加载");
+                }}
+              />
+            </div>
+
             {/* Background Selection */}
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h3 className="text-white font-semibold mb-4">选择信纸</h3>

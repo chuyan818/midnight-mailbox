@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, letters, emotions, memberships, subscriptionRecords, InsertMembership } from "../drizzle/schema";
+import { InsertUser, users, letters, emotions, memberships, subscriptionRecords, InsertMembership, letterTemplates, InsertLetterTemplate, LetterTemplate } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -332,4 +332,82 @@ export async function createSubscriptionRecord(userId: number, data: {
     stripePaymentIntentId: data.stripePaymentIntentId,
     status: data.status,
   });
+}
+
+
+/**
+ * Create a new letter template
+ */
+export async function createLetterTemplate(userId: number, templateData: {
+  templateName: string;
+  content: string;
+  backgroundType: string;
+  emotionTags?: string[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.insert(letterTemplates).values({
+    userId,
+    templateName: templateData.templateName,
+    content: templateData.content,
+    backgroundType: templateData.backgroundType,
+    emotionTags: templateData.emotionTags,
+  });
+}
+
+/**
+ * Get user's letter templates
+ */
+export async function getUserLetterTemplates(userId: number): Promise<LetterTemplate[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.select()
+    .from(letterTemplates)
+    .where(eq(letterTemplates.userId, userId))
+    .orderBy(desc(letterTemplates.createdAt));
+  
+  return result;
+}
+
+/**
+ * Get letter template by ID
+ */
+export async function getLetterTemplateById(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select()
+    .from(letterTemplates)
+    .where(and(eq(letterTemplates.id, id), eq(letterTemplates.userId, userId)))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Delete letter template
+ */
+export async function deleteLetterTemplate(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.delete(letterTemplates)
+    .where(and(eq(letterTemplates.id, id), eq(letterTemplates.userId, userId)));
+}
+
+/**
+ * Update letter template
+ */
+export async function updateLetterTemplate(id: number, userId: number, templateData: Partial<InsertLetterTemplate>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(letterTemplates)
+    .set({
+      ...templateData,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(letterTemplates.id, id), eq(letterTemplates.userId, userId)));
 }

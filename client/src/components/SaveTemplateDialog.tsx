@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Save } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "../lib/trpc";
 
 interface SaveTemplateDialogProps {
   isOpen: boolean;
@@ -22,6 +23,20 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
   const [templateName, setTemplateName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // 使用tRPC保存模板
+  const saveTemplateMutation = trpc.templates.create.useMutation({
+    onSuccess: () => {
+      toast.success(`模板"${templateName}"已保存`);
+      onSave?.(templateName);
+      setTemplateName("");
+      onClose();
+    },
+    onError: (error) => {
+      console.error("Failed to save template:", error);
+      toast.error("保存模板失败");
+    },
+  });
+
   const handleSave = async () => {
     if (!templateName.trim()) {
       toast.error("请输入模板名称");
@@ -30,23 +45,14 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
 
     setIsSaving(true);
     try {
-      // 保存到localStorage
-      const templates = JSON.parse(localStorage.getItem("letterTemplates") || "[]");
-      templates.push({
-        id: Date.now(),
-        name: templateName,
+      await saveTemplateMutation.mutateAsync({
+        templateName: templateName.trim(),
         content,
         backgroundType,
-        emotions,
-        createdAt: new Date().toISOString(),
+        emotionTags: emotions,
       });
-      localStorage.setItem("letterTemplates", JSON.stringify(templates));
-
-      toast.success(`模板"${templateName}"已保存`);
-      onSave?.(templateName);
-      setTemplateName("");
-      onClose();
     } catch (error) {
+      console.error("Error saving template:", error);
       toast.error("保存模板失败");
     } finally {
       setIsSaving(false);
@@ -123,11 +129,11 @@ export const SaveTemplateDialog: React.FC<SaveTemplateDialogProps> = ({
         <div className="space-y-3">
           <button
             onClick={handleSave}
-            disabled={isSaving || !templateName.trim()}
+            disabled={isSaving || !templateName.trim() || saveTemplateMutation.isPending}
             className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:bg-gray-600 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
           >
             <Save size={20} />
-            {isSaving ? "保存中..." : "保存模板"}
+            {isSaving || saveTemplateMutation.isPending ? "保存中..." : "保存模板"}
           </button>
           <button
             onClick={onClose}

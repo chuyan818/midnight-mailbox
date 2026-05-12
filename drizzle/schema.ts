@@ -273,3 +273,20 @@ export const operationLogs = mysqlTable("operation_logs", {
 
 export type OperationLog = typeof operationLogs.$inferSelect;
 export type InsertOperationLog = typeof operationLogs.$inferInsert;
+
+/**
+ * Letter templates table - stores user-saved letter templates
+ */
+export const letterTemplates = mysqlTable("letter_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  templateName: varchar("templateName", { length: 100 }).notNull(),
+  content: text("content").notNull(),
+  backgroundType: varchar("backgroundType", { length: 50 }).notNull(),
+  emotionTags: json("emotionTags"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LetterTemplate = typeof letterTemplates.$inferSelect;
+export type InsertLetterTemplate = typeof letterTemplates.$inferInsert;
