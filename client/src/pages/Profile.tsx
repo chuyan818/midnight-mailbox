@@ -16,6 +16,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
+import MembershipBadge from "@/components/MembershipBadge";
+import { getBadgeLabel, getBadgeTier } from "@/lib/membership-tier";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -27,6 +29,9 @@ export default function Profile() {
       enabled: isAuthenticated,
     }
   );
+
+  const badgeTier = getBadgeTier(profile?.membership?.membershipType);
+  const badgeLabel = getBadgeLabel(badgeTier);
 
   if (!isAuthenticated) {
     return (
@@ -87,9 +92,10 @@ export default function Profile() {
 
             {/* 用户信息 */}
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h2 className="text-lg font-bold">晚上好，van chu</h2>
                 <span>👋</span>
+                <MembershipBadge tier={badgeTier} size="small" />
               </div>
               <p className="text-xs text-white/60 mb-2">在深夜写信的第 23 天</p>
               <p className="text-xs text-white/70">
@@ -206,8 +212,13 @@ export default function Profile() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="p-4 rounded-lg bg-white/5 border border-white/10">
             <p className="text-xs text-white/60 mb-2">当前版本</p>
-            <p className="text-lg font-bold mb-1">免费版</p>
-            <p className="text-xs text-white/50">基础特性</p>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <p className="text-lg font-bold">{badgeLabel}</p>
+              <MembershipBadge tier={badgeTier} size="small" />
+            </div>
+            <p className="text-xs text-white/50">
+              {badgeTier === "free" ? "基础特性" : "会员权益已生效"}
+            </p>
           </div>
 
           <div className="p-4 rounded-lg bg-white/5 border border-white/10 flex flex-col justify-between">
