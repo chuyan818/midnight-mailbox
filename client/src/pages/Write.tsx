@@ -10,8 +10,9 @@ import { LetterSendingAnimation } from "@/components/LetterSendingAnimation";
 import { ShareDialog } from "@/components/ShareDialog";
 import { SaveTemplateDialog } from "@/components/SaveTemplateDialog";
 import { TemplateSelector } from "@/components/TemplateSelector";
-
-type BackgroundType = "星空漫漫" | "牛皮纸" | "樱花来信" | "秋日落信" | "节日灯火";
+import { ThemeSelector } from "@/components/ThemeSelector";
+import { getThemeConfig } from "@/config/themes";
+import { BACKGROUND_TO_THEME, THEME_TO_BACKGROUND, BackgroundType } from "@/lib/write-theme-mapping";
 
 const EMOTION_TAGS = [
   { emoji: "😢", label: "伤心" },
@@ -378,9 +379,11 @@ export default function Write() {
   };
 
   const selectedBg = BACKGROUNDS.find((b) => b.type === selectedBackground);
+  const selectedTheme = BACKGROUND_TO_THEME[selectedBackground];
+  const themeConfig = getThemeConfig(selectedTheme);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F]">
+    <div className={`min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] theme-${selectedTheme}`}>
       {/* 发送动画 */}
       <LetterSendingAnimation
         isVisible={showSendingAnimation}
@@ -427,10 +430,14 @@ export default function Write() {
           {/* Left: Letter Preview */}
           <div className="lg:col-span-2">
             <div
-              className={`${selectedBg?.bg} rounded-lg p-8 min-h-[500px] flex flex-col justify-between relative overflow-hidden`}
+              className={`${selectedBg?.bg} theme-${selectedTheme} rounded-lg p-8 min-h-[500px] flex flex-col justify-between relative overflow-hidden`}
+              style={{
+                background: themeConfig.backgroundGradient ?? themeConfig.backgroundColor,
+                color: themeConfig.textColor,
+              }}
             >
               {/* Background animations */}
-              <div id="bgLayer" className="absolute inset-0"></div>
+              <div id="bgLayer" className="sky-background absolute inset-0 pointer-events-none"></div>
 
               {/* Letter content */}
               <div className="relative z-10">
@@ -451,6 +458,15 @@ export default function Write() {
 
           {/* Right: Controls */}
           <div className="space-y-6">
+            {/* Unified Theme Selector */}
+            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+              <h3 className="text-white font-semibold mb-4">写信主题</h3>
+              <ThemeSelector
+                selectedTheme={selectedTheme}
+                onThemeChange={(themeId) => setSelectedBackground(THEME_TO_BACKGROUND[themeId])}
+              />
+            </div>
+
             {/* Template Selector */}
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h3 className="text-white font-semibold mb-4">快速加载</h3>

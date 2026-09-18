@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { socialCompleteRouter } from "./routers/social-complete";
 import { adminRouter } from "./routers/admin";
+import { supportRouter } from "./routers/support";
 import {
   getUserById,
   createLetter,
@@ -397,6 +398,8 @@ export const appRouter = router({
         }
       }),
   }),
+
+  support: supportRouter,
 });
 
 export type AppRouter = typeof appRouter;

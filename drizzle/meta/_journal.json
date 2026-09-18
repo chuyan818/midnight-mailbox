@@ -43,6 +43,13 @@
       "when": 1778285724123,
       "tag": "0005_open_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1789737315518,
+      "tag": "0006_mean_swordsman",
+      "breakpoints": true
     }
   ]
 }

@@ -27,6 +27,9 @@ import UserLogin from "./pages/UserLogin";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import SecuritySettings from "./pages/SecuritySettings";
+import PremiumSupport from "./pages/PremiumSupport";
+import AdminSupport from "./pages/AdminSupport";
+import { SessionTimeoutProvider } from "./components/SessionTimeoutProvider";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -38,6 +41,7 @@ function Router() {
       <Route path={"/register"} component={Register} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/security-settings"} component={SecuritySettings} />
+      <Route path={"/premium-support"} component={PremiumSupport} />
       <Route path={"/write"} component={Write} />
       <Route path={"/letter/:id"} component={Letter} />
       <Route path={"/mailbox"} component={Mailbox} />
@@ -56,6 +60,7 @@ function Router() {
       <Route path={"/admin/emotions"} component={AdminEmotions} />
       <Route path={"/admin/members"} component={AdminMembers} />
       <Route path={"/admin/settings"} component={AdminSettings} />
+      <Route path={"/admin/support"} component={AdminSupport} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -76,10 +81,12 @@ function App() {
         // switchable
       >
         <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <SessionTimeoutProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </SessionTimeoutProvider>
         </LanguageProvider>
       </ThemeProvider>
     </ErrorBoundary>

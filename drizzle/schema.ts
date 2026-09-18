@@ -290,3 +290,25 @@ export const letterTemplates = mysqlTable("letter_templates", {
 
 export type LetterTemplate = typeof letterTemplates.$inferSelect;
 export type InsertLetterTemplate = typeof letterTemplates.$inferInsert;
+
+/**
+ * Support tickets table - stores member support requests and response metrics
+ */
+export const supportTickets = mysqlTable("support_tickets", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  subject: varchar("subject", { length: 200 }).notNull(),
+  category: mysqlEnum("category", ["technical", "feedback", "billing", "other"]).default("other").notNull(),
+  description: text("description").notNull(),
+  priority: mysqlEnum("priority", ["high", "medium", "low"]).default("high").notNull(),
+  status: mysqlEnum("status", ["open", "in_progress", "resolved", "closed"]).default("open").notNull(),
+  assignedAdminId: int("assignedAdminId"),
+  response: text("response"),
+  firstResponseAt: timestamp("firstResponseAt"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = typeof supportTickets.$inferInsert;

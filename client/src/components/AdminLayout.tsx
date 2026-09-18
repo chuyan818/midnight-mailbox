@@ -13,6 +13,7 @@ const menuItems = [
   { label: "情绪统计", path: "/admin/emotions" },
   { label: "会员管理", path: "/admin/members" },
   { label: "举报管理", path: "/admin/reports" },
+  { label: "客服工单", path: "/admin/support" },
   { label: "系统配置", path: "/admin/settings" },
 ];
 

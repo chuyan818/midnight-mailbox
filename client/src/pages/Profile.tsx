@@ -219,6 +219,17 @@ export default function Profile() {
             <p className="text-xs text-white/50">
               {badgeTier === "free" ? "基础特性" : "会员权益已生效"}
             </p>
+            {badgeTier === "premium" ? (
+              <Button
+                type="button"
+                onClick={() => navigate("/premium-support")}
+                className="mt-3 h-8 bg-[#FFD580] text-xs text-[#0B0F2F] hover:bg-[#FFC857]"
+              >
+                联系优先客服
+              </Button>
+            ) : (
+              <p className="mt-3 text-xs text-white/50">高级会员可享受优先客服支持</p>
+            )}
           </div>
 
           <div className="p-4 rounded-lg bg-white/5 border border-white/10 flex flex-col justify-between">

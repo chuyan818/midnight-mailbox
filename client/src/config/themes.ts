@@ -169,7 +169,7 @@ export function applyTheme(themeId: ThemeType, element: HTMLElement) {
   });
   
   // 添加主题类名
-  element.className = element.className.replace(/theme-\w+/g, '');
+  element.className = element.className.replace(/theme-[a-z0-9-]+/g, '');
   element.classList.add(`theme-${themeId}`);
 }
 
@@ -177,7 +177,7 @@ export function applyTheme(themeId: ThemeType, element: HTMLElement) {
  * 移除主题
  */
 export function removeTheme(element: HTMLElement) {
-  element.className = element.className.replace(/theme-\w+/g, '');
+  element.className = element.className.replace(/theme-[a-z0-9-]+/g, '');
   element.style.background = '';
   element.style.color = '';
 }

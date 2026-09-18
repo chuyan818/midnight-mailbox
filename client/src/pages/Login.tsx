@@ -2,6 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { getLoginUrl } from '@/const';
+import { useAuth } from '@/_core/hooks/useAuth';
+import { useLocation } from 'wouter';
+import { toast } from 'sonner';
+import { canAccessAdmin } from '@/lib/admin-access';
 
 interface MousePosition {
   x: number;
@@ -9,6 +14,8 @@ interface MousePosition {
 }
 
 export default function Login() {
+  const { user, loading } = useAuth();
+  const [, navigate] = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +24,15 @@ export default function Login() {
   const [isSuccess, setIsSuccess] = useState(false);
   const characterRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    if (canAccessAdmin(user)) {
+      navigate('/admin');
+    } else {
+      toast.error('当前账号没有管理员权限');
+    }
+  }, [loading, navigate, user]);
 
   // 计算头部旋转角度
   const calculateRotation = (mouseX: number, mouseY: number) => {
@@ -50,17 +66,8 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // 模拟登录延迟
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsSuccess(true);
-      
-      // 2秒后重置
-      setTimeout(() => {
-        setIsSuccess(false);
-      }, 2000);
-    }, 1500);
+    setIsSuccess(true);
+    window.location.assign(getLoginUrl());
   };
 
   const headRotation = calculateRotation(mousePos.x, mousePos.y);

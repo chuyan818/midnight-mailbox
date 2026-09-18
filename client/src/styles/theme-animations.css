@@ -39,11 +39,13 @@
 
 .theme-starry-night .star {
   animation: star-twinkle var(--starry-twinkle-duration, 3s) ease-in-out infinite;
+  animation-timing-function: steps(30, end);
   will-change: opacity;
 }
 
 .theme-starry-night .meteor {
   animation: meteor-fall var(--starry-meteor-duration, 1.2s) ease-in linear forwards;
+  animation-timing-function: steps(30, end);
   will-change: transform, opacity;
 }
 
@@ -76,6 +78,7 @@
 
 .theme-vintage-kraft {
   animation: paper-breathe var(--kraft-breathe-duration, 6s) ease-in-out infinite;
+  animation-timing-function: steps(30, end);
   will-change: opacity;
 }
 
@@ -113,11 +116,13 @@
 
 .theme-cherry-blossom .petal {
   animation: petal-fall var(--cherry-petal-duration, 5s) ease-in linear forwards;
+  animation-timing-function: steps(30, end);
   will-change: transform, opacity;
 }
 
 .theme-cherry-blossom .glow-layer {
   animation: soft-glow var(--cherry-glow-duration, 8s) ease-in-out infinite;
+  animation-timing-function: steps(30, end);
   will-change: box-shadow;
 }
 
@@ -147,11 +152,13 @@
 
 .theme-autumn-leaves .leaf {
   animation: leaf-fall var(--autumn-leaf-duration, 6s) ease-in linear forwards;
+  animation-timing-function: steps(30, end);
   will-change: transform, opacity;
 }
 
 .theme-autumn-leaves .warm-layer {
   animation: warm-glow var(--autumn-glow-duration, 12s) ease-in-out infinite;
+  animation-timing-function: steps(30, end);
   will-change: background;
 }
 
@@ -191,16 +198,19 @@
 
 .theme-festive-lights .light {
   animation: light-flicker var(--festive-light-duration, 2.5s) ease-in-out infinite;
+  animation-timing-function: steps(30, end);
   will-change: opacity;
 }
 
 .theme-festive-lights .lantern {
   animation: lantern-sway var(--festive-lantern-duration, 4s) ease-in-out infinite;
+  animation-timing-function: steps(30, end);
   will-change: transform;
 }
 
 .theme-festive-lights .glow {
   animation: warm-glow-festive var(--festive-glow-duration, 10s) ease-in-out infinite;
+  animation-timing-function: steps(30, end);
   will-change: box-shadow;
 }
 

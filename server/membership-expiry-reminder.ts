@@ -5,6 +5,14 @@
 
 import { MembershipTier } from './membership-config';
 
+export const MEMBERSHIP_EXPIRY_REMINDER_SCHEDULE = {
+  cron: '0 0 * * *',
+  timezone: 'UTC',
+  description: 'Daily membership expiry reminder check',
+} as const;
+
+export type ReminderRunner = () => Promise<{ total: number; sent: number; failed: number }>;
+
 export interface ExpiryReminder {
   id: string;
   userId: string;
@@ -219,4 +227,16 @@ export async function checkAndSendExpiryReminders(): Promise<{
     sent: 0,
     failed: 0,
   };
+}
+
+/** Entry point used by the platform heartbeat/cron task. */
+export async function runScheduledExpiryReminder(
+  runner: ReminderRunner = checkAndSendExpiryReminders,
+): Promise<{ total: number; sent: number; failed: number }> {
+  try {
+    return await runner();
+  } catch (error) {
+    console.error('[MembershipExpiryReminder] scheduled run failed', error);
+    return { total: 0, sent: 0, failed: 1 };
+  }
 }
