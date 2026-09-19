@@ -13,6 +13,7 @@ import { TemplateSelector } from "@/components/TemplateSelector";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { getThemeConfig } from "@/config/themes";
 import { BACKGROUND_TO_THEME, THEME_TO_BACKGROUND, BackgroundType } from "@/lib/write-theme-mapping";
+import { THEME_ELEMENT_LIMITS } from "@/lib/theme-performance";
 
 const EMOTION_TAGS = [
   { emoji: "😢", label: "伤心" },
@@ -92,7 +93,7 @@ function createStars() {
   `;
   bg.appendChild(style);
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < THEME_ELEMENT_LIMITS.stars; i++) {
     let star = document.createElement("div");
     star.className = "star";
     star.style.top = Math.random() * 100 + "%";
@@ -136,7 +137,7 @@ function createPetals() {
   `;
   bg.appendChild(style);
 
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < THEME_ELEMENT_LIMITS.petals; i++) {
     let petal = document.createElement("div");
     petal.className = "petal";
     petal.style.left = Math.random() * 100 + "%";
@@ -172,7 +173,7 @@ function createLeaves() {
   `;
   bg.appendChild(style);
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < THEME_ELEMENT_LIMITS.leaves; i++) {
     let leaf = document.createElement("div");
     leaf.className = "leaf";
     leaf.style.left = Math.random() * 100 + "%";
@@ -217,7 +218,7 @@ function createLanterns() {
   `;
   bg.appendChild(style);
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < THEME_ELEMENT_LIMITS.lanterns; i++) {
     let lantern = document.createElement("div");
     lantern.className = "lantern";
     lantern.style.top = Math.random() * 60 + "%";
@@ -300,6 +301,10 @@ export default function Write() {
 
   // 当选中背景改变时，更新动画
   useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      clearBackground();
+      return;
+    }
     switch (selectedBackground) {
       case "星空漫漫":
         createStars();

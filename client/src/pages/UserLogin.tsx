@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Chrome, AlertCircle, CheckCircle } from 'lucide-react';
+import { isValidEmail, isValidLoginPassword } from '@/lib/auth-validation';
 
 // LINE图标组件
 const LineIcon = ({ className }: { className?: string }) => (
@@ -64,8 +65,7 @@ export default function UserLogin() {
 
   // 验证邮箱格式
   const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return isValidEmail(email);
   };
 
   // 当邮箱自动填充时，焦点移到密码输入框
@@ -137,7 +137,7 @@ export default function UserLogin() {
     // 验证密码
     if (!password) {
       newErrors.password = '请输入密码';
-    } else if (password.length < 6) {
+    } else if (!isValidLoginPassword(password)) {
       newErrors.password = '密码至少6位';
     }
 
@@ -207,7 +207,7 @@ export default function UserLogin() {
 
   // 检查邮箱是否有效
   const isEmailValid = email && validateEmail(email);
-  const isPasswordValid = password && password.length >= 6;
+  const isPasswordValid = password && isValidLoginPassword(password);
 
   const spiritPos = calculateSpiritPosition(mousePos.x, mousePos.y);
 

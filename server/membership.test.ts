@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
+import { upsertMembership } from "./db";
 import type { TrpcContext } from "./_core/context";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -63,15 +64,16 @@ describe("membership system", () => {
 
   it("should allow unlimited letters for premium members", async () => {
     const { ctx } = createAuthContext();
-    ctx.user = {
-      ...ctx.user,
+    await upsertMembership(ctx.user!.id, {
       membershipType: "monthly",
-    } as any;
+      membershipExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
 
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.membership.getInfo();
     expect(result.membershipType).toBe("monthly");
+    await upsertMembership(ctx.user!.id, { membershipType: "free", membershipExpiry: null });
   });
 
   it("should validate membership expiry", async () => {
@@ -97,7 +99,7 @@ describe("membership system", () => {
 
     // Verify membership type is valid
     expect(["free", "monthly", "yearly"]).toContain(result.membershipType);
-  });}
+  });
 });
 
 describe("daily letter limit", () => {

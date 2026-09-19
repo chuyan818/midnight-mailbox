@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import stripeWebhookRouter from "../stripe-webhook";
+import { registerMembershipExpiryReminderRoute } from "../scheduled/membership-expiry-reminder";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -41,6 +42,7 @@ async function startServer() {
   
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  registerMembershipExpiryReminderRoute(app);
   
   // tRPC API
   app.use(

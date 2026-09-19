@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Chrome, Check } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
+import { getPasswordStrength as getSharedPasswordStrength, isValidEmail, isValidRegistrationPassword } from '@/lib/auth-validation';
 
 // LINE图标组件
 const LineIcon = ({ className }: { className?: string }) => (
@@ -41,24 +42,17 @@ export default function Register() {
 
   // 验证邮箱格式
   const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return isValidEmail(email);
   };
 
   // 验证密码规则
   const validatePassword = (pwd: string) => {
-    return pwd.length >= 6 && /[a-zA-Z]/.test(pwd) && /\d/.test(pwd);
+    return isValidRegistrationPassword(pwd);
   };
 
   // 检查密码强度
   const getPasswordStrength = (pwd: string) => {
-    if (!pwd) return 'none';
-    if (pwd.length < 6) return 'weak';
-    if (pwd.length < 8) return 'medium';
-    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd) && /\d/.test(pwd) && /[!@#$%^&*]/.test(pwd)) {
-      return 'strong';
-    }
-    return 'medium';
+    return getSharedPasswordStrength(pwd);
   };
 
   // 获取密码强度颜色

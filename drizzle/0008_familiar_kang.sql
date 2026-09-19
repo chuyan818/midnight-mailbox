@@ -1,0 +1,1 @@
+ALTER TABLE `membership_expiry_reminders` ADD `readAt` timestamp;

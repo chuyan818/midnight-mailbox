@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { socialCompleteRouter } from "./routers/social-complete";
 import { adminRouter } from "./routers/admin";
 import { supportRouter } from "./routers/support";
+import { membershipReminderRouter } from "./membership-reminder-router";
 import {
   getUserById,
   createLetter,
@@ -400,6 +401,7 @@ export const appRouter = router({
   }),
 
   support: supportRouter,
+  membershipReminder: membershipReminderRouter,
 });
 
 export type AppRouter = typeof appRouter;

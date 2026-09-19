@@ -189,6 +189,6 @@ export function getPermissionSummary(membershipType: string) {
     canAccessThematicMailbox: permissions.canAccessThematicMailbox,
     canAccessPremiumSupport: permissions.canAccessPremiumSupport,
     canAccessAIAnalysis: permissions.canAccessAIAnalysis,
-    writeLetterCooldown: permissions.writeLetterCooldown === 0 ? '无' : `${permissions.writeLetterCooldown / 1000}秒`,
+    writeLetterCooldown: permissions.writeLetterCooldown === 0 ? '无' : `${permissions.writeLetterCooldown}毫秒`,
   };
 }

@@ -32,6 +32,10 @@ export default function Profile() {
 
   const badgeTier = getBadgeTier(profile?.membership?.membershipType);
   const badgeLabel = getBadgeLabel(badgeTier);
+  const remindersQuery = trpc.membershipReminder.getPendingReminders.useQuery(undefined, { enabled: isAuthenticated });
+  const markReminderRead = trpc.membershipReminder.markReminderAsRead.useMutation({
+    onSuccess: () => remindersQuery.refetch(),
+  });
 
   if (!isAuthenticated) {
     return (
@@ -82,6 +86,15 @@ export default function Profile() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
+        {remindersQuery.data?.reminders.map((reminder) => (
+          <div key={reminder.id} className="mb-4 flex items-start justify-between gap-4 rounded-lg border border-[#FFD580]/30 bg-[#FFD580]/10 p-4 text-sm">
+            <div>
+              <p className="font-semibold text-[#FFD580]">会员即将到期</p>
+              <p className="mt-1 text-white/70">您的会员将在 {reminder.reminderType === "expiry_today" ? "今天" : reminder.reminderType === "expiry_3days" ? "3天后" : "7天后"} 到期，请及时续费。</p>
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={() => markReminderRead.mutate({ reminderId: reminder.id })} className="shrink-0 text-[#FFD580] hover:bg-[#FFD580]/10">知道了</Button>
+          </div>
+        ))}
         {/* 用户信息卡片 */}
         <div className="mb-8 p-6 rounded-lg bg-white/5 border border-white/10">
           <div className="flex items-start gap-4">

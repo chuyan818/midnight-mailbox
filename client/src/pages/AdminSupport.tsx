@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { Tag } from "antd";
 
 const STATUS_LABELS: Record<string, string> = {
   open: "待处理",
@@ -74,7 +75,9 @@ export default function AdminSupport() {
                         <h3 className="font-semibold text-gray-900">#{ticket.id} {ticket.subject}</h3>
                         <p className="mt-1 text-xs text-gray-500">用户 {ticket.userId} · {ticket.category} · {new Date(ticket.createdAt).toLocaleString("zh-CN")}</p>
                       </div>
-                      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">{STATUS_LABELS[ticket.status]}</span>
+                      <Tag color={ticket.status === "resolved" || ticket.status === "closed" ? "green" : ticket.status === "in_progress" ? "blue" : "gold"}>
+                        {STATUS_LABELS[ticket.status]}
+                      </Tag>
                     </div>
                     <p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">{ticket.description}</p>
                     <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">

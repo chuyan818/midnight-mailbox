@@ -25,10 +25,11 @@ function hasValidOpenAIKey(): boolean {
  */
 export async function detectLanguage(text: string): Promise<string> {
   try {
-    // 首先尝试使用简单的启发式方法
-    if (/[\u4e00-\u9fff]/.test(text)) return 'zh';
+    // 首先使用确定性的脚本启发式方法。日文常混有汉字，因此必须先判断假名。
     if (/[ぁ-ん]|[ァ-ヴー]/.test(text)) return 'ja';
     if (/[가-힣]/.test(text)) return 'ko';
+    if (/[\u4e00-\u9fff]/.test(text)) return 'zh';
+    if (/^[\x00-\x7F]+$/.test(text)) return 'en';
     
     // 如果有有效的OpenAI Key，尝试使用OpenAI
     if (hasValidOpenAIKey()) {

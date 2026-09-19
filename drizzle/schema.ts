@@ -82,6 +82,21 @@ export const memberships = mysqlTable("memberships", {
 export type Membership = typeof memberships.$inferSelect;
 export type InsertMembership = typeof memberships.$inferInsert;
 
+/** Prevents duplicate expiry notifications for the same membership window. */
+export const membershipExpiryReminders = mysqlTable("membership_expiry_reminders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  membershipId: int("membershipId").notNull(),
+  reminderType: mysqlEnum("reminderType", ["expiry_7days", "expiry_3days", "expiry_today"]).notNull(),
+  expiryDate: timestamp("expiryDate").notNull(),
+  sentAt: timestamp("sentAt"),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MembershipExpiryReminder = typeof membershipExpiryReminders.$inferSelect;
+export type InsertMembershipExpiryReminder = typeof membershipExpiryReminders.$inferInsert;
+
 /**
  * Subscription records table - stores all subscription transactions
  */

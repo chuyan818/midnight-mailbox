@@ -4,6 +4,9 @@
  */
 
 import { MembershipTier } from './membership-config';
+import { and, eq, isNull } from 'drizzle-orm';
+import { getDb } from './db';
+import { membershipExpiryReminders, memberships } from '../drizzle/schema';
 
 export const MEMBERSHIP_EXPIRY_REMINDER_SCHEDULE = {
   cron: '0 0 * * *',
@@ -215,18 +218,55 @@ export async function checkAndSendExpiryReminders(): Promise<{
   sent: number;
   failed: number;
 }> {
-  // 这是一个模板函数，实际实现应该：
-  // 1. 查询所有即将到期的会员（7天、3天、今天）
-  // 2. 检查是否已经发送过提醒
-  // 3. 生成提醒通知
-  // 4. 发送站内信和邮件
-  // 5. 记录发送状态
+  const db = await getDb();
+  if (!db) return { total: 0, sent: 0, failed: 0 };
 
-  return {
-    total: 0,
-    sent: 0,
-    failed: 0,
-  };
+  const activeMemberships = await db
+    .select()
+    .from(memberships)
+    .where(eq(memberships.membershipType, 'yearly'));
+  const candidates = activeMemberships.filter((membership) => membership.membershipExpiry);
+  let sent = 0;
+  let failed = 0;
+
+  for (const membership of candidates) {
+    const daysUntilExpiry = getDaysUntilExpiry(membership.membershipExpiry!);
+    const reminderType = daysUntilExpiry === 7
+      ? 'expiry_7days'
+      : daysUntilExpiry === 3
+        ? 'expiry_3days'
+        : daysUntilExpiry === 0
+          ? 'expiry_today'
+          : null;
+    if (!reminderType) continue;
+
+    try {
+      const [existing] = await db
+        .select({ id: membershipExpiryReminders.id })
+        .from(membershipExpiryReminders)
+        .where(and(
+          eq(membershipExpiryReminders.membershipId, membership.id),
+          eq(membershipExpiryReminders.reminderType, reminderType),
+          eq(membershipExpiryReminders.expiryDate, membership.membershipExpiry!),
+        ))
+        .limit(1);
+      if (existing) continue;
+
+      await db.insert(membershipExpiryReminders).values({
+        userId: membership.userId,
+        membershipId: membership.id,
+        reminderType,
+        expiryDate: membership.membershipExpiry!,
+        sentAt: new Date(),
+      });
+      sent += 1;
+    } catch (error) {
+      failed += 1;
+      console.error('[MembershipExpiryReminder] failed for membership', membership.id, error);
+    }
+  }
+
+  return { total: candidates.length, sent, failed };
 }
 
 /** Entry point used by the platform heartbeat/cron task. */
