@@ -89,12 +89,10 @@ export default function Register() {
       setErrors({ ...errors, email: '请输入有效的邮箱地址' });
       return;
     }
-
     if (verificationCountdown > 0) {
       setErrors({ ...errors, verificationCode: '请等待倒计时结束后再发送' });
       return;
     }
-
     if (dailyCodeCount >= 10) {
       setErrors({ ...errors, verificationCode: '今天已达到发送上限（10次）' });
       return;
@@ -102,14 +100,19 @@ export default function Register() {
 
     setIsLoading(true);
     try {
-      // 模拟发送验证码
-      // 实际应调用后端API
+      const response = await fetch('/api/auth/email/send-code', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || '验证码发送失败');
       setVerificationCodeSent(true);
       setVerificationCountdown(60);
-      setDailyCodeCount(dailyCodeCount + 1);
+      setDailyCodeCount((count) => count + 1);
       setErrors({ ...errors, verificationCode: '' });
 
-      // 倒计时
       const interval = setInterval(() => {
         setVerificationCountdown((prev) => {
           if (prev <= 1) {
@@ -119,6 +122,8 @@ export default function Register() {
           return prev - 1;
         });
       }, 1000);
+    } catch (error) {
+      setErrors((current) => ({ ...current, verificationCode: error instanceof Error ? error.message : '验证码发送失败' }));
     } finally {
       setIsLoading(false);
     }
@@ -177,8 +182,14 @@ export default function Register() {
         localStorage.removeItem('rememberMeTimestamp');
       }
       
-      // 调用注册接口
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch('/api/auth/email/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, code: verificationCode }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || '注册失败，请重试');
       setIsSuccess(true);
 
       setTimeout(() => {
@@ -186,7 +197,7 @@ export default function Register() {
         navigate('/');
       }, 1500);
     } catch (error) {
-      setErrors({ submit: '注册失败，请重试' });
+      setErrors((current) => ({ ...current, submit: error instanceof Error ? error.message : '注册失败，请重试' }));
     } finally {
       setIsLoading(false);
     }
@@ -396,6 +407,7 @@ export default function Register() {
             </label>
           </div>
           {errors.agreeTerms && <p className="text-red-400 text-xs">{errors.agreeTerms}</p>}
+          {errors.submit && <p className="text-red-400 text-xs">{errors.submit}</p>}
 
           {/* 创建账号按钮 */}
           <Button

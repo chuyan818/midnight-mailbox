@@ -218,6 +218,84 @@
    通用优化规则
    ============================================ */
 
+/* 主题选择器中的小型动态预览。元素本身不接收鼠标事件，避免遮挡控件。 */
+.theme-preview-art {
+  position: relative;
+  min-height: 74px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.theme-preview-art > .text-center {
+  position: relative;
+  z-index: 2;
+}
+
+.theme-preview-art .star,
+.theme-preview-art .petal,
+.theme-preview-art .leaf,
+.theme-preview-art .lantern,
+.theme-preview-art .light,
+.theme-preview-art .texture-layer,
+.theme-preview-art .glow-layer,
+.theme-preview-art .warm-layer,
+.theme-preview-art .glow {
+  position: absolute;
+  pointer-events: none;
+}
+
+.theme-preview-art .star {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.theme-preview-art .petal {
+  width: 9px;
+  height: 9px;
+  border-radius: 50% 50% 50% 0;
+  background: #ff69b4;
+}
+
+.theme-preview-art .leaf {
+  width: 11px;
+  height: 11px;
+  border-radius: 30% 0 30% 0;
+  background: #ff9800;
+}
+
+.theme-preview-art .light {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #ffeb3b;
+  box-shadow: 0 0 10px rgba(255, 235, 59, 0.8);
+}
+
+.theme-preview-art .lantern {
+  width: 12px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(#ff4d4d, #cc0000);
+  box-shadow: 0 0 8px rgba(255, 120, 0, 0.6);
+  transform-origin: center top;
+}
+
+.theme-preview-art .texture-layer {
+  inset: -20%;
+  opacity: 0.24;
+  background: radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.theme-preview-art .glow-layer,
+.theme-preview-art .warm-layer,
+.theme-preview-art .glow {
+  inset: 0;
+  z-index: 0;
+}
+
 /* 禁用动画时的回退方案 */
 @media (prefers-reduced-motion: reduce) {
   .star,

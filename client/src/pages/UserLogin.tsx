@@ -147,7 +147,7 @@ export default function UserLogin() {
     }
 
     setIsLoading(true);
-    
+
     // 处理"记住我"功能
     if (rememberMe) {
       // 保存邮箱和记住我状态
@@ -161,32 +161,31 @@ export default function UserLogin() {
       localStorage.removeItem('rememberMeTimestamp');
     }
     
-    // 模拟登录请求
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const response = await fetch('/api/auth/email/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || '登录失败，请重试');
       setIsSuccess(true);
-      
-      // 登录成功后1.5秒跳转到首页
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
-    }, 1500);
+      setTimeout(() => navigate('/'), 500);
+    } catch (error) {
+      setErrors({ submit: error instanceof Error ? error.message : '登录失败，请重试' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 处理第三方登录
   const handleThirdPartyLogin = (provider: string) => {
-    setIsLoading(true);
-    
-    // 模拟第三方登录
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsSuccess(true);
-      
-      // 登录成功后1.5秒跳转到首页
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
-    }, 2000);
+    if (provider === 'google') {
+      window.location.assign('/api/auth/google/start?returnPath=/');
+      return;
+    }
+    setErrors({ submit: `${provider === 'line' ? 'LINE' : '微信'}登录尚未配置` });
   };
 
   // 邮箱输入变化处理
@@ -435,8 +434,11 @@ export default function UserLogin() {
               </div>
             </div>
 
-            {/* 登录按钮 */}
-            <Button
+          {/* 登录按钮 */}
+          {errors.submit && (
+            <p className="mb-3 text-center text-sm text-red-500" role="alert">{errors.submit}</p>
+          )}
+          <Button
               type="submit"
               disabled={isLoading || isSuccess}
               className="w-full h-12 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"

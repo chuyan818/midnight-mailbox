@@ -17,6 +17,46 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   const currentTheme = getThemeConfig(selectedTheme);
   const themes = getAllThemes();
 
+  const renderPreviewElements = () => {
+    switch (selectedTheme) {
+      case "starry-night":
+        return Array.from({ length: 8 }, (_, index) => (
+          <span key={`star-${index}`} className="star" style={{ left: `${10 + index * 11}%`, top: `${18 + (index % 3) * 25}%`, animationDelay: `${index * 0.35}s` }} />
+        ));
+      case "vintage-kraft":
+        return <span className="texture-layer" />;
+      case "cherry-blossom":
+        return (
+          <>
+            <span className="glow-layer" />
+            {Array.from({ length: 5 }, (_, index) => (
+              <span key={`petal-${index}`} className="petal" style={{ left: `${12 + index * 18}%`, animationDelay: `${index * 0.7}s` }} />
+            ))}
+          </>
+        );
+      case "autumn-leaves":
+        return (
+          <>
+            <span className="warm-layer" />
+            {Array.from({ length: 5 }, (_, index) => (
+              <span key={`leaf-${index}`} className="leaf" style={{ left: `${10 + index * 18}%`, animationDelay: `${index * 0.65}s` }} />
+            ))}
+          </>
+        );
+      case "festive-lights":
+        return (
+          <>
+            <span className="glow" />
+            {Array.from({ length: 5 }, (_, index) => (
+              <span key={`light-${index}`} className="light" style={{ left: `${12 + index * 18}%`, top: `${22 + (index % 2) * 24}%`, animationDelay: `${index * 0.35}s` }} />
+            ))}
+            <span className="lantern" style={{ left: "22%", top: "18%" }} />
+            <span className="lantern" style={{ left: "68%", top: "42%", animationDelay: "0.8s" }} />
+          </>
+        );
+    }
+  };
+
   const handleThemeSelect = (themeId: ThemeType) => {
     onThemeChange?.(themeId);
     setIsOpen(false);
@@ -69,12 +109,13 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       )}
 
       <div
-        className="mt-3 rounded-lg border border-white/15 p-3"
+        className={`mt-3 rounded-lg border border-white/15 p-3 theme-preview-art theme-${currentTheme.id}`}
         style={{
           background: currentTheme.backgroundGradient ?? currentTheme.backgroundColor,
           color: currentTheme.textColor,
         }}
       >
+        {renderPreviewElements()}
         <div className="text-center text-sm font-medium">{currentTheme.name} 预览</div>
       </div>
     </div>

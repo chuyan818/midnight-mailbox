@@ -15,6 +15,8 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  passwordHash: varchar("passwordHash", { length: 255 }),
+  emailVerifiedAt: timestamp("emailVerifiedAt"),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -24,6 +26,20 @@ export const users = mysqlTable("users", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+/** One-time email verification codes, stored hashed and never returned to clients. */
+export const emailVerificationCodes = mysqlTable("email_verification_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  codeHash: varchar("codeHash", { length: 128 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  consumedAt: timestamp("consumedAt"),
+  attempts: int("attempts").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EmailVerificationCode = typeof emailVerificationCodes.$inferSelect;
+export type InsertEmailVerificationCode = typeof emailVerificationCodes.$inferInsert;
 
 /**
  * Letters table - stores user letters and AI responses

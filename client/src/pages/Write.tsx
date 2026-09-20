@@ -9,7 +9,6 @@ import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
 import { LetterSendingAnimation } from "@/components/LetterSendingAnimation";
 import { ShareDialog } from "@/components/ShareDialog";
 import { SaveTemplateDialog } from "@/components/SaveTemplateDialog";
-import { TemplateSelector } from "@/components/TemplateSelector";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { getThemeConfig } from "@/config/themes";
 import { BACKGROUND_TO_THEME, THEME_TO_BACKGROUND, BackgroundType } from "@/lib/write-theme-mapping";
@@ -301,10 +300,10 @@ export default function Write() {
 
   // 当选中背景改变时，更新动画
   useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      clearBackground();
-      return;
-    }
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) clearBackground();
+
+    // 即使用户关闭动态效果，也保留静态主题元素；全局 CSS 会禁用其动画。
     switch (selectedBackground) {
       case "星空漫漫":
         createStars();
@@ -469,19 +468,6 @@ export default function Write() {
               <ThemeSelector
                 selectedTheme={selectedTheme}
                 onThemeChange={(themeId) => setSelectedBackground(THEME_TO_BACKGROUND[themeId])}
-              />
-            </div>
-
-            {/* Template Selector */}
-            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-              <h3 className="text-white font-semibold mb-4">快速加载</h3>
-              <TemplateSelector
-                onLoadTemplate={(templateContent, templateBg, templateEmotions) => {
-                  setContent(templateContent);
-                  setSelectedBackground(templateBg as BackgroundType);
-                  setSelectedEmotions(templateEmotions);
-                  toast.success("模板已加载");
-                }}
               />
             </div>
 
