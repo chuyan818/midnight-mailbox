@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -18,23 +19,36 @@ import {
 import { toast } from "sonner";
 import MembershipBadge from "@/components/MembershipBadge";
 import { getBadgeLabel, getBadgeTier } from "@/lib/membership-tier";
+import { useLanguage, type Language } from "@/contexts/LanguageContext";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
+  const { language, setLanguage } = useLanguage();
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("notificationsEnabled") !== "false");
 
-  const { data: profile, isLoading } = trpc.user.getProfile.useQuery(
+  const profileQuery = trpc.user.getProfile.useQuery(
     undefined,
     {
       enabled: isAuthenticated,
     }
   );
+  const { data: profile, isLoading } = profileQuery;
 
   const badgeTier = getBadgeTier(profile?.membership?.membershipType);
   const badgeLabel = getBadgeLabel(badgeTier);
   const remindersQuery = trpc.membershipReminder.getPendingReminders.useQuery(undefined, { enabled: isAuthenticated });
   const markReminderRead = trpc.membershipReminder.markReminderAsRead.useMutation({
     onSuccess: () => remindersQuery.refetch(),
+  });
+  const membershipUpgrade = trpc.membership.upgrade.useMutation({
+    onSuccess: () => {
+      profileQuery.refetch();
+      toast.success("会员权益已更新");
+    },
+    onError: () => toast.error("会员更新失败，请稍后重试"),
   });
 
   if (!isAuthenticated) {
@@ -62,6 +76,37 @@ export default function Profile() {
     }
   };
 
+  const displayName = profile?.user?.name || user?.name || "深夜朋友";
+  const initials = displayName.trim().slice(0, 1).toUpperCase();
+  const languageLabels: Record<Language, string> = { zh: "中文 (简体)", en: "English", ja: "日本語", ko: "한국어" };
+
+  const handleLanguageChange = (nextLanguage: Language) => {
+    setLanguage(nextLanguage);
+    setShowLanguageMenu(false);
+    toast.success("语言设置已保存");
+  };
+
+  const toggleNotifications = () => {
+    const nextValue = !notificationsEnabled;
+    setNotificationsEnabled(nextValue);
+    localStorage.setItem("notificationsEnabled", String(nextValue));
+    toast.success(nextValue ? "通知已开启" : "通知已关闭");
+  };
+
+  const handleSettingsItem = (label: string) => {
+    if (label === "语言设置") {
+      setShowLanguageMenu((visible) => !visible);
+    } else if (label === "通知设置") {
+      toggleNotifications();
+    } else if (label === "隐私设置") {
+      navigate("/security-settings");
+    } else if (label === "帮助与反馈") {
+      navigate("/premium-support");
+    } else if (label === "关于深夜信箱") {
+      setShowAbout(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] text-white">
       {/* Header */}
@@ -78,7 +123,7 @@ export default function Profile() {
             </Button>
             <h1 className="text-2xl font-bold">个人中心</h1>
           </div>
-          <button className="p-2 hover:bg-white/10 rounded-lg transition">
+          <button type="button" onClick={() => document.getElementById("profile-settings")?.scrollIntoView({ behavior: "smooth" })} className="p-2 hover:bg-white/10 rounded-lg transition" aria-label="打开设置">
             <Settings size={20} />
           </button>
         </div>
@@ -100,13 +145,13 @@ export default function Profile() {
           <div className="flex items-start gap-4">
             {/* 头像 */}
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#FFD580] to-[#FF9F43] flex items-center justify-center flex-shrink-0 border-2 border-white/20">
-              <span className="text-xl font-bold text-[#0B0F2F]">C</span>
+              <span className="text-xl font-bold text-[#0B0F2F]">{initials}</span>
             </div>
 
             {/* 用户信息 */}
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h2 className="text-lg font-bold">晚上好，van chu</h2>
+                <h2 className="text-lg font-bold">晚上好，{displayName}</h2>
                 <span>👋</span>
                 <MembershipBadge tier={badgeTier} size="small" />
               </div>
@@ -128,26 +173,26 @@ export default function Profile() {
 
         {/* 统计数据区 - 4列网格 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-center">
+          <button type="button" onClick={() => navigate("/mailbox")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Mail size={18} className="mx-auto mb-2 text-[#FFD580]" />
             <p className="text-xl font-bold">28</p>
             <p className="text-xs text-white/60">总信件数</p>
-          </div>
-          <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-center">
+          </button>
+          <button type="button" onClick={() => navigate("/report")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <TrendingUp size={18} className="mx-auto mb-2 text-[#FFD580]" />
             <p className="text-xl font-bold">8.7</p>
             <p className="text-xs text-white/60">平均情绪值</p>
-          </div>
-          <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-center">
+          </button>
+          <button type="button" onClick={() => navigate("/mailbox")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Mail size={18} className="mx-auto mb-2 text-[#FFD580]" />
             <p className="text-xl font-bold">12</p>
             <p className="text-xs text-white/60">待读信件</p>
-          </div>
-          <div className="p-4 rounded-lg bg-white/5 border border-white/10 text-center">
+          </button>
+          <button type="button" onClick={() => toast.info("最近活跃时间已是最新记录")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Clock size={18} className="mx-auto mb-2 text-[#FFD580]" />
             <p className="text-xl font-bold">23:45</p>
             <p className="text-xs text-white/60">最后活跃</p>
-          </div>
+          </button>
         </div>
 
         {/* 情绪热盐图和本周统计 - 2列 */}
@@ -187,10 +232,10 @@ export default function Profile() {
 
             {/* 情绪分布 */}
             <div className="space-y-2">
-              {[
-                { emoji: "😊", label: "愉好" },
-                { emoji: "😐", label: "平静" },
-                { emoji: "😢", label: "低落" },
+                {[
+                { emoji: "😊", label: "愉好", value: 72 },
+                { emoji: "😐", label: "平静", value: 56 },
+                { emoji: "😢", label: "低落", value: 34 },
               ].map((mood) => (
                 <div key={mood.label} className="flex items-center gap-2">
                   <span className="text-sm">{mood.emoji}</span>
@@ -198,7 +243,7 @@ export default function Profile() {
                   <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-[#FFD580] to-[#FF9F43]"
-                      style={{ width: `${Math.random() * 80 + 20}%` }}
+                      style={{ width: `${mood.value}%` }}
                     />
                   </div>
                 </div>
@@ -252,23 +297,26 @@ export default function Profile() {
               独播视频回应，让每一封信都得到深层分析
             </p>
           </div>
-            <Button 
-              className="mt-3 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857] text-sm h-8"
-            >
-              延长续费购样件
-            </Button>
+              <Button
+                type="button"
+                onClick={() => membershipUpgrade.mutate({ type: "yearly" })}
+                disabled={membershipUpgrade.isPending}
+                className="mt-3 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857] text-sm h-8"
+              >
+                {membershipUpgrade.isPending ? "处理中..." : "延长会员"}
+              </Button>
           </div>
         </div>
 
 
 
         {/* 更多设置 */}
-        <div className="mb-8 p-6 rounded-lg bg-white/5 border border-white/10">
+        <div id="profile-settings" className="mb-8 p-6 rounded-lg bg-white/5 border border-white/10">
           <h3 className="text-sm font-semibold mb-4">更多设置</h3>
           <div className="space-y-2">
             {[
-              { icon: Globe, label: "语言设置", value: "中文 (简体)" },
-              { icon: Bell, label: "通知设置" },
+              { icon: Globe, label: "语言设置", value: languageLabels[language] },
+              { icon: Bell, label: "通知设置", value: notificationsEnabled ? "已开启" : "已关闭" },
               { icon: Lock, label: "隐私设置" },
               { icon: HelpCircle, label: "帮助与反馈" },
               { icon: Info, label: "关于深夜信箱", value: "v1.2.0" },
@@ -277,6 +325,8 @@ export default function Profile() {
               return (
                 <button
                   key={idx}
+                  type="button"
+                  onClick={() => handleSettingsItem(item.label)}
                   className="w-full flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition text-sm"
                 >
                   <div className="flex items-center gap-2">
@@ -293,6 +343,15 @@ export default function Profile() {
               );
             })}
           </div>
+          {showLanguageMenu && (
+            <div className="mt-3 flex flex-wrap gap-2 rounded-lg border border-white/10 bg-black/10 p-3">
+              {(["zh", "en", "ja", "ko"] as Language[]).map((option) => (
+                <button key={option} type="button" onClick={() => handleLanguageChange(option)} className="rounded-md border border-white/10 px-3 py-1 text-xs text-white/80 hover:bg-white/10">
+                  {languageLabels[option]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 登出按钮 */}
@@ -303,6 +362,16 @@ export default function Profile() {
           <LogOut size={16} />
           登出账户
         </Button>
+        {showAbout && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" role="dialog" aria-modal="true" aria-label="关于深夜信箱">
+            <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#151a3d] p-6 text-center shadow-2xl">
+              <h2 className="text-lg font-semibold">深夜信箱</h2>
+              <p className="mt-2 text-sm text-white/70">一个可以放心写下心事的匿名空间。</p>
+              <p className="mt-1 text-xs text-white/40">版本 v1.2.0</p>
+              <Button type="button" onClick={() => setShowAbout(false)} className="mt-5 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857]">知道了</Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
