@@ -11,7 +11,6 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>('zh');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     // 从localStorage读取保存的语言设置
@@ -31,7 +30,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         setLanguageState('en');
       }
     }
-    setMounted(true);
   }, []);
 
   const setLanguage = (lang: Language) => {
@@ -40,10 +38,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     // 更新HTML lang属性
     document.documentElement.lang = lang;
   };
-
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage }}>
