@@ -19,12 +19,14 @@ import {
 import { toast } from "sonner";
 import MembershipBadge from "@/components/MembershipBadge";
 import { getBadgeLabel, getBadgeTier } from "@/lib/membership-tier";
-import { useLanguage, type Language } from "@/contexts/LanguageContext";
+import { useLanguage, translations, type Language } from "@/contexts/LanguageContext";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
   const { language, setLanguage } = useLanguage();
+  const profileText = translations[language].profile;
+  const commonText = translations[language].common;
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("notificationsEnabled") !== "false");
@@ -93,16 +95,23 @@ export default function Profile() {
     toast.success(nextValue ? "通知已开启" : "通知已关闭");
   };
 
-  const handleSettingsItem = (label: string) => {
-    if (label === "语言设置") {
+  const settingsLabels = {
+    zh: { language: "语言设置", notifications: "通知设置", privacy: "隐私设置", help: "帮助与反馈", about: "关于深夜信箱" },
+    en: { language: "Language", notifications: "Notifications", privacy: "Privacy", help: "Help & Feedback", about: "About Midnight Mailbox" },
+    ja: { language: "言語設定", notifications: "通知設定", privacy: "プライバシー", help: "ヘルプとフィードバック", about: "深夜信箱について" },
+    ko: { language: "언어 설정", notifications: "알림 설정", privacy: "개인정보 보호", help: "도움말 및 피드백", about: "심야 우편함 정보" },
+  }[language];
+
+  const handleSettingsItem = (setting: string) => {
+    if (setting === "language") {
       setShowLanguageMenu((visible) => !visible);
-    } else if (label === "通知设置") {
+    } else if (setting === "notifications") {
       toggleNotifications();
-    } else if (label === "隐私设置") {
+    } else if (setting === "privacy") {
       navigate("/security-settings");
-    } else if (label === "帮助与反馈") {
+    } else if (setting === "help") {
       navigate("/premium-support");
-    } else if (label === "关于深夜信箱") {
+    } else if (setting === "about") {
       setShowAbout(true);
     }
   };
@@ -121,7 +130,7 @@ export default function Profile() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold">个人中心</h1>
+            <h1 className="text-2xl font-bold">{profileText.title}</h1>
           </div>
           <button type="button" onClick={() => document.getElementById("profile-settings")?.scrollIntoView({ behavior: "smooth" })} className="p-2 hover:bg-white/10 rounded-lg transition" aria-label="打开设置">
             <Settings size={20} />
@@ -155,7 +164,7 @@ export default function Profile() {
                 <span>👋</span>
                 <MembershipBadge tier={badgeTier} size="small" />
               </div>
-              <p className="text-xs text-white/60 mb-2">在深夜写信的第 23 天</p>
+              <p className="text-xs text-white/60 mb-2">{profileText.joinDate}: 23 days</p>
               <p className="text-xs text-white/70">
                 今晚的你，状态：虽然孤独 <span>🌙</span>
               </p>
@@ -269,13 +278,13 @@ export default function Profile() {
         {/* 当前版本和升级建议 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-            <p className="text-xs text-white/60 mb-2">当前版本</p>
+            <p className="text-xs text-white/60 mb-2">{profileText.membershipType}</p>
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <p className="text-lg font-bold">{badgeLabel}</p>
               <MembershipBadge tier={badgeTier} size="small" />
             </div>
             <p className="text-xs text-white/50">
-              {badgeTier === "free" ? "基础特性" : "会员权益已生效"}
+              {badgeTier === "free" ? profileText.free : profileText.membership}
             </p>
             {badgeTier === "premium" ? (
               <Button
@@ -303,7 +312,7 @@ export default function Profile() {
                 disabled={membershipUpgrade.isPending}
                 className="mt-3 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857] text-sm h-8"
               >
-                {membershipUpgrade.isPending ? "处理中..." : "延长会员"}
+                {membershipUpgrade.isPending ? commonText.loading : profileText.upgradeMembership}
               </Button>
           </div>
         </div>
@@ -312,21 +321,21 @@ export default function Profile() {
 
         {/* 更多设置 */}
         <div id="profile-settings" className="mb-8 p-6 rounded-lg bg-white/5 border border-white/10">
-          <h3 className="text-sm font-semibold mb-4">更多设置</h3>
+          <h3 className="text-sm font-semibold mb-4">{profileText.settings}</h3>
           <div className="space-y-2">
             {[
-              { icon: Globe, label: "语言设置", value: languageLabels[language] },
-              { icon: Bell, label: "通知设置", value: notificationsEnabled ? "已开启" : "已关闭" },
-              { icon: Lock, label: "隐私设置" },
-              { icon: HelpCircle, label: "帮助与反馈" },
-              { icon: Info, label: "关于深夜信箱", value: "v1.2.0" },
+              { icon: Globe, id: "language", label: settingsLabels.language, value: languageLabels[language] },
+              { icon: Bell, id: "notifications", label: settingsLabels.notifications, value: notificationsEnabled ? "On" : "Off" },
+              { icon: Lock, id: "privacy", label: settingsLabels.privacy },
+              { icon: HelpCircle, id: "help", label: settingsLabels.help },
+              { icon: Info, id: "about", label: settingsLabels.about, value: "v1.2.0" },
             ].map((item, idx) => {
               const Icon = item.icon;
               return (
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => handleSettingsItem(item.label)}
+                  onClick={() => handleSettingsItem(item.id)}
                   className="w-full flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition text-sm"
                 >
                   <div className="flex items-center gap-2">
