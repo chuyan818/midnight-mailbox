@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { X, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { pageTranslations } from "@/lib/page-translations";
 
 interface ShareDialogProps {
   isOpen: boolean;
@@ -16,13 +18,15 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   content,
 }) => {
   const [copied, setCopied] = useState(false);
+  const { language } = useLanguage();
+  const copy = pageTranslations[language].write.share;
 
   const shareUrl = `${window.location.origin}/letter/${letterId}`;
-  const shareText = `我在深夜信箱里写下了我的心事，AI给了我温暖的回复。你也来试试吧！`;
+  const shareText = copy.text;
 
   const shareToWeChat = () => {
     // 微信分享（需要微信SDK，这里显示提示）
-    toast.success("已复制分享链接，可在微信中分享");
+    toast.success(copy.copiedWechat);
     copyToClipboard();
   };
 
@@ -40,7 +44,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast.success("已复制到剪贴板");
+      toast.success(copy.copiedClipboard);
     });
   };
 
@@ -51,7 +55,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
       <div className="bg-gradient-to-br from-[#1C1F4A] to-[#2D2F5A] rounded-lg p-8 max-w-md w-full mx-4 border border-white/10">
         {/* 关闭按钮 */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">分享这封信</h2>
+          <h2 className="text-2xl font-bold text-white">{copy.title}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition"
@@ -70,7 +74,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             onClick={shareToWeChat}
             className="w-full bg-[#09B981] hover:bg-[#059669] text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
           >
-            <span>🔗</span> 微信分享
+            <span>🔗</span> {copy.wechat}
           </button>
 
           {/* 微博分享 */}
@@ -78,7 +82,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             onClick={shareToWeibo}
             className="w-full bg-[#E74C3C] hover:bg-[#C0392B] text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
           >
-            <span>🌐</span> 分享到微博
+            <span>🌐</span> {copy.weibo}
           </button>
 
           {/* QQ分享 */}
@@ -86,7 +90,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             onClick={shareToQQ}
             className="w-full bg-[#3B5998] hover:bg-[#2D4373] text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
           >
-            <span>💬</span> 分享到QQ
+            <span>💬</span> {copy.qq}
           </button>
 
           {/* 复制链接 */}
@@ -96,11 +100,11 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           >
             {copied ? (
               <>
-                <Check size={20} /> 已复制
+                <Check size={20} /> {copy.copied}
               </>
             ) : (
               <>
-                <Copy size={20} /> 复制链接
+                <Copy size={20} /> {copy.copy}
               </>
             )}
           </button>
@@ -111,7 +115,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           onClick={onClose}
           className="w-full bg-white/10 hover:bg-white/20 text-white font-semibold py-2 rounded-lg transition"
         >
-          关闭
+          {copy.close}
         </button>
       </div>
     </div>

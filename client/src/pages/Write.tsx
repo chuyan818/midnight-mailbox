@@ -26,7 +26,7 @@ const EMOTION_TAGS = [
   { emoji: "🥺", label: "委屈" },
   { emoji: "😴", label: "疲惫" },
   { emoji: "😌", label: "平静" },
-];
+] as const;
 
 const BACKGROUNDS: Array<{
   type: BackgroundType;
@@ -516,9 +516,10 @@ export default function Write() {
                         ? "bg-[#8B5CF6] scale-110"
                         : "bg-white/5 hover:bg-white/10"
                     }`}
-                    title={tag.label}
+                    title={copy.emotionTags[tag.label]}
                   >
                     {tag.emoji}
+                    <span className="sr-only">{copy.emotionTags[tag.label]}</span>
                   </button>
                 ))}
               </div>

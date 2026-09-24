@@ -5,6 +5,7 @@ import { getAllThemes } from "@/config/themes";
 
 const languages: Language[] = ["zh", "en", "ja", "ko"];
 const themeKeys = ["starry", "kraft", "cherry", "autumn", "festive"] as const;
+const emotionKeys = ["伤心", "失落", "焦虑", "愤怒", "困惑", "委屈", "疲惫", "平静"] as const;
 
 describe("theme translations", () => {
   it("provides names, descriptions, and animation descriptions for every theme", () => {
@@ -22,6 +23,10 @@ describe("theme translations", () => {
         expect(themes.animationDescriptions[key]).toBeTruthy();
       }
       expect(themes.themePreview).toBeTruthy();
+      expect(Object.keys(pageTranslations[language].write.emotionTags)).toEqual(expect.arrayContaining(emotionKeys));
+      expect(pageTranslations[language].write.share.title).toBeTruthy();
+      expect(pageTranslations[language].write.share.text).toBeTruthy();
+      expect(pageTranslations[language].write.share.close).toBeTruthy();
     }
   });
 

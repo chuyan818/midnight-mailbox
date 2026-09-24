@@ -22,3 +22,34 @@ for (const language of languages) {
     await expect(page.getByRole("heading", { name: language.writeLogin })).toBeVisible();
   });
 }
+
+test("persists the selected language after reload", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Select language" }).click();
+  await page.getByRole("button", { name: "English" }).click();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("language"))).toBe("en");
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Midnight Mailbox" }).first()).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("language"))).toBe("en");
+});
+
+test("authenticated users can choose a localized animated theme", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("language", "zh"));
+  await page.goto("/user-login");
+  await page.getByPlaceholder("请输入邮箱").fill(process.env.E2E_TEST_EMAIL ?? "test@midnight-mailbox.test");
+  await page.getByPlaceholder("请输入密码").fill(process.env.E2E_TEST_PASSWORD ?? "MidnightTest2026!");
+  await page.getByRole("button", { name: "登录", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "个人中心" })).toBeVisible();
+
+  await page.goto("/write");
+  await expect(page.getByRole("heading", { name: "写信主题" })).toBeVisible();
+  await page.getByRole("button", { name: "星空漫漫" }).first().click();
+  await expect(page.getByText("星星闪烁，流星划过夜空")).toBeVisible();
+  await page.getByRole("button", { name: /樱花来信/ }).first().click();
+  await page.getByRole("button", { name: /樱花来信/ }).first().click();
+  await expect(page.getByText("樱花花瓣缓缓飘落，柔光流动")).toBeVisible();
+  await expect(page.locator(".theme-cherry-blossom").first()).toBeVisible();
+});
