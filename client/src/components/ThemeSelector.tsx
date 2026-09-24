@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getAllThemes, getThemeConfig, ThemeType } from "@/config/themes";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { pageTranslations } from "@/lib/page-translations";
 
 interface ThemeSelectorProps {
   selectedTheme?: ThemeType;
@@ -14,8 +16,20 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   className = "",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { language } = useLanguage();
+  const copy = pageTranslations[language].write;
   const currentTheme = getThemeConfig(selectedTheme);
   const themes = getAllThemes();
+  const themeKey = (themeId: ThemeType) => ({
+    "starry-night": "starry",
+    "vintage-kraft": "kraft",
+    "cherry-blossom": "cherry",
+    "autumn-leaves": "autumn",
+    "festive-lights": "festive",
+  } as const)[themeId];
+  const localizedName = (themeId: ThemeType) => copy.themes[themeKey(themeId)];
+  const localizedDescription = (themeId: ThemeType) => copy.themes.themeDescriptions[themeKey(themeId)];
+  const localizedAnimation = (themeId: ThemeType) => copy.themes.animationDescriptions[themeKey(themeId)];
 
   const renderPreviewElements = () => {
     switch (selectedTheme) {
@@ -72,7 +86,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
         aria-expanded={isOpen}
         className="w-full justify-between border-white/20 bg-white/5 text-white hover:bg-white/10"
       >
-        <span>{currentTheme.name}</span>
+        <span>{localizedName(selectedTheme)}</span>
         <span aria-hidden="true" className="text-xs opacity-70">
           {isOpen ? "▲" : "▼"}
         </span>
@@ -96,8 +110,9 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                   style={{ background: theme.backgroundGradient ?? theme.backgroundColor }}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-white">{theme.name}</span>
-                  <span className="block text-xs text-white/60">{theme.description}</span>
+                  <span className="block font-medium text-white">{localizedName(theme.id)}</span>
+                  <span className="block text-xs text-white/60">{localizedDescription(theme.id)}</span>
+                  <span className="block text-[11px] text-white/45">{localizedAnimation(theme.id)}</span>
                 </span>
                 {selectedTheme === theme.id && (
                   <span className="text-[#FFD580]" aria-label="已选择">✓</span>
@@ -116,7 +131,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
         }}
       >
         {renderPreviewElements()}
-        <div className="text-center text-sm font-medium">{currentTheme.name} 预览</div>
+        <div className="text-center text-sm font-medium">{localizedName(selectedTheme)} · {copy.themes.themePreview}</div>
       </div>
     </div>
   );
