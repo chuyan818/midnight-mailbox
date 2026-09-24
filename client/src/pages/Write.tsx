@@ -13,6 +13,9 @@ import { ThemeSelector } from "@/components/ThemeSelector";
 import { getThemeConfig } from "@/config/themes";
 import { BACKGROUND_TO_THEME, THEME_TO_BACKGROUND, BackgroundType } from "@/lib/write-theme-mapping";
 import { THEME_ELEMENT_LIMITS } from "@/lib/theme-performance";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { pageTranslations } from "@/lib/page-translations";
+import LanguageSelector from "@/components/LanguageSelector";
 
 const EMOTION_TAGS = [
   { emoji: "😢", label: "伤心" },
@@ -278,6 +281,8 @@ function createPaperBreath() {
 export default function Write() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const { language } = useLanguage();
+  const copy = pageTranslations[language].write;
   const [selectedBackground, setSelectedBackground] = useState<BackgroundType>("星空漫漫");
   const [content, setContent] = useState("");
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
@@ -287,6 +292,12 @@ export default function Write() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [lastLetterId, setLastLetterId] = useState<string>("");
+  const localizedBackgrounds = BACKGROUNDS.map((background) => ({
+    ...background,
+    label: copy.themes[
+      ({ "星空漫漫": "starry", "牛皮纸": "kraft", "樱花来信": "cherry", "秋日落信": "autumn", "节日灯火": "festive" } as const)[background.type]
+    ],
+  }));
 
   const toggleEmotion = (emotion: string) => {
     setSelectedEmotions((prev) =>
@@ -327,8 +338,8 @@ export default function Write() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">请先登录</h1>
-          <p className="text-gray-400">登录后即可开始写信</p>
+          <h1 className="text-3xl font-bold text-white mb-4">{copy.loginTitle}</h1>
+          <p className="text-gray-400">{copy.loginDesc}</p>
         </div>
       </div>
     );
@@ -336,7 +347,7 @@ export default function Write() {
 
   const handleSubmit = async () => {
     if (!content.trim()) {
-      toast.error("请输入信件内容");
+      toast.error(copy.sendError);
       return;
     }
 
@@ -352,7 +363,7 @@ export default function Write() {
       // 动画完成后显示分享和模板保存选项
     } catch (error: any) {
       setShowSendingAnimation(false);
-      toast.error(error.message || "发送失败，请重试");
+      toast.error(error.message || copy.sendFailed);
     } finally {
       setIsSubmitting(false);
     }
@@ -423,8 +434,9 @@ export default function Write() {
             >
               <ArrowLeft size={24} />
             </Button>
-            <h1 className="text-2xl font-bold text-white">写信</h1>
+            <h1 className="text-2xl font-bold text-white">{copy.title}</h1>
           </div>
+          <LanguageSelector compact />
         </div>
       </div>
 
@@ -448,7 +460,7 @@ export default function Write() {
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="在这里写下你的心事..."
+                  placeholder={copy.placeholder}
                   className="w-full h-80 bg-transparent text-white placeholder-gray-400 resize-none focus:outline-none text-lg leading-relaxed"
                 />
               </div>
@@ -464,7 +476,7 @@ export default function Write() {
           <div className="space-y-6">
             {/* Unified Theme Selector */}
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-              <h3 className="text-white font-semibold mb-4">写信主题</h3>
+              <h3 className="text-white font-semibold mb-4">{copy.theme}</h3>
               <ThemeSelector
                 selectedTheme={selectedTheme}
                 onThemeChange={(themeId) => setSelectedBackground(THEME_TO_BACKGROUND[themeId])}
@@ -473,9 +485,9 @@ export default function Write() {
 
             {/* Background Selection */}
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-              <h3 className="text-white font-semibold mb-4">选择信纸</h3>
+              <h3 className="text-white font-semibold mb-4">{copy.paper}</h3>
               <div className="space-y-2">
-                {BACKGROUNDS.map((bg) => (
+                {localizedBackgrounds.map((bg) => (
                   <button
                     key={bg.type}
                     onClick={() => setSelectedBackground(bg.type)}
@@ -493,7 +505,7 @@ export default function Write() {
 
             {/* Emotion Tags */}
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-              <h3 className="text-white font-semibold mb-4">当前情绪</h3>
+              <h3 className="text-white font-semibold mb-4">{copy.emotion}</h3>
               <div className="grid grid-cols-4 gap-2">
                 {EMOTION_TAGS.map((tag) => (
                   <button
@@ -514,7 +526,7 @@ export default function Write() {
 
             {/* Privacy Settings */}
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-              <h3 className="text-white font-semibold mb-4">隐私设置</h3>
+              <h3 className="text-white font-semibold mb-4">{copy.privacy}</h3>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -524,7 +536,7 @@ export default function Write() {
                 />
                 <span className="text-gray-300 flex items-center gap-2">
                   {isPublic ? <Globe size={16} /> : <Lock size={16} />}
-                  {isPublic ? "公开分享" : "仅自己可见"}
+                  {isPublic ? copy.public : copy.private}
                 </span>
               </label>
             </div>
@@ -536,7 +548,7 @@ export default function Write() {
               className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:bg-gray-600 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2"
             >
               <Send size={20} />
-              {isSubmitting ? "发送中..." : "发送信件"}
+              {isSubmitting ? copy.sending : copy.send}
             </Button>
           </div>
         </div>

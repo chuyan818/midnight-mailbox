@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import MembershipBadge from "@/components/MembershipBadge";
 import { getBadgeLabel, getBadgeTier } from "@/lib/membership-tier";
 import { useLanguage, translations, type Language } from "@/contexts/LanguageContext";
+import { pageTranslations } from "@/lib/page-translations";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -27,6 +29,7 @@ export default function Profile() {
   const { language, setLanguage } = useLanguage();
   const profileText = translations[language].profile;
   const commonText = translations[language].common;
+  const extra = pageTranslations[language].profile;
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("notificationsEnabled") !== "false");
@@ -132,9 +135,12 @@ export default function Profile() {
             </Button>
             <h1 className="text-2xl font-bold">{profileText.title}</h1>
           </div>
-          <button type="button" onClick={() => document.getElementById("profile-settings")?.scrollIntoView({ behavior: "smooth" })} className="p-2 hover:bg-white/10 rounded-lg transition" aria-label="打开设置">
-            <Settings size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageSelector compact />
+            <button type="button" onClick={() => document.getElementById("profile-settings")?.scrollIntoView({ behavior: "smooth" })} className="p-2 hover:bg-white/10 rounded-lg transition" aria-label={profileText.settings}>
+              <Settings size={20} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -143,10 +149,10 @@ export default function Profile() {
         {remindersQuery.data?.reminders.map((reminder) => (
           <div key={reminder.id} className="mb-4 flex items-start justify-between gap-4 rounded-lg border border-[#FFD580]/30 bg-[#FFD580]/10 p-4 text-sm">
             <div>
-              <p className="font-semibold text-[#FFD580]">会员即将到期</p>
-              <p className="mt-1 text-white/70">您的会员将在 {reminder.reminderType === "expiry_today" ? "今天" : reminder.reminderType === "expiry_3days" ? "3天后" : "7天后"} 到期，请及时续费。</p>
+              <p className="font-semibold text-[#FFD580]">{extra.expiryTitle}</p>
+              <p className="mt-1 text-white/70">{extra.expiryMessage.replace("{when}", reminder.reminderType === "expiry_today" ? extra.expiryToday : reminder.reminderType === "expiry_3days" ? extra.expiry3 : extra.expiry7)}</p>
             </div>
-            <Button type="button" variant="ghost" size="sm" onClick={() => markReminderRead.mutate({ reminderId: reminder.id })} className="shrink-0 text-[#FFD580] hover:bg-[#FFD580]/10">知道了</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => markReminderRead.mutate({ reminderId: reminder.id })} className="shrink-0 text-[#FFD580] hover:bg-[#FFD580]/10">{extra.understood}</Button>
           </div>
         ))}
         {/* 用户信息卡片 */}
@@ -160,14 +166,12 @@ export default function Profile() {
             {/* 用户信息 */}
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h2 className="text-lg font-bold">晚上好，{displayName}</h2>
+                <h2 className="text-lg font-bold">{extra.greeting}，{displayName}</h2>
                 <span>👋</span>
                 <MembershipBadge tier={badgeTier} size="small" />
               </div>
-              <p className="text-xs text-white/60 mb-2">{profileText.joinDate}: 23 days</p>
-              <p className="text-xs text-white/70">
-                今晚的你，状态：虽然孤独 <span>🌙</span>
-              </p>
+              <p className="text-xs text-white/60 mb-2">{extra.days.replace("{days}", "23")}</p>
+              <p className="text-xs text-white/70">{extra.mood} <span>🌙</span></p>
             </div>
 
             {/* 引用语 */}
@@ -185,22 +189,22 @@ export default function Profile() {
           <button type="button" onClick={() => navigate("/mailbox")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Mail size={18} className="mx-auto mb-2 text-[#FFD580]" />
             <p className="text-xl font-bold">28</p>
-            <p className="text-xs text-white/60">总信件数</p>
+            <p className="text-xs text-white/60">{extra.totalLetters}</p>
           </button>
           <button type="button" onClick={() => navigate("/report")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <TrendingUp size={18} className="mx-auto mb-2 text-[#FFD580]" />
             <p className="text-xl font-bold">8.7</p>
-            <p className="text-xs text-white/60">平均情绪值</p>
+            <p className="text-xs text-white/60">{extra.averageMood}</p>
           </button>
           <button type="button" onClick={() => navigate("/mailbox")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Mail size={18} className="mx-auto mb-2 text-[#FFD580]" />
             <p className="text-xl font-bold">12</p>
-            <p className="text-xs text-white/60">待读信件</p>
+            <p className="text-xs text-white/60">{extra.unread}</p>
           </button>
           <button type="button" onClick={() => toast.info("最近活跃时间已是最新记录")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Clock size={18} className="mx-auto mb-2 text-[#FFD580]" />
             <p className="text-xl font-bold">23:45</p>
-            <p className="text-xs text-white/60">最后活跃</p>
+            <p className="text-xs text-white/60">{extra.lastActive}</p>
           </button>
         </div>
 
@@ -208,7 +212,7 @@ export default function Profile() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* 情绪热盐图 */}
           <div className="lg:col-span-2 p-6 rounded-lg bg-white/5 border border-white/10">
-            <h3 className="text-sm font-semibold mb-4">情绪热盐 (最近7天)</h3>
+            <h3 className="text-sm font-semibold mb-4">{extra.moodTrend}</h3>
 
             {/* 情绪趋势图 */}
             <div className="mb-4">
@@ -220,7 +224,7 @@ export default function Profile() {
                   { date: "5/19", value: 8.1 },
                   { date: "5/20", value: 7.9 },
                   { date: "5/21", value: 8.5 },
-                  { date: "今天", value: 8.7 },
+                  { date: extra.today, value: 8.7 },
                 ].map((item, idx) => (
                   <div
                     key={idx}
@@ -242,9 +246,9 @@ export default function Profile() {
             {/* 情绪分布 */}
             <div className="space-y-2">
                 {[
-                { emoji: "😊", label: "愉好", value: 72 },
-                { emoji: "😐", label: "平静", value: 56 },
-                { emoji: "😢", label: "低落", value: 34 },
+                { emoji: "😊", label: extra.happy, value: 72 },
+                { emoji: "😐", label: extra.calm, value: 56 },
+                { emoji: "😢", label: extra.low, value: 34 },
               ].map((mood) => (
                 <div key={mood.label} className="flex items-center gap-2">
                   <span className="text-sm">{mood.emoji}</span>
@@ -263,14 +267,14 @@ export default function Profile() {
           {/* 本周统计 */}
           <div className="space-y-4">
             <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-              <p className="text-xs text-white/60 mb-1">本周写信统计</p>
-              <p className="text-2xl font-bold mb-1">4封</p>
-              <p className="text-xs text-[#FFD580]">比上周 +20%</p>
+              <p className="text-xs text-white/60 mb-1">{extra.weeklyLetters}</p>
+              <p className="text-2xl font-bold mb-1">4 {extra.lettersUnit}</p>
+              <p className="text-xs text-[#FFD580]">{extra.weekChange} +20%</p>
             </div>
             <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-              <p className="text-xs text-white/60 mb-1">深度情绪停留时长</p>
-              <p className="text-2xl font-bold mb-1">3.2小时</p>
-              <p className="text-xs text-[#FFD580]">比上周 +15%</p>
+              <p className="text-xs text-white/60 mb-1">{extra.hours}</p>
+              <p className="text-2xl font-bold mb-1">3.2 {extra.hoursUnit}</p>
+              <p className="text-xs text-[#FFD580]">{extra.weekChange} +15%</p>
             </div>
           </div>
         </div>
@@ -292,18 +296,18 @@ export default function Profile() {
                 onClick={() => navigate("/premium-support")}
                 className="mt-3 h-8 bg-[#FFD580] text-xs text-[#0B0F2F] hover:bg-[#FFC857]"
               >
-                联系优先客服
+                {extra.prioritySupport}
               </Button>
             ) : (
-              <p className="mt-3 text-xs text-white/50">高级会员可享受优先客服支持</p>
+              <p className="mt-3 text-xs text-white/50">{extra.premiumSupport}</p>
             )}
           </div>
 
           <div className="p-4 rounded-lg bg-white/5 border border-white/10 flex flex-col justify-between">
           <div>
-            <p className="text-xs text-white/60 mb-2">你可以享受</p>
+            <p className="text-xs text-white/60 mb-2">{extra.benefits}</p>
             <p className="text-xs text-white/70">
-              独播视频回应，让每一封信都得到深层分析
+              {extra.benefitDesc}
             </p>
           </div>
               <Button
@@ -369,15 +373,15 @@ export default function Profile() {
           className="w-full bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 flex items-center justify-center gap-2"
         >
           <LogOut size={16} />
-          登出账户
+          {extra.logout}
         </Button>
         {showAbout && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" role="dialog" aria-modal="true" aria-label="关于深夜信箱">
             <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#151a3d] p-6 text-center shadow-2xl">
-              <h2 className="text-lg font-semibold">深夜信箱</h2>
-              <p className="mt-2 text-sm text-white/70">一个可以放心写下心事的匿名空间。</p>
+              <h2 className="text-lg font-semibold">{pageTranslations[language].home.brand}</h2>
+              <p className="mt-2 text-sm text-white/70">{extra.aboutText}</p>
               <p className="mt-1 text-xs text-white/40">版本 v1.2.0</p>
-              <Button type="button" onClick={() => setShowAbout(false)} className="mt-5 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857]">知道了</Button>
+              <Button type="button" onClick={() => setShowAbout(false)} className="mt-5 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857]">{extra.gotIt}</Button>
             </div>
           </div>
         )}

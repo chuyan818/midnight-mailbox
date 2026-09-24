@@ -5,10 +5,15 @@ import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { pageTranslations } from "@/lib/page-translations";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function Mailbox() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const { language } = useLanguage();
+  const copy = pageTranslations[language].mailbox;
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const { data: letters, isLoading, refetch } = trpc.letter.list.useQuery(
@@ -22,9 +27,9 @@ export default function Mailbox() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
         <div className="text-center text-white">
-          <p className="mb-4">请先登录</p>
+          <p className="mb-4">{copy.loginTitle}</p>
           <Button onClick={() => navigate("/")} className="bg-[#FFD580] text-[#0B0F2F]">
-            返回首页
+            {copy.backHome}
           </Button>
         </div>
       </div>
@@ -34,11 +39,11 @@ export default function Mailbox() {
   const handleDelete = async (id: number) => {
     try {
       await deleteMutation.mutateAsync({ id });
-      toast.success("信件已删除");
+      toast.success(copy.deleted);
       refetch();
       setDeleteId(null);
     } catch (error: any) {
-      toast.error(error.message || "删除失败");
+      toast.error(error.message || copy.deleteFailed);
     }
   };
 
@@ -67,22 +72,23 @@ export default function Mailbox() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold text-white">我的信箱</h1>
+            <h1 className="text-2xl font-bold text-white">{copy.title}</h1>
           </div>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <LanguageSelector compact />
             <Button
               variant="outline"
               className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580]/10"
               onClick={() => navigate("/profile")}
             >
-              个人中心
+              {copy.profile}
             </Button>
             <Button
               className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 flex items-center gap-2"
               onClick={() => navigate("/write")}
             >
               <Plus className="w-4 h-4" />
-              写新信
+              {copy.newLetter}
             </Button>
           </div>
         </div>
@@ -96,12 +102,12 @@ export default function Mailbox() {
           </div>
         ) : !letters || letters.length === 0 ? (
           <div className="text-center py-12 space-y-4">
-            <p className="text-gray-400 text-lg">还没有写过信呢</p>
+            <p className="text-gray-400 text-lg">{copy.empty}</p>
             <Button
               className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
               onClick={() => navigate("/write")}
             >
-              开始写信
+              {copy.start}
             </Button>
           </div>
         ) : (
@@ -159,7 +165,7 @@ export default function Mailbox() {
                         />
                       </div>
                       <span className="text-xs font-semibold text-[#FFD580]">
-                        {letter.emotionScore as number}
+                        {copy.emotionScore} {letter.emotionScore as number}
                       </span>
                     </div>
                   )}
@@ -167,7 +173,7 @@ export default function Mailbox() {
                   {letter.reply ? (
                     <div className="p-3 rounded bg-[#FFD580]/10 border border-[#FFD580]/20">
                       <p className="text-xs text-[#FFD580] font-semibold mb-1">
-                        ✓ 已收到回信
+                        {copy.received}
                       </p>
                       <p className="text-xs text-gray-300 line-clamp-2">
                         {String(letter.reply)}
@@ -176,7 +182,7 @@ export default function Mailbox() {
                   ) : (
                     <div className="p-3 rounded bg-yellow-500/10 border border-yellow-500/20">
                       <p className="text-xs text-yellow-400">
-                        ⏳ AI正在生成回信...
+                        {copy.generating}
                       </p>
                     </div>
                   )}
@@ -205,9 +211,9 @@ export default function Mailbox() {
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#1C1F4A] border border-white/10 rounded-lg p-6 max-w-sm mx-4 space-y-4">
-            <h3 className="text-lg font-semibold text-white">确认删除？</h3>
+            <h3 className="text-lg font-semibold text-white">{copy.confirm}</h3>
             <p className="text-gray-400">
-              删除后无法恢复，请谨慎操作。
+              {copy.cannotRecover}
             </p>
             <div className="flex gap-3">
               <Button
@@ -215,14 +221,14 @@ export default function Mailbox() {
                 className="flex-1 border-white/20 text-white hover:bg-white/10"
                 onClick={() => setDeleteId(null)}
               >
-                取消
+                {copy.cancel}
               </Button>
               <Button
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => deleteId && handleDelete(deleteId)}
                 disabled={deleteMutation.isPending as any}
               >
-                {deleteMutation.isPending ? "删除中..." : "确认删除"}
+                {deleteMutation.isPending ? copy.deleting : copy.confirmDelete}
               </Button>
             </div>
           </div>

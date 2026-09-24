@@ -3,10 +3,15 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 import { Sparkles, Heart, TrendingUp, Lock, Clock } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { pageTranslations } from "@/lib/page-translations";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const { language } = useLanguage();
+  const copy = pageTranslations[language].home;
 
   const handleWriteLetter = () => {
     if (isAuthenticated) {
@@ -34,9 +39,10 @@ export default function Home() {
         <nav className="flex justify-between items-center px-6 py-4 md:px-12 md:py-6">
           <div className="flex items-center gap-2">
             <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-[#FFD580]" />
-            <h1 className="text-xl md:text-2xl font-bold">深夜信箱</h1>
+            <h1 className="text-xl md:text-2xl font-bold">{copy.brand}</h1>
           </div>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <LanguageSelector compact />
             {isAuthenticated ? (
               <>
                 <Button
@@ -44,13 +50,13 @@ export default function Home() {
                   className="border-[#FFD580] text-[#FFD580] hover:bg-[#FFD580] hover:text-[#0B0F2F]"
                   onClick={() => navigate("/mailbox")}
                 >
-                  我的信箱
+                  {copy.mailbox}
                 </Button>
                 <Button
                   className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
                   onClick={() => navigate("/profile")}
                 >
-                  个人中心
+                  {copy.profile}
                 </Button>
               </>
             ) : (
@@ -58,7 +64,7 @@ export default function Home() {
                 className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
                 onClick={() => navigate("/user-login")}
               >
-                登录
+                {copy.login}
               </Button>
             )}
           </div>
@@ -70,24 +76,20 @@ export default function Home() {
             {/* Main Title */}
             <div className="space-y-4">
               <h2 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-[#FFD580] to-[#FFC857] bg-clip-text text-transparent">
-                深夜信箱
+                {copy.heroTitle}
               </h2>
               <p className="text-lg md:text-xl text-gray-300 font-light">
-                一个温暖的深夜陪伴
+                {copy.subtitle}
               </p>
             </div>
 
             {/* Description */}
             <div className="space-y-6 text-gray-400">
               <p className="text-base md:text-lg leading-relaxed">
-                在深夜，当你感到孤独、焦虑或压力时，
-                <br />
-                把心事写进信箱，我们会用温柔的话语陪伴你。
+                {copy.description}
               </p>
               <p className="text-sm md:text-base leading-relaxed opacity-80">
-                不是心理医生，不是导师，
-                <br />
-                只是一个认真读信、温柔回复的人。
+                {copy.disclaimer}
               </p>
             </div>
 
@@ -98,9 +100,9 @@ export default function Home() {
                 onClick={() => navigate("/write")}
               >
                 <Heart className="w-8 h-8 text-[#FFD580] mx-auto" />
-                <h3 className="font-semibold">匿名倾诉</h3>
+                <h3 className="font-semibold">{copy.anonymous}</h3>
                 <p className="text-sm text-gray-400">
-                  完全匿名，没有评判，只有理解
+                  {copy.anonymousDesc}
                 </p>
               </div>
 
@@ -108,9 +110,9 @@ export default function Home() {
                 onClick={() => navigate("/public-mailbox")}
               >
                 <Sparkles className="w-8 h-8 text-[#FFD580] mx-auto" />
-                <h3 className="font-semibold">公共信箱</h3>
+                <h3 className="font-semibold">{copy.publicMailbox}</h3>
                 <p className="text-sm text-gray-400">
-                  阅读他人的故事，点亮共鸣之星
+                  {copy.publicMailboxDesc}
                 </p>
               </div>
 
@@ -118,9 +120,9 @@ export default function Home() {
                 onClick={() => navigate("/daily-quote")}
               >
                 <TrendingUp className="w-8 h-8 text-[#FFD580] mx-auto" />
-                <h3 className="font-semibold">今日一句</h3>
+                <h3 className="font-semibold">{copy.dailyQuote}</h3>
                 <p className="text-sm text-gray-400">
-                  最孤独的句子，最温暖的陪伴
+                  {copy.dailyQuoteDesc}
                 </p>
               </div>
 
@@ -128,9 +130,9 @@ export default function Home() {
                 onClick={() => navigate("/emotion-planet")}
               >
                 <Sparkles className="w-8 h-8 text-[#FFD580] mx-auto" />
-                <h3 className="font-semibold">情绪星球</h3>
+                <h3 className="font-semibold">{copy.emotionPlanet}</h3>
                 <p className="text-sm text-gray-400">
-                  所有情绪在星空中闪烁
+                  {copy.emotionPlanetDesc}
                 </p>
               </div>
             </div>
@@ -142,7 +144,7 @@ export default function Home() {
                 className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 text-base font-semibold px-8 py-6"
                 onClick={handleWriteLetter}
               >
-                开始写信
+                {copy.startWriting}
               </Button>
               {isAuthenticated && (
                 <Button
@@ -152,7 +154,7 @@ export default function Home() {
                   onClick={() => navigate("/time-capsule")}
                 >
                   <Clock className="w-5 h-5 mr-2" />
-                  时间胶囊
+                  {copy.capsule}
                 </Button>
               )}
 
@@ -160,19 +162,19 @@ export default function Home() {
 
             {/* Pricing Preview */}
             <div className="pt-12 space-y-6">
-              <h3 className="text-2xl font-semibold">选择适合你的方案</h3>
+              <h3 className="text-2xl font-semibold">{copy.choosePlan}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Free Plan */}
                 <div className="p-8 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
                   <div className="flex items-center gap-2 mb-4">
                     <Lock className="w-5 h-5 text-gray-400" />
-                    <h4 className="text-xl font-semibold">免费版</h4>
+                    <h4 className="text-xl font-semibold">{copy.freePlan}</h4>
                   </div>
                   <p className="text-3xl font-bold text-[#FFD580] mb-6">¥0</p>
                   <ul className="space-y-3 text-gray-400 mb-6">
                     <li className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-[#FFD580] rounded-full" />
-                      每天1封信
+                      {copy.dailyOne}
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-[#FFD580] rounded-full" />
@@ -180,7 +182,7 @@ export default function Home() {
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-gray-600 rounded-full" />
-                      <span className="text-gray-600">情绪趋势报告</span>
+                      <span className="text-gray-600">{copy.emotionReport}</span>
                     </li>
                   </ul>
                   <Button
@@ -188,37 +190,37 @@ export default function Home() {
                     className="w-full border-[#FFD580] text-[#FFD580]"
                     onClick={handleWriteLetter}
                   >
-                    开始使用
+                    {copy.startUsing}
                   </Button>
                 </div>
 
                 {/* Premium Plan */}
                 <div className="p-8 rounded-lg bg-gradient-to-br from-[#FFD580]/20 to-[#FFC857]/10 border border-[#FFD580]/30 relative">
                   <div className="absolute -top-3 -right-3 bg-[#FFD580] text-[#0B0F2F] px-3 py-1 rounded-full text-xs font-bold">
-                    推荐
+                    {copy.recommended}
                   </div>
                   <div className="flex items-center gap-2 mb-4">
                     <Sparkles className="w-5 h-5 text-[#FFD580]" />
-                    <h4 className="text-xl font-semibold">会员版</h4>
+                    <h4 className="text-xl font-semibold">{copy.memberPlan}</h4>
                   </div>
                   <p className="text-3xl font-bold text-[#FFD580] mb-2">¥29</p>
-                  <p className="text-sm text-gray-400 mb-6">/月 或 ¥288/年</p>
+                  <p className="text-sm text-gray-400 mb-6">{copy.perMonth}</p>
                   <ul className="space-y-3 text-gray-300 mb-6">
                     <li className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-[#FFD580] rounded-full" />
-                      无限写信
+                      {copy.unlimited}
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-[#FFD580] rounded-full" />
-                      AI温暖回信
+                      {copy.warmReply}
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-[#FFD580] rounded-full" />
-                      完整情绪报告
+                      {copy.fullReport}
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-[#FFD580] rounded-full" />
-                      7天情绪趋势
+                      {copy.trend}
                     </li>
                   </ul>
                   <Button
@@ -231,7 +233,7 @@ export default function Home() {
                       }
                     }}
                   >
-                    升级会员
+                    {copy.upgrade}
                   </Button>
                 </div>
               </div>
@@ -240,9 +242,9 @@ export default function Home() {
             {/* Footer Note */}
             <div className="pt-12 text-center text-gray-500 text-sm">
               <p>
-                深夜信箱致力于为每个人提供温暖的陪伴
+                {copy.footer}
                 <br />
-                如果你有自伤倾向，请寻求专业心理健康帮助
+                {copy.safety}
               </p>
             </div>
           </div>
