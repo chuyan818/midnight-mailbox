@@ -283,7 +283,11 @@ export default function Write() {
   const [, navigate] = useLocation();
   const { language } = useLanguage();
   const copy = pageTranslations[language].write;
-  const [selectedBackground, setSelectedBackground] = useState<BackgroundType>("星空漫漫");
+  const [selectedBackground, setSelectedBackground] = useState<BackgroundType>(() => {
+    if (typeof window === "undefined") return "星空漫漫";
+    const savedTheme = window.localStorage.getItem("midnight-mailbox-selected-theme") as keyof typeof THEME_TO_BACKGROUND | null;
+    return savedTheme && savedTheme in THEME_TO_BACKGROUND ? THEME_TO_BACKGROUND[savedTheme] : "星空漫漫";
+  });
   const [content, setContent] = useState("");
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(false);
@@ -332,6 +336,10 @@ export default function Write() {
         createLights();
         break;
     }
+  }, [selectedBackground]);
+
+  useEffect(() => {
+    window.localStorage.setItem("midnight-mailbox-selected-theme", BACKGROUND_TO_THEME[selectedBackground]);
   }, [selectedBackground]);
 
   if (!isAuthenticated) {

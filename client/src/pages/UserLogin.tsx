@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Chrome, AlertCircle, CheckCircle } from 'lucide-react';
 import { isValidEmail, isValidLoginPassword } from '@/lib/auth-validation';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { pageTranslations } from '@/lib/page-translations';
+import LanguageSelector from '@/components/LanguageSelector';
 
 // LINE图标组件
 const LineIcon = ({ className }: { className?: string }) => (
@@ -36,6 +39,8 @@ interface Star {
 
 export default function UserLogin() {
   const [, navigate] = useLocation();
+  const { language } = useLanguage();
+  const copy = pageTranslations[language].auth;
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState(() => {
     const paramEmail = searchParams.get('email');
@@ -122,23 +127,23 @@ export default function UserLogin() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // 处理登录
+  // 处理{copy.login}
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
     // 验证邮箱
     if (!email) {
-      newErrors.email = '请输入邮箱地址';
+      newErrors.email = copy.emailInvalid;
     } else if (!validateEmail(email)) {
-      newErrors.email = '请输入有效的邮箱地址';
+      newErrors.email = copy.emailInvalid;
     }
 
     // 验证密码
     if (!password) {
-      newErrors.password = '请输入密码';
+      newErrors.password = copy.passwordPlaceholder;
     } else if (!isValidLoginPassword(password)) {
-      newErrors.password = '密码至少6位';
+      newErrors.password = copy.passwordMin;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -148,14 +153,14 @@ export default function UserLogin() {
 
     setIsLoading(true);
 
-    // 处理"记住我"功能
+    // 处理"{copy.remember}"功能
     if (rememberMe) {
-      // 保存邮箱和记住我状态
+      // 保存邮箱和{copy.remember}状态
       localStorage.setItem('rememberedEmail', email);
       localStorage.setItem('rememberMe', 'true');
       localStorage.setItem('rememberMeTimestamp', new Date().toISOString());
     } else {
-      // 清除已记住的邮箱
+      // {copy.clear}已记住的邮箱
       localStorage.removeItem('rememberedEmail');
       localStorage.removeItem('rememberMe');
       localStorage.removeItem('rememberMeTimestamp');
@@ -169,23 +174,23 @@ export default function UserLogin() {
         body: JSON.stringify({ email, password }),
       });
       const result = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(result.error || '登录失败，请重试');
+      if (!response.ok) throw new Error(result.error || copy.loginFailed);
       setIsSuccess(true);
       setTimeout(() => navigate('/'), 500);
     } catch (error) {
-      setErrors({ submit: error instanceof Error ? error.message : '登录失败，请重试' });
+      setErrors({ submit: error instanceof Error ? error.message : copy.loginFailed });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 处理第三方登录
+  // 处理第三方{copy.login}
   const handleThirdPartyLogin = (provider: string) => {
     if (provider === 'google') {
       window.location.assign('/api/auth/google/start?returnPath=/');
       return;
     }
-    setErrors({ submit: `${provider === 'line' ? 'LINE' : '微信'}登录尚未配置` });
+    setErrors({ submit: provider === 'line' ? copy.lineUnavailable : copy.wechatUnavailable });
   };
 
   // 邮箱输入变化处理
@@ -283,32 +288,33 @@ export default function UserLogin() {
 
         {/* 底部文案 */}
         <div className="absolute bottom-12 text-center z-10">
-          <p className="text-white/80 text-sm font-medium">夜谈精灵在这里陪伴你</p>
-          <p className="text-white/50 text-xs mt-1">每个夜晚都不会孤独</p>
+          <p className="text-white/80 text-sm font-medium">{copy.spirit}</p>
+          <p className="text-white/50 text-xs mt-1">{copy.spiritSub}</p>
         </div>
       </div>
 
-      {/* 右侧登录区 */}
+      {/* 右侧{copy.login}区 */}
       <div className="w-full lg:w-1/2 bg-white flex flex-col items-center justify-center p-8 md:p-12">
         <div className="w-full max-w-md">
+          <div className="flex justify-end mb-4"><LanguageSelector compact /></div>
           {/* Logo 和标题 */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-2 mb-4">
               <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">深</span>
               </div>
-              <h1 className="text-3xl font-bold text-slate-900">深夜信箱</h1>
+              <h1 className="text-3xl font-bold text-slate-900">{copy.loginTitle}</h1>
             </div>
-            <p className="text-slate-600 text-sm">一个温暖的深夜陪伴</p>
+            <p className="text-slate-600 text-sm">{copy.tagline}</p>
           </div>
 
-          {/* 登录表单 */}
+          {/* {copy.login}表单 */}
           <form onSubmit={handleLogin} className="space-y-4 mb-6">
             {/* 邮箱输入 */}
             <div className="relative">
               <Input
                 type="email"
-                placeholder="请输入邮箱"
+                placeholder={copy.emailPlaceholder}
                 value={email}
                 onChange={(e) => handleEmailChange(e.target.value)}
                 className={`bg-slate-50 border-2 text-slate-900 placeholder:text-slate-400 pl-10 h-12 rounded-lg transition-all ${
@@ -342,7 +348,7 @@ export default function UserLogin() {
               {isEmailValid && !errors.email && (
                 <p className="text-green-500 text-xs mt-1 flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" />
-                  邮箱格式正确
+                  {copy.emailValid}
                 </p>
               )}
             </div>
@@ -385,18 +391,18 @@ export default function UserLogin() {
               )}
               {password && password.length < 6 && !errors.password && (
                 <p className="text-yellow-600 text-xs mt-1 flex items-center gap-1">
-                  密码至少需要 6 位
+                  {copy.passwordMin}
                 </p>
               )}
               {isPasswordValid && !errors.password && (
                 <p className="text-green-500 text-xs mt-1 flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" />
-                  密码格式正确
+                  {copy.passwordValid}
                 </p>
               )}
             </div>
 
-            {/* 记住我 */}
+            {/* {copy.remember} */}
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -405,7 +411,7 @@ export default function UserLogin() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-purple-500 focus:ring-purple-500"
                 />
-                <span className="text-sm text-slate-600">记住我</span>
+                <span className="text-sm text-slate-600">{copy.remember}</span>
               </label>
               <div className="flex items-center gap-3">
                 {localStorage.getItem('rememberMe') === 'true' && (
@@ -419,9 +425,9 @@ export default function UserLogin() {
                       setRememberMe(false);
                     }}
                     className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
-                    title="清除已记住的邮箱"
+                    title={copy.clear}
                   >
-                    清除
+                    {copy.clear}
                   </button>
                 )}
                 <button
@@ -429,12 +435,12 @@ export default function UserLogin() {
                   onClick={() => navigate('/forgot-password')}
                   className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
                 >
-                  忘记密码？
+                  {copy.forgot}
                 </button>
               </div>
             </div>
 
-          {/* 登录按钮 */}
+          {/* {copy.login}按钮 */}
           {errors.submit && (
             <p className="mb-3 text-center text-sm text-red-500" role="alert">{errors.submit}</p>
           )}
@@ -443,7 +449,7 @@ export default function UserLogin() {
               disabled={isLoading || isSuccess}
               className="w-full h-12 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? '登录中...' : isSuccess ? '✓ 登录成功' : '登录'}
+              {isLoading ? copy.loggingIn : isSuccess ? copy.loginSuccess : copy.login}
             </Button>
           </form>
 
@@ -453,17 +459,17 @@ export default function UserLogin() {
               <div className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-slate-500">或者</span>
+              <span className="px-2 bg-white text-slate-500">{copy.or}</span>
             </div>
           </div>
 
-          {/* 第三方登录 */}
+          {/* 第三方{copy.login} */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <button
               type="button"
               onClick={() => handleThirdPartyLogin('google')}
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-              title="Google登录"
+              title={copy.google}
             >
               <Chrome className="w-5 h-5 text-slate-600" />
             </button>
@@ -471,7 +477,7 @@ export default function UserLogin() {
               type="button"
               onClick={() => handleThirdPartyLogin('line')}
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-              title="LINE登录"
+              title={copy.line}
             >
               <LineIcon className="w-5 h-5 text-slate-600" />
             </button>
@@ -479,7 +485,7 @@ export default function UserLogin() {
               type="button"
               onClick={() => handleThirdPartyLogin('wechat')}
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-              title="微信登录"
+              title={copy.wechat}
             >
               <WeChatIcon className="w-5 h-5 text-slate-600" />
             </button>
@@ -488,13 +494,13 @@ export default function UserLogin() {
           {/* 注册链接 */}
           <div className="text-center">
             <p className="text-slate-600 text-sm">
-              还没有账号？
+              {copy.noAccount}
               <button
                 type="button"
                 onClick={() => navigate('/register')}
                 className="text-purple-600 hover:text-purple-700 font-semibold transition-colors ml-1 bg-none border-none cursor-pointer p-0"
               >
-                立即注册
+                {copy.registerNow}
               </button>
             </p>
           </div>
@@ -502,7 +508,7 @@ export default function UserLogin() {
 
         {/* 底部Footer */}
         <div className="absolute bottom-6 left-0 right-0 text-center text-xs text-slate-500">
-          <p>© 2026 深夜信箱 · <a href="#" className="hover:text-slate-700">隐私政策</a> · <a href="#" className="hover:text-slate-700">服务条款</a></p>
+          <p>© 2026 {copy.loginTitle} · <a href="#" className="hover:text-slate-700">{copy.privacy}</a> · <a href="#" className="hover:text-slate-700">{copy.terms}</a></p>
         </div>
       </div>
 

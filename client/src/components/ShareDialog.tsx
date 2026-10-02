@@ -51,7 +51,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-label={copy.title}>
       <div className="bg-gradient-to-br from-[#1C1F4A] to-[#2D2F5A] rounded-lg p-8 max-w-md w-full mx-4 border border-white/10">
         {/* 关闭按钮 */}
         <div className="flex justify-between items-center mb-6">

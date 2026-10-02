@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Chrome, Check } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { getPasswordStrength as getSharedPasswordStrength, isValidEmail, isValidRegistrationPassword } from '@/lib/auth-validation';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { pageTranslations } from '@/lib/page-translations';
+import LanguageSelector from '@/components/LanguageSelector';
 
 // LINE图标组件
 const LineIcon = ({ className }: { className?: string }) => (
@@ -25,6 +28,8 @@ const WeChatIcon = ({ className }: { className?: string }) => (
 
 export default function Register() {
   const [, navigate] = useLocation();
+  const { language } = useLanguage();
+  const copy = pageTranslations[language].auth;
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
@@ -50,12 +55,12 @@ export default function Register() {
     return isValidRegistrationPassword(pwd);
   };
 
-  // 检查密码强度
+  // 检查密码{copy.strong}度
   const getPasswordStrength = (pwd: string) => {
     return getSharedPasswordStrength(pwd);
   };
 
-  // 获取密码强度颜色
+  // 获取密码{copy.strong}度颜色
   const getStrengthColor = (strength: string) => {
     switch (strength) {
       case 'weak':
@@ -69,32 +74,32 @@ export default function Register() {
     }
   };
 
-  // 获取密码强度中文
+  // 获取密码{copy.strong}度{copy.medium}文
   const getStrengthText = (strength: string) => {
     switch (strength) {
       case 'weak':
-        return '弱';
+        return copy.weak;
       case 'medium':
-        return '中';
+        return copy.medium;
       case 'strong':
-        return '强';
+        return copy.strong;
       default:
         return '';
     }
   };
 
-  // 发送验证码
+  // 发送{copy.verification}
   const handleSendVerificationCode = async () => {
     if (!validateEmail(email)) {
-      setErrors({ ...errors, email: '请输入有效的邮箱地址' });
+      setErrors({ ...errors, email: copy.emailInvalid });
       return;
     }
     if (verificationCountdown > 0) {
-      setErrors({ ...errors, verificationCode: '请等待倒计时结束后再发送' });
+      setErrors({ ...errors, verificationCode: copy.waitCode });
       return;
     }
     if (dailyCodeCount >= 10) {
-      setErrors({ ...errors, verificationCode: '今天已达到发送上限（10次）' });
+      setErrors({ ...errors, verificationCode: copy.dailyLimit });
       return;
     }
 
@@ -107,7 +112,7 @@ export default function Register() {
         body: JSON.stringify({ email }),
       });
       const result = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(result.error || '验证码发送失败');
+      if (!response.ok) throw new Error(result.error || copy.codeFailed);
       setVerificationCodeSent(true);
       setVerificationCountdown(60);
       setDailyCodeCount((count) => count + 1);
@@ -123,7 +128,7 @@ export default function Register() {
         });
       }, 1000);
     } catch (error) {
-      setErrors((current) => ({ ...current, verificationCode: error instanceof Error ? error.message : '验证码发送失败' }));
+      setErrors((current) => ({ ...current, verificationCode: error instanceof Error ? error.message : copy.codeFailed }));
     } finally {
       setIsLoading(false);
     }
@@ -135,33 +140,33 @@ export default function Register() {
 
     // 验证邮箱
     if (!email) {
-      newErrors.email = '请输入邮箱地址';
+      newErrors.email = copy.emailPlaceholder;
     } else if (!validateEmail(email)) {
-      newErrors.email = '请输入有效的邮箱地址';
+      newErrors.email = copy.emailInvalid;
     }
 
-    // 验证验证码
+    // 验证{copy.verification}
     if (!verificationCode) {
-      newErrors.verificationCode = '请输入验证码';
+      newErrors.verificationCode = copy.codePlaceholder;
     }
 
     // 验证密码
     if (!password) {
-      newErrors.password = '请设置密码';
+      newErrors.password = copy.passwordPlaceholderRegister;
     } else if (!validatePassword(password)) {
-      newErrors.password = '密码至少6位，包含字母和数字';
+      newErrors.password = copy.passwordRule;
     }
 
-    // 验证确认密码
+    // 验证{copy.confirmPassword}
     if (!confirmPassword) {
-      newErrors.confirmPassword = '请确认密码';
+      newErrors.confirmPassword = copy.confirmPlaceholder;
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = '两次输入的密码不一致';
+      newErrors.confirmPassword = copy.passwordMismatch;
     }
 
     // 验证协议
     if (!agreeTerms) {
-      newErrors.agreeTerms = '请同意用户协议和隐私政策';
+      newErrors.agreeTerms = `${copy.agreePrefix} ${copy.userAgreement} ${copy.and} ${copy.privacy}`;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -171,7 +176,7 @@ export default function Register() {
 
     setIsLoading(true);
     try {
-      // 处理"记住我"功能
+      // 处理"{copy.remember}"功能
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', email);
         localStorage.setItem('rememberMe', 'true');
@@ -189,15 +194,15 @@ export default function Register() {
         body: JSON.stringify({ email, password, code: verificationCode }),
       });
       const result = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(result.error || '注册失败，请重试');
+      if (!response.ok) throw new Error(result.error || copy.registerFailed);
       setIsSuccess(true);
 
       setTimeout(() => {
-        // 注册成功后自动跳转到首页
+        // {copy.registerSuccess}后自动跳转到首页
         navigate('/');
       }, 1500);
     } catch (error) {
-      setErrors((current) => ({ ...current, submit: error instanceof Error ? error.message : '注册失败，请重试' }));
+      setErrors((current) => ({ ...current, submit: error instanceof Error ? error.message : copy.registerFailed }));
     } finally {
       setIsLoading(false);
     }
@@ -208,10 +213,11 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
+        <div className="flex justify-end mb-4"><LanguageSelector compact /></div>
         {/* 标题 */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">创建你的账号</h1>
-          <p className="text-gray-400 text-sm">今晚，让情绪有个地方安放。</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{copy.registerTitle}</h1>
+          <p className="text-gray-400 text-sm">{copy.registerTagline}</p>
         </div>
 
         {/* 表单 */}
@@ -220,11 +226,11 @@ export default function Register() {
           <div>
             <label className="flex items-center text-white text-sm mb-2">
               <Mail className="w-4 h-4 mr-2 text-blue-400" />
-              邮箱地址
+              {copy.emailPlaceholder}
             </label>
             <Input
               type="email"
-              placeholder="请输入邮箱地址"
+              placeholder={copy.emailPlaceholder}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -234,7 +240,7 @@ export default function Register() {
             />
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
             {email && !validateEmail(email) && (
-              <p className="text-red-400 text-xs mt-1">请输入有效的邮箱地址</p>
+              <p className="text-red-400 text-xs mt-1">{copy.emailInvalid}</p>
             )}
             {email && validateEmail(email) && (
               <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
@@ -248,12 +254,12 @@ export default function Register() {
           <div>
             <label className="flex items-center text-white text-sm mb-2">
               <Mail className="w-4 h-4 mr-2 text-blue-400" />
-              验证码
+              {copy.verification}
             </label>
             <div className="flex gap-2">
               <Input
                 type="text"
-                placeholder="输入验证码"
+                placeholder={copy.codePlaceholder}
                 value={verificationCode}
                 onChange={(e) => {
                   setVerificationCode(e.target.value);
@@ -266,17 +272,17 @@ export default function Register() {
                 disabled={isLoading || verificationCountdown > 0 || !validateEmail(email)}
                 className="bg-blue-500 hover:bg-blue-600 text-white px-4 whitespace-nowrap"
               >
-                {verificationCountdown > 0 ? `${verificationCountdown}s` : '发送验证码'}
+                {verificationCountdown > 0 ? `${verificationCountdown}s` : copy.sendCode}
               </Button>
             </div>
             {errors.verificationCode && <p className="text-red-400 text-xs mt-1">{errors.verificationCode}</p>}
             {verificationCode && verificationCode.length !== 6 && (
-              <p className="text-red-400 text-xs mt-1">验证码应为6位数字</p>
+              <p className="text-red-400 text-xs mt-1">{copy.codeInvalid}</p>
             )}
             {verificationCode && verificationCode.length === 6 && /^\d{6}$/.test(verificationCode) && (
               <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
                 <Check className="w-3 h-3" />
-                验证码格式正确
+                {copy.codeInvalid}
               </p>
             )}
             {dailyCodeCount > 0 && (
@@ -286,16 +292,16 @@ export default function Register() {
             )}
           </div>
 
-          {/* 设置密码 */}
+          {/* {copy.setPassword} */}
           <div>
             <label className="flex items-center text-white text-sm mb-2">
               <Lock className="w-4 h-4 mr-2 text-blue-400" />
-              设置密码
+              {copy.setPassword}
             </label>
             <div className="relative">
               <Input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="至少6位"
+                placeholder={copy.passwordPlaceholderRegister}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -312,21 +318,21 @@ export default function Register() {
             </div>
             {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
 
-            {/* 密码强度提示 */}
+            {/* 密码{copy.strong}度提示 */}
             {password && (
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-gray-400 text-xs">密码强度：</span>
+                <span className="text-gray-400 text-xs">{copy.passwordStrength}</span>
                 <div className="flex gap-1">
                   <span className={`text-xs font-medium ${getStrengthColor('weak')} ${passwordStrength === 'weak' ? 'opacity-100' : 'opacity-40'}`}>
-                    弱
+                    {copy.weak}
                   </span>
                   <span className="text-gray-500">|</span>
                   <span className={`text-xs font-medium ${getStrengthColor('medium')} ${passwordStrength === 'medium' ? 'opacity-100' : 'opacity-40'}`}>
-                    中
+                    {copy.medium}
                   </span>
                   <span className="text-gray-500">|</span>
                   <span className={`text-xs font-medium ${getStrengthColor('strong')} ${passwordStrength === 'strong' ? 'opacity-100' : 'opacity-40'}`}>
-                    强
+                    {copy.strong}
                   </span>
                 </div>
               </div>
@@ -337,12 +343,12 @@ export default function Register() {
           <div>
             <label className="flex items-center text-white text-sm mb-2">
               <Lock className="w-4 h-4 mr-2 text-blue-400" />
-              确认密码
+              {copy.confirmPassword}
             </label>
             <div className="relative">
               <Input
                 type={showConfirmPassword ? 'text' : 'password'}
-                placeholder="再输入一次密码"
+                placeholder={copy.confirmPlaceholder}
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
@@ -369,7 +375,7 @@ export default function Register() {
             )}
           </div>
 
-          {/* 记住我 */}
+          {/* {copy.remember} */}
           <div className="flex items-center gap-2 pt-2">
             <input
               type="checkbox"
@@ -379,7 +385,7 @@ export default function Register() {
               className="w-4 h-4 rounded border-white/20 bg-white/5 text-blue-500"
             />
             <label htmlFor="rememberMe" className="text-gray-400 text-sm">
-              记住我
+              {copy.remember}
             </label>
           </div>
 
@@ -396,20 +402,20 @@ export default function Register() {
               className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5 text-blue-500"
             />
             <label htmlFor="terms" className="text-gray-300 text-sm">
-              我已阅读并同意
+              {copy.agreePrefix}
               <a href="#" className="text-blue-400 hover:text-blue-300 mx-1">
-                《用户协议》
+                {copy.userAgreement}
               </a>
-              和
+              {copy.and}
               <a href="#" className="text-blue-400 hover:text-blue-300 mx-1">
-                《隐私政策》
+                {copy.privacy}
               </a>
             </label>
           </div>
           {errors.agreeTerms && <p className="text-red-400 text-xs">{errors.agreeTerms}</p>}
           {errors.submit && <p className="text-red-400 text-xs">{errors.submit}</p>}
 
-          {/* 创建账号按钮 */}
+          {/* {copy.createAccount}按钮 */}
           <Button
             onClick={handleRegister}
             disabled={isLoading || isSuccess}
@@ -418,21 +424,21 @@ export default function Register() {
             {isSuccess ? (
               <span className="flex items-center justify-center gap-2">
                 <Check className="w-4 h-4" />
-                注册成功
+                {copy.registerSuccess}
               </span>
             ) : isLoading ? (
-              '创建中...'
+              copy.creating
             ) : (
-              '创建账号'
+              copy.createAccount
             )}
           </Button>
 
           {/* 已有账号链接 */}
           <div className="text-center pt-4">
             <span className="text-gray-400 text-sm">
-              已有账号？
+              {copy.hasAccount}
               <a href="/user-login" className="text-blue-400 hover:text-blue-300 ml-1">
-                立即登录 →
+                {copy.loginNow}
               </a>
             </span>
           </div>
@@ -440,7 +446,7 @@ export default function Register() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-500 text-xs">
-          <p>© 2026 深夜信箱 · 隐私政策 · 服务条款</p>
+          <p>© 2026 {copy.loginTitle} · {copy.footer}</p>
         </div>
       </div>
     </div>
