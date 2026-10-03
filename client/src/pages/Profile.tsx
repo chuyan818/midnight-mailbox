@@ -22,13 +22,13 @@ import { getBadgeLabel, getBadgeTier } from "@/lib/membership-tier";
 import { useLanguage, translations, type Language } from "@/contexts/LanguageContext";
 import { pageTranslations } from "@/lib/page-translations";
 import LanguageSelector from "@/components/LanguageSelector";
+import PayPalSubscriptionButton from "@/components/PayPalSubscriptionButton";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
   const { language, setLanguage } = useLanguage();
   const profileText = translations[language].profile;
-  const commonText = translations[language].common;
   const extra = pageTranslations[language].profile;
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -48,14 +48,6 @@ export default function Profile() {
   const markReminderRead = trpc.membershipReminder.markReminderAsRead.useMutation({
     onSuccess: () => remindersQuery.refetch(),
   });
-  const membershipUpgrade = trpc.membership.upgrade.useMutation({
-    onSuccess: () => {
-      profileQuery.refetch();
-      toast.success("会员权益已更新");
-    },
-    onError: () => toast.error("会员更新失败，请稍后重试"),
-  });
-
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
@@ -310,14 +302,7 @@ export default function Profile() {
               {extra.benefitDesc}
             </p>
           </div>
-              <Button
-                type="button"
-                onClick={() => membershipUpgrade.mutate({ type: "yearly" })}
-                disabled={membershipUpgrade.isPending}
-                className="mt-3 bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857] text-sm h-8"
-              >
-                {membershipUpgrade.isPending ? commonText.loading : profileText.upgradeMembership}
-              </Button>
+              <PayPalSubscriptionButton />
           </div>
         </div>
 
