@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -41,6 +41,10 @@ export default function Profile() {
     }
   );
   const { data: profile, isLoading } = profileQuery;
+  const paymentStatus = profile?.membership?.paymentStatus === "none" && profile.membership.membershipType !== "free"
+    ? "active"
+    : profile?.membership?.paymentStatus || "none";
+  const previousPaymentStatus = useRef(paymentStatus);
 
   const badgeTier = getBadgeTier(profile?.membership?.membershipType);
   const badgeLabel = getBadgeLabel(badgeTier);
@@ -48,6 +52,25 @@ export default function Profile() {
   const markReminderRead = trpc.membershipReminder.markReminderAsRead.useMutation({
     onSuccess: () => remindersQuery.refetch(),
   });
+  const registerPayPalPending = trpc.paypal.registerPending.useMutation({
+    onSuccess: () => profileQuery.refetch(),
+  });
+
+  useEffect(() => {
+    if (!isAuthenticated || paymentStatus !== "pending") return;
+    const timer = window.setInterval(() => void profileQuery.refetch(), 3000);
+    return () => window.clearInterval(timer);
+  }, [isAuthenticated, paymentStatus, profileQuery.refetch]);
+
+  useEffect(() => {
+    if (previousPaymentStatus.current === "pending" && paymentStatus === "active") {
+      toast.success(extra.paymentActiveMessage);
+      navigate("/profile?payment=success");
+    } else if (previousPaymentStatus.current === "pending" && paymentStatus === "failed") {
+      toast.error(extra.paymentFailedMessage);
+    }
+    previousPaymentStatus.current = paymentStatus;
+  }, [extra.paymentActiveMessage, extra.paymentFailedMessage, navigate, paymentStatus]);
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
@@ -72,6 +95,33 @@ export default function Profile() {
       toast.error("登出失败");
     }
   };
+
+  const handlePayPalApproved = async (subscriptionId: string) => {
+    await registerPayPalPending.mutateAsync({ subscriptionId });
+    await profileQuery.refetch();
+  };
+
+  const paymentStatusLabel = paymentStatus === "pending"
+    ? extra.paymentPending
+    : paymentStatus === "active"
+      ? extra.paymentActive
+      : paymentStatus === "failed"
+        ? extra.paymentFailed
+        : extra.paymentNone;
+  const paymentStatusMessage = paymentStatus === "pending"
+    ? extra.paymentPendingMessage
+    : paymentStatus === "active"
+      ? extra.paymentActiveMessage
+      : paymentStatus === "failed"
+        ? extra.paymentFailedMessage
+        : extra.paymentNoneMessage;
+  const paymentStatusClass = paymentStatus === "active"
+    ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
+    : paymentStatus === "failed"
+      ? "border-rose-300/30 bg-rose-400/10 text-rose-100"
+      : paymentStatus === "pending"
+        ? "border-amber-300/30 bg-amber-400/10 text-amber-100"
+        : "border-white/10 bg-white/5 text-white/75";
 
   const displayName = profile?.user?.name || user?.name || "深夜朋友";
   const initials = displayName.trim().slice(0, 1).toUpperCase();
@@ -295,14 +345,21 @@ export default function Profile() {
             )}
           </div>
 
-          <div className="p-4 rounded-lg bg-white/5 border border-white/10 flex flex-col justify-between">
-          <div>
-            <p className="text-xs text-white/60 mb-2">{extra.benefits}</p>
-            <p className="text-xs text-white/70">
-              {extra.benefitDesc}
-            </p>
-          </div>
-              <PayPalSubscriptionButton />
+          <div className="p-4 rounded-lg bg-white/5 border border-white/10 flex flex-col justify-between" data-testid="membership-payment-card">
+            <div>
+              <p className="text-xs text-white/60 mb-2">{extra.paymentStatusTitle}</p>
+              <div className={`rounded-lg border px-3 py-2 ${paymentStatusClass}`} data-testid={`payment-status-${paymentStatus}`}>
+                <p className="text-sm font-semibold">{paymentStatusLabel}</p>
+                <p className="mt-1 text-xs opacity-85">{paymentStatusMessage}</p>
+              </div>
+              {paymentStatus === "active" ? (
+                <p className="mt-3 text-xs text-white/60">{extra.benefitDesc}</p>
+              ) : paymentStatus === "pending" ? (
+                <p className="mt-3 text-xs text-white/50">{extra.paymentPendingMessage}</p>
+              ) : (
+                <PayPalSubscriptionButton onApproved={handlePayPalApproved} />
+              )}
+            </div>
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import { socialCompleteRouter } from "./routers/social-complete";
 import { adminRouter } from "./routers/admin";
 import { supportRouter } from "./routers/support";
 import { membershipReminderRouter } from "./membership-reminder-router";
+import { registerPayPalSubscription } from "./paypal";
 import {
   getUserById,
   createLetter,
@@ -274,6 +275,23 @@ export const appRouter = router({
 
       return { success: true };
     }),
+  }),
+
+  paypal: router({
+    registerPending: protectedProcedure
+      .input(z.object({ subscriptionId: z.string().min(10).max(80) }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await registerPayPalSubscription(ctx.user.id, input.subscriptionId);
+        } catch (error) {
+          console.error("[PayPal] Failed to register pending subscription", error);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "PayPal 订阅验证失败，请重试",
+            cause: error,
+          });
+        }
+      }),
   }),
 
   subscription: router({

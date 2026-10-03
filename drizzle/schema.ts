@@ -89,6 +89,8 @@ export const memberships = mysqlTable("memberships", {
   membershipExpiry: timestamp("membershipExpiry"),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  paypalSubscriptionId: varchar("paypalSubscriptionId", { length: 255 }),
+  paymentStatus: varchar("paymentStatus", { length: 32 }).default("none").notNull(),
   dailyLetterCount: int("dailyLetterCount").default(0).notNull(),
   lastLetterDate: date("lastLetterDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

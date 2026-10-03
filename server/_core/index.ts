@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import stripeWebhookRouter from "../stripe-webhook";
 import { registerMembershipExpiryReminderRoute } from "../scheduled/membership-expiry-reminder";
 import { registerEmailAuthRoutes } from "../auth/routes";
+import { registerPayPalRoutes } from "../paypal";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -45,6 +46,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerEmailAuthRoutes(app);
   registerMembershipExpiryReminderRoute(app);
+  registerPayPalRoutes(app);
   
   // tRPC API
   app.use(
@@ -77,6 +79,7 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
     console.log(`Stripe Webhook endpoint: http://localhost:${port}/api/stripe/webhook`);
+    console.log(`PayPal Webhook endpoint: http://localhost:${port}/api/paypal/webhook`);
     console.log(`Health check: http://localhost:${port}/api/health`);
   });
 }
