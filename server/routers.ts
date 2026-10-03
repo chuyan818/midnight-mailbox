@@ -27,6 +27,7 @@ import {
 } from "./db";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import {
   generateAIReply,
   analyzeEmotion,
@@ -258,19 +259,11 @@ export const appRouter = router({
     upgrade: protectedProcedure
       .input(z.object({ type: z.enum(["monthly", "yearly"]) }))
       .mutation(async ({ ctx, input }) => {
-        const expiryDate = new Date();
-        if (input.type === "monthly") {
-          expiryDate.setMonth(expiryDate.getMonth() + 1);
-        } else {
-          expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-        }
-
-        await upsertMembership(ctx.user.id, {
-          membershipType: input.type,
-          membershipExpiry: expiryDate,
+        void input;
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "请先完成 PayPal 或 Stripe 付款，服务端确认支付后才能升级会员",
         });
-
-        return { success: true };
       }),
 
     cancel: protectedProcedure.mutation(async ({ ctx }) => {

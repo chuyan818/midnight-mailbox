@@ -5,6 +5,7 @@
 
 import { TRPCError } from '@trpc/server';
 import { TrpcContext } from './_core/context';
+import { getUserMembership } from './db';
 
 /**
  * 会员权限配置
@@ -55,9 +56,11 @@ export async function checkPermission(
     };
   }
 
-  // 获取用户的会员类型
-  // 注意：需要从数据库查询用户的会员信息
-  const membershipType = 'free'; // 应询询数据库
+  // 始终从数据库读取会员状态，不能相信客户端传入的等级或本地状态。
+  const membership = await getUserMembership(ctx.user.id);
+  const membershipType = membership?.membershipExpiry && new Date(membership.membershipExpiry) <= new Date()
+    ? 'free'
+    : (membership?.membershipType || 'free');
   const permissions = membershipPermissions[membershipType as keyof typeof membershipPermissions];
 
   if (!permissions) {

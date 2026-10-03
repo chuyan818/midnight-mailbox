@@ -46,6 +46,7 @@ describe("membership system", () => {
 
   it("should have free membership by default", async () => {
     const { ctx } = createAuthContext();
+    await upsertMembership(ctx.user!.id, { membershipType: "free", membershipExpiry: null });
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.membership.getInfo();
@@ -60,6 +61,15 @@ describe("membership system", () => {
     // Free users should be able to write letters
     // The limit is enforced in the create mutation
     expect(ctx.user.id).toBeDefined();
+  });
+
+  it("must reject direct membership upgrades without verified payment", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.membership.upgrade({ type: "yearly" })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
   });
 
   it("should allow unlimited letters for premium members", async () => {

@@ -93,7 +93,7 @@ describe('Membership Expiry Reminder', () => {
   it('should generate correct expiry reminder notification', () => {
     const userId = 'user-123';
     const tier: MembershipTier = 'premium';
-    const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
 
     const notification = generateExpiryReminderNotification(userId, tier, expiryDate, 7);
 
@@ -108,7 +108,7 @@ describe('Membership Expiry Reminder', () => {
   it('should generate 3-day expiry reminder notification', () => {
     const userId = 'user-123';
     const tier: MembershipTier = 'standard';
-    const expiryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    const expiryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
 
     const notification = generateExpiryReminderNotification(userId, tier, expiryDate, 3);
 
