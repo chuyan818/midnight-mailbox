@@ -45,9 +45,10 @@ test("login and registration pages render translated labels", async ({ page }) =
 
 test("privacy policy and terms pages are independently accessible in four languages", async ({ page }) => {
   const legalPages = [
-    { path: "/privacy-policy", heading: ["隐私政策", "Privacy Policy", "プライバシーポリシー", "개인정보 처리방침"], version: ["版本 1.0.0", "Version 1.0.0", "バージョン 1.0.0", "버전 1.0.0"], date: ["生效日期：2026年10月3日", "Effective date: October 3, 2026", "施行日：2026年10月3日", "시행일: 2026년 10월 3일"] },
-    { path: "/terms-of-service", heading: ["用户协议", "Terms of Service", "利用規約", "서비스 약관"], version: ["版本 1.0.0", "Version 1.0.0", "バージョン 1.0.0", "버전 1.0.0"], date: ["生效日期：2026年10月3日", "Effective date: October 3, 2026", "施行日：2026年10月3日", "시행일: 2026년 10월 3일"] },
+    { path: "/privacy-policy", heading: ["隐私政策", "Privacy Policy", "プライバシーポリシー", "개인정보 처리방침"], version: ["版本 1.0.0", "Version 1.0.0", "バージョン 1.0.0", "버전 1.0.0"], date: ["生效日期：2026年10月3日", "Effective date: October 3, 2026", "施行日：2026年10月3日", "시행일: 2026년 10월 3일"], print: ["打印", "Print", "印刷", "인쇄"], exportPdf: ["导出 PDF", "Export PDF", "PDFを出力", "PDF 내보내기"] },
+    { path: "/terms-of-service", heading: ["用户协议", "Terms of Service", "利用規約", "서비스 약관"], version: ["版本 1.0.0", "Version 1.0.0", "バージョン 1.0.0", "버전 1.0.0"], date: ["生效日期：2026年10月3日", "Effective date: October 3, 2026", "施行日：2026年10月3日", "시행일: 2026년 10월 3일"], print: ["打印", "Print", "印刷", "인쇄"], exportPdf: ["导出 PDF", "Export PDF", "PDFを出力", "PDF 내보내기"] },
   ];
+  await page.addInitScript(() => { window.print = () => { document.body.dataset.printInvoked = "true"; }; });
   for (const legal of legalPages) {
     for (const [index, code] of ["zh", "en", "ja", "ko"].entries()) {
       await page.goto(legal.path);
@@ -56,6 +57,10 @@ test("privacy policy and terms pages are independently accessible in four langua
       await expect(page.getByRole("heading", { name: legal.heading[index] })).toBeVisible();
       await expect(page.getByText(legal.version[index])).toBeVisible();
       await expect(page.getByText(legal.date[index])).toBeVisible();
+      await expect(page.getByTestId("legal-print-button")).toHaveText(legal.print[index]);
+      await expect(page.getByTestId("legal-export-pdf-button")).toHaveText(legal.exportPdf[index]);
+      await page.getByTestId("legal-export-pdf-button").click();
+      await expect(page.locator("body")).toHaveAttribute("data-print-invoked", "true");
       await expect(page.locator("html")).toHaveAttribute("lang", code);
       await expect(page.getByRole("link", { name: /←/ })).toBeVisible();
     }
