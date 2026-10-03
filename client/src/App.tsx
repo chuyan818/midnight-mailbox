@@ -29,6 +29,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import SecuritySettings from "./pages/SecuritySettings";
 import PremiumSupport from "./pages/PremiumSupport";
 import AdminSupport from "./pages/AdminSupport";
+import LegalPage from "./pages/LegalPage";
 import { SessionTimeoutProvider } from "./components/SessionTimeoutProvider";
 
 function Router() {
@@ -39,6 +40,8 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/user-login"} component={UserLogin} />
       <Route path={"/register"} component={Register} />
+      <Route path={"/privacy-policy"} component={() => <LegalPage kind="privacy" />} />
+      <Route path={"/terms-of-service"} component={() => <LegalPage kind="terms" />} />
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/security-settings"} component={SecuritySettings} />
       <Route path={"/premium-support"} component={PremiumSupport} />

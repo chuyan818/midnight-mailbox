@@ -43,6 +43,23 @@ test("login and registration pages render translated labels", async ({ page }) =
   }
 });
 
+test("privacy policy and terms pages are independently accessible in four languages", async ({ page }) => {
+  const legalPages = [
+    { path: "/privacy-policy", heading: ["隐私政策", "Privacy Policy", "プライバシーポリシー", "개인정보 처리방침"] },
+    { path: "/terms-of-service", heading: ["用户协议", "Terms of Service", "利用規約", "서비스 약관"] },
+  ];
+  for (const legal of legalPages) {
+    for (const [index, code] of ["zh", "en", "ja", "ko"].entries()) {
+      await page.goto(legal.path);
+      await page.getByRole("button", { name: "Select language" }).click();
+      await page.getByRole("button", { name: new RegExp(languageLabel(code)) }).click();
+      await expect(page.getByRole("heading", { name: legal.heading[index] })).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute("lang", code);
+      await expect(page.getByRole("link", { name: /←/ })).toBeVisible();
+    }
+  }
+});
+
 async function loginAsTestUser(page: import("@playwright/test").Page) {
   await page.addInitScript(() => localStorage.setItem("language", "zh"));
   await page.goto("/user-login");
@@ -66,6 +83,10 @@ test("authenticated users can choose and restore a localized animated theme", as
   await expect.poll(() => page.evaluate(() => localStorage.getItem("midnight-mailbox-selected-theme"))).toBe("cherry-blossom");
   await page.reload();
   await expect(page.locator(".theme-cherry-blossom").first()).toBeVisible();
+  await page.getByTestId("theme-selector-trigger").click();
+  await page.getByTestId("theme-reset-button").click();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("midnight-mailbox-selected-theme"))).toBeNull();
+  await expect(page.locator(".theme-starry-night").first()).toBeVisible();
 });
 
 test("share dialog stays readable in all four languages", async ({ page }) => {
@@ -85,8 +106,42 @@ test("share dialog stays readable in all four languages", async ({ page }) => {
     await expect(dialog).toBeVisible({ timeout: 8000 });
     await expect(dialog.getByText(language.shareText)).toBeVisible();
     for (const label of [language.wechat, language.weibo, language.qq, language.copy, language.close]) {
-      await expect(dialog.getByRole("button", { name: label })).toBeVisible();
+      await expect(dialog.getByRole("button", { name: label }).last()).toBeVisible();
     }
     expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight)).toBe(true);
   }
+});
+
+test.describe("mobile layout", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true });
+
+  test("keeps theme reset and share dialog usable on a small screen", async ({ page }) => {
+    await loginAsTestUser(page);
+    await page.goto("/write");
+
+    await page.getByRole("button", { name: "星空漫漫" }).first().click();
+    const themeMenu = page.locator(".absolute.top-full");
+    await expect(themeMenu).toBeVisible();
+    expect(await themeMenu.evaluate((element) => element.getBoundingClientRect().right <= window.innerWidth)).toBe(true);
+    await page.getByTestId("theme-reset-button").evaluate((element) => (element as HTMLElement).click());
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("midnight-mailbox-selected-theme"))).toBeNull();
+    await expect(page.locator(".absolute.top-full")).toHaveCount(0);
+
+    await page.goto("/write?sharePreview=1");
+    const dialog = page.getByRole("dialog", { name: "分享这封信" });
+    await expect(dialog).toBeVisible({ timeout: 15000 });
+    const dialogBounds = await dialog.locator(":scope > div").evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+    });
+    expect(dialogBounds.right).toBeLessThanOrEqual(390);
+    expect(dialogBounds.width).toBeLessThanOrEqual(390);
+    expect(dialogBounds.height).toBeLessThanOrEqual(844);
+    expect(await dialog.locator(":scope > div").evaluate((element) => element.scrollHeight >= element.clientHeight)).toBe(true);
+    for (const button of await dialog.getByRole("button").all()) {
+      const bounds = await button.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+    }
+  });
 });

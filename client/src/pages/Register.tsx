@@ -403,11 +403,11 @@ export default function Register() {
             />
             <label htmlFor="terms" className="text-gray-300 text-sm">
               {copy.agreePrefix}
-              <a href="#" className="text-blue-400 hover:text-blue-300 mx-1">
+              <a href="/terms-of-service" className="text-blue-400 hover:text-blue-300 mx-1">
                 {copy.userAgreement}
               </a>
               {copy.and}
-              <a href="#" className="text-blue-400 hover:text-blue-300 mx-1">
+              <a href="/privacy-policy" className="text-blue-400 hover:text-blue-300 mx-1">
                 {copy.privacy}
               </a>
             </label>

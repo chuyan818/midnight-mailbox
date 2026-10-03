@@ -508,7 +508,7 @@ export default function UserLogin() {
 
         {/* 底部Footer */}
         <div className="absolute bottom-6 left-0 right-0 text-center text-xs text-slate-500">
-          <p>© 2026 {copy.loginTitle} · <a href="#" className="hover:text-slate-700">{copy.privacy}</a> · <a href="#" className="hover:text-slate-700">{copy.terms}</a></p>
+          <p>© 2026 {copy.loginTitle} · <a href="/privacy-policy" className="hover:text-slate-700">{copy.privacy}</a> · <a href="/terms-of-service" className="hover:text-slate-700">{copy.terms}</a></p>
         </div>
       </div>
 

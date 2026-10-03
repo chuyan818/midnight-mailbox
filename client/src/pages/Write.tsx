@@ -339,8 +339,20 @@ export default function Write() {
   }, [selectedBackground]);
 
   useEffect(() => {
+    if (selectedBackground === "星空漫漫") {
+      window.localStorage.removeItem("midnight-mailbox-selected-theme");
+      return;
+    }
     window.localStorage.setItem("midnight-mailbox-selected-theme", BACKGROUND_TO_THEME[selectedBackground]);
   }, [selectedBackground]);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("sharePreview") === "1") {
+      setContent((value) => value || "分享预览");
+      setLastLetterId("share-preview");
+      setShowShareDialog(true);
+    }
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -488,6 +500,9 @@ export default function Write() {
               <ThemeSelector
                 selectedTheme={selectedTheme}
                 onThemeChange={(themeId) => setSelectedBackground(THEME_TO_BACKGROUND[themeId])}
+                onReset={() => {
+                  setSelectedBackground("星空漫漫");
+                }}
               />
             </div>
 

@@ -7,12 +7,14 @@ import { pageTranslations } from "@/lib/page-translations";
 interface ThemeSelectorProps {
   selectedTheme?: ThemeType;
   onThemeChange?: (themeId: ThemeType) => void;
+  onReset?: () => void;
   className?: string;
 }
 
 export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   selectedTheme = "starry-night",
   onThemeChange,
+  onReset,
   className = "",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -76,6 +78,13 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
     setIsOpen(false);
   };
 
+  const handleReset = () => {
+    window.localStorage.removeItem("midnight-mailbox-selected-theme");
+    if (onReset) onReset();
+    else onThemeChange?.("starry-night");
+    setIsOpen(false);
+  };
+
   return (
     <div className={`relative ${className}`}>
       <Button
@@ -83,6 +92,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
         variant="outline"
         size="sm"
         onClick={() => setIsOpen((open) => !open)}
+        data-testid="theme-selector-trigger"
         aria-expanded={isOpen}
         className="w-full justify-between border-white/20 bg-white/5 text-white hover:bg-white/10"
       >
@@ -93,7 +103,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 overflow-hidden rounded-lg border border-white/15 bg-[#151a3d] shadow-xl z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 max-h-[min(70vh,28rem)] overflow-y-auto rounded-lg border border-white/15 bg-[#151a3d] shadow-xl z-50">
           {themes.map((theme) => (
             <button
               type="button"
@@ -120,6 +130,14 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
               </div>
             </button>
           ))}
+          <button
+            type="button"
+            onClick={handleReset}
+            data-testid="theme-reset-button"
+            className="w-full border-t border-white/10 px-4 py-3 text-left text-sm text-[#FFD580] hover:bg-white/10"
+          >
+            {copy.themes.reset}
+          </button>
         </div>
       )}
 

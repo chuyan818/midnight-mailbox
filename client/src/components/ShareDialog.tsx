@@ -51,13 +51,14 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-label={copy.title}>
-      <div className="bg-gradient-to-br from-[#1C1F4A] to-[#2D2F5A] rounded-lg p-8 max-w-md w-full mx-4 border border-white/10">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-label={copy.title}>
+      <div className="bg-gradient-to-br from-[#1C1F4A] to-[#2D2F5A] rounded-lg p-5 sm:p-8 max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto border border-white/10">
         {/* 关闭按钮 */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">{copy.title}</h2>
+          <h2 className="text-lg sm:text-2xl font-bold text-white pr-3">{copy.title}</h2>
           <button
             onClick={onClose}
+            aria-label={copy.close}
             className="text-gray-400 hover:text-white transition"
           >
             <X size={24} />
@@ -72,7 +73,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           {/* 微信分享 */}
           <button
             onClick={shareToWeChat}
-            className="w-full bg-[#09B981] hover:bg-[#059669] text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+            className="w-full min-h-12 bg-[#09B981] hover:bg-[#059669] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
           >
             <span>🔗</span> {copy.wechat}
           </button>
@@ -80,7 +81,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           {/* 微博分享 */}
           <button
             onClick={shareToWeibo}
-            className="w-full bg-[#E74C3C] hover:bg-[#C0392B] text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+            className="w-full min-h-12 bg-[#E74C3C] hover:bg-[#C0392B] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
           >
             <span>🌐</span> {copy.weibo}
           </button>
@@ -88,7 +89,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           {/* QQ分享 */}
           <button
             onClick={shareToQQ}
-            className="w-full bg-[#3B5998] hover:bg-[#2D4373] text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+            className="w-full min-h-12 bg-[#3B5998] hover:bg-[#2D4373] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
           >
             <span>💬</span> {copy.qq}
           </button>
@@ -96,7 +97,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           {/* 复制链接 */}
           <button
             onClick={copyToClipboard}
-            className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+            className="w-full min-h-12 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
           >
             {copied ? (
               <>
@@ -113,7 +114,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
         {/* 关闭按钮 */}
         <button
           onClick={onClose}
-          className="w-full bg-white/10 hover:bg-white/20 text-white font-semibold py-2 rounded-lg transition"
+          className="w-full min-h-11 bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-3 rounded-lg transition whitespace-normal"
         >
           {copy.close}
         </button>
