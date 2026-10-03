@@ -15,6 +15,7 @@ import {
   HelpCircle,
   Info,
   LogOut,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import MembershipBadge from "@/components/MembershipBadge";
@@ -22,7 +23,7 @@ import { getBadgeLabel, getBadgeTier } from "@/lib/membership-tier";
 import { useLanguage, translations, type Language } from "@/contexts/LanguageContext";
 import { pageTranslations } from "@/lib/page-translations";
 import LanguageSelector from "@/components/LanguageSelector";
-import PayPalSubscriptionButton from "@/components/PayPalSubscriptionButton";
+import UpgradePromptDialog from "@/components/UpgradePromptDialog";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -32,6 +33,8 @@ export default function Profile() {
   const extra = pageTranslations[language].profile;
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("notificationsEnabled") !== "false");
 
   const profileQuery = trpc.user.getProfile.useQuery(
@@ -54,6 +57,15 @@ export default function Profile() {
   });
   const registerPayPalPending = trpc.paypal.registerPending.useMutation({
     onSuccess: () => profileQuery.refetch(),
+  });
+  const historyQuery = trpc.paypal.history.useQuery(undefined, { enabled: isAuthenticated });
+  const cancelPayPal = trpc.paypal.cancel.useMutation({
+    onSuccess: async () => {
+      setShowCancelConfirm(false);
+      await Promise.all([profileQuery.refetch(), historyQuery.refetch()]);
+      toast.success(extra.cancelSuccess);
+    },
+    onError: () => toast.error(extra.cancelFailed),
   });
 
   useEffect(() => {
@@ -101,6 +113,16 @@ export default function Profile() {
     await profileQuery.refetch();
   };
 
+  const handleUpgradeApproved = async (subscriptionId: string) => {
+    await handlePayPalApproved(subscriptionId);
+    setShowUpgradeDialog(false);
+  };
+
+  const handleCancelPayPal = () => {
+    if (!profile?.membership?.paypalSubscriptionId || cancelPayPal.isPending) return;
+    cancelPayPal.mutate();
+  };
+
   const paymentStatusLabel = paymentStatus === "pending"
     ? extra.paymentPending
     : paymentStatus === "active"
@@ -122,6 +144,15 @@ export default function Profile() {
       : paymentStatus === "pending"
         ? "border-amber-300/30 bg-amber-400/10 text-amber-100"
         : "border-white/10 bg-white/5 text-white/75";
+  const hasPayPalSubscription = Boolean(profile?.membership?.paypalSubscriptionId);
+  const autoRenewEnabled = profile?.membership?.autoRenew !== false;
+  const historyStatusLabels: Record<string, string> = {
+    pending: extra.historyStatusPending,
+    completed: extra.historyStatusCompleted,
+    failed: extra.historyStatusFailed,
+    cancelled: extra.historyStatusCancelled,
+    expired: extra.historyStatusExpired,
+  };
 
   const displayName = profile?.user?.name || user?.name || "深夜朋友";
   const initials = displayName.trim().slice(0, 1).toUpperCase();
@@ -341,29 +372,95 @@ export default function Profile() {
                 {extra.prioritySupport}
               </Button>
             ) : (
-              <p className="mt-3 text-xs text-white/50">{extra.premiumSupport}</p>
+              <Button
+                type="button"
+                onClick={() => setShowUpgradeDialog(true)}
+                className="mt-3 h-8 bg-[#FFD580] text-xs text-[#0B0F2F] hover:bg-[#FFC857]"
+              >
+                {extra.upgradeDialogTitle}
+              </Button>
             )}
           </div>
 
           <div className="p-4 rounded-lg bg-white/5 border border-white/10 flex flex-col justify-between" data-testid="membership-payment-card">
             <div>
-              <p className="text-xs text-white/60 mb-2">{extra.paymentStatusTitle}</p>
+              <p className="text-sm font-semibold text-white/85">{extra.subscriptionManagement}</p>
+              <p className="mt-1 text-xs text-white/50">{extra.paymentStatusTitle}</p>
               <div className={`rounded-lg border px-3 py-2 ${paymentStatusClass}`} data-testid={`payment-status-${paymentStatus}`}>
                 <p className="text-sm font-semibold">{paymentStatusLabel}</p>
                 <p className="mt-1 text-xs opacity-85">{paymentStatusMessage}</p>
               </div>
               {paymentStatus === "active" ? (
-                <p className="mt-3 text-xs text-white/60">{extra.benefitDesc}</p>
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-white/60">{extra.benefitDesc}</p>
+                  {hasPayPalSubscription && (
+                    <>
+                      <p className="text-xs text-white/50">{autoRenewEnabled ? extra.autoRenewOn : `${extra.autoRenewOff} · ${extra.subscriptionCancelled}`}</p>
+                      {autoRenewEnabled ? (
+                        <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(true)} className="h-8 border-white/15 bg-transparent text-xs text-white/75 hover:bg-white/10">
+                          {extra.cancelSubscription}
+                        </Button>
+                      ) : (
+                        <div>
+                          <p className="mb-2 text-xs text-white/50">{extra.subscriptionRenewDescription}</p>
+                          <Button type="button" onClick={() => setShowUpgradeDialog(true)} className="h-8 bg-[#FFD580] text-xs text-[#0B0F2F] hover:bg-[#FFC857]">
+                            {extra.subscriptionRenew}
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               ) : paymentStatus === "pending" ? (
                 <p className="mt-3 text-xs text-white/50">{extra.paymentPendingMessage}</p>
               ) : (
-                <PayPalSubscriptionButton onApproved={handlePayPalApproved} />
+                <Button type="button" onClick={() => setShowUpgradeDialog(true)} className="mt-4 w-full bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857]">
+                  {paymentStatus === "failed" ? extra.paymentRetry : extra.upgradeDialogTitle}
+                </Button>
               )}
             </div>
           </div>
         </div>
 
-
+        {/* 支付历史 */}
+        <section className="mb-8 rounded-lg border border-white/10 bg-white/5 p-6" data-testid="payment-history">
+          <div className="mb-4 flex items-center gap-2">
+            <History className="h-4 w-4 text-[#FFD580]" />
+            <h3 className="text-sm font-semibold">{extra.historyTitle}</h3>
+          </div>
+          {historyQuery.isLoading ? (
+            <p className="text-sm text-white/50">{extra.historyLoading}</p>
+          ) : historyQuery.data?.length ? (
+            <div className="space-y-2">
+              {historyQuery.data.map((record) => (
+                <div key={record.id} className="grid grid-cols-2 gap-3 rounded-lg border border-white/10 bg-black/10 p-3 text-xs sm:grid-cols-5 sm:items-center">
+                  <div>
+                    <p className="text-white/45">{extra.historyDate}</p>
+                    <p className="mt-1 text-white/80">{new Date(record.createdAt).toLocaleDateString(language)}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/45">{extra.historyPlan}</p>
+                    <p className="mt-1 text-white/80">{record.membershipType === "yearly" ? extra.upgradeYearly : extra.upgradeMonthly}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/45">{extra.historyAmount}</p>
+                    <p className="mt-1 text-white/80">{record.amount === "0.00" ? "—" : `${record.currency} ${record.amount}`}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/45">{extra.historyProvider}</p>
+                    <p className="mt-1 text-white/80">{record.provider === "paypal" ? extra.providerPaypal : extra.providerStripe}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/45">{extra.historyStatus}</p>
+                    <p className="mt-1 font-medium text-[#FFD580]">{historyStatusLabels[record.status] || record.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-white/50">{extra.historyEmpty}</p>
+          )}
+        </section>
 
         {/* 更多设置 */}
         <div id="profile-settings" className="mb-8 p-6 rounded-lg bg-white/5 border border-white/10">
@@ -427,6 +524,23 @@ export default function Profile() {
             </div>
           </div>
         )}
+        {showCancelConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="cancel-subscription-title">
+            <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#151a3d] p-6 shadow-2xl">
+              <h2 id="cancel-subscription-title" className="text-lg font-semibold">{extra.confirmCancelSubscription}</h2>
+              <p className="mt-2 text-sm leading-6 text-white/65">{extra.cancelSubscriptionDescription}</p>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <Button type="button" variant="outline" onClick={() => setShowCancelConfirm(false)} className="border-white/15 bg-transparent text-white/75 hover:bg-white/10">
+                  {extra.keepSubscription}
+                </Button>
+                <Button type="button" onClick={handleCancelPayPal} disabled={cancelPayPal.isPending} className="bg-rose-500/80 text-white hover:bg-rose-500">
+                  {cancelPayPal.isPending ? extra.cancelPending : extra.cancelSubscription}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        <UpgradePromptDialog open={showUpgradeDialog} copy={extra} onClose={() => setShowUpgradeDialog(false)} onApproved={handleUpgradeApproved} />
       </div>
     </div>
   );

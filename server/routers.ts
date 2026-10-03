@@ -6,7 +6,7 @@ import { socialCompleteRouter } from "./routers/social-complete";
 import { adminRouter } from "./routers/admin";
 import { supportRouter } from "./routers/support";
 import { membershipReminderRouter } from "./membership-reminder-router";
-import { registerPayPalSubscription } from "./paypal";
+import { cancelPayPalSubscription, registerPayPalSubscription } from "./paypal";
 import {
   getUserById,
   createLetter,
@@ -14,6 +14,7 @@ import {
   getUserLetters,
   getLetterById,
   getUserMembership,
+  getUserSubscriptionRecords,
   upsertMembership,
   canUserWriteLetter,
   incrementDailyLetterCount,
@@ -278,6 +279,8 @@ export const appRouter = router({
   }),
 
   paypal: router({
+    history: protectedProcedure.query(async ({ ctx }) => getUserSubscriptionRecords(ctx.user.id)),
+
     registerPending: protectedProcedure
       .input(z.object({ subscriptionId: z.string().min(10).max(80) }))
       .mutation(async ({ ctx, input }) => {
@@ -292,6 +295,19 @@ export const appRouter = router({
           });
         }
       }),
+
+    cancel: protectedProcedure.mutation(async ({ ctx }) => {
+      try {
+        return await cancelPayPalSubscription(ctx.user.id);
+      } catch (error) {
+        console.error("[PayPal] Failed to cancel subscription", error);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "取消 PayPal 订阅失败，请稍后重试",
+          cause: error,
+        });
+      }
+    }),
   }),
 
   subscription: router({

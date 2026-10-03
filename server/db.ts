@@ -332,7 +332,10 @@ export async function getUserEmotionsTrend(userId: number, days: number = 7) {
 export async function createSubscriptionRecord(userId: number, data: {
   membershipType: string;
   amount: number;
+  currency?: string;
+  provider?: string;
   stripePaymentIntentId?: string;
+  paypalSubscriptionId?: string;
   status: string;
 }) {
   const db = await getDb();
@@ -342,9 +345,22 @@ export async function createSubscriptionRecord(userId: number, data: {
     userId,
     membershipType: data.membershipType,
     amount: data.amount.toString(),
+    currency: data.currency,
+    provider: data.provider,
     stripePaymentIntentId: data.stripePaymentIntentId,
+    paypalSubscriptionId: data.paypalSubscriptionId,
     status: data.status,
   });
+}
+
+export async function getUserSubscriptionRecords(userId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select()
+    .from(subscriptionRecords)
+    .where(eq(subscriptionRecords.userId, userId))
+    .orderBy(desc(subscriptionRecords.createdAt))
+    .limit(Math.min(Math.max(limit, 1), 50));
 }
 
 

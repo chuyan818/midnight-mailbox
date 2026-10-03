@@ -21,11 +21,21 @@ const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || "BAAYBLuXWAsSC
 const PAYPAL_PLAN_ID = import.meta.env.VITE_PAYPAL_PLAN_ID || "P-72U41601JC0053143NLAFGMY";
 const PAYPAL_SCRIPT_ID = "paypal-subscription-sdk";
 
-interface PayPalSubscriptionButtonProps {
-  onApproved?: (subscriptionId: string) => void | Promise<void>;
+export interface PayPalCopy {
+  paymentSubmitted: string;
+  paymentCancelled: string;
+  paymentUnavailable: string;
+  paymentButtonLoading: string;
+  paymentConfirming: string;
+  paymentLoadFailed: string;
 }
 
-export default function PayPalSubscriptionButton({ onApproved }: PayPalSubscriptionButtonProps) {
+interface PayPalSubscriptionButtonProps {
+  onApproved?: (subscriptionId: string) => void | Promise<void>;
+  copy: PayPalCopy;
+}
+
+export default function PayPalSubscriptionButton({ onApproved, copy }: PayPalSubscriptionButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -45,27 +55,27 @@ export default function PayPalSubscriptionButton({ onApproved }: PayPalSubscript
           onApprove: async (data) => {
             if (!data.subscriptionID) {
               setProcessing(false);
-              toast.error("PayPal 未返回订阅编号");
+              toast.error(copy.paymentUnavailable);
               return;
             }
             try {
               await onApproved?.(data.subscriptionID);
-              toast.success("订阅已提交，正在等待 PayPal 确认");
+              toast.success(copy.paymentSubmitted);
             } catch (error) {
               console.error("PayPal pending registration error", error);
-              toast.error("订阅登记失败，请稍后重试");
+              toast.error(copy.paymentUnavailable);
             } finally {
               setProcessing(false);
             }
           },
           onCancel: () => {
             setProcessing(false);
-            toast("PayPal 订阅已取消");
+            toast(copy.paymentCancelled);
           },
           onError: (error) => {
             setProcessing(false);
             console.error("PayPal subscription error", error);
-            toast.error("PayPal 订阅暂时无法完成，请稍后重试");
+            toast.error(copy.paymentUnavailable);
           },
         }).render("#paypal-subscription-button");
         if (!cancelled) setLoading(false);
@@ -73,7 +83,7 @@ export default function PayPalSubscriptionButton({ onApproved }: PayPalSubscript
         renderedRef.current = false;
         setLoading(false);
         console.error("PayPal SDK render error", error);
-        toast.error("PayPal 按钮加载失败");
+        toast.error(copy.paymentLoadFailed);
       }
     };
 
@@ -95,7 +105,7 @@ export default function PayPalSubscriptionButton({ onApproved }: PayPalSubscript
     script.addEventListener("error", () => {
       if (!cancelled) {
         setLoading(false);
-        toast.error("PayPal SDK 加载失败，请检查账号和地区配置");
+        toast.error(copy.paymentLoadFailed);
       }
     });
 
@@ -103,7 +113,7 @@ export default function PayPalSubscriptionButton({ onApproved }: PayPalSubscript
       cancelled = true;
       script?.removeEventListener("load", renderButton);
     };
-  }, [onApproved]);
+  }, [copy, onApproved]);
 
   return (
     <div className="relative mt-4 rounded-lg border border-white/10 bg-black/10 p-3" data-testid="paypal-subscription">
@@ -111,7 +121,7 @@ export default function PayPalSubscriptionButton({ onApproved }: PayPalSubscript
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-[#0B0F2F]/65 backdrop-blur-[1px]" data-testid="paypal-loading">
           <div className="flex items-center gap-2 rounded-full bg-[#1C1F4A] px-3 py-2 text-xs text-white/85 shadow-lg">
             <Loader2 className="h-4 w-4 animate-spin text-[#FFD580]" aria-hidden="true" />
-            <span>{loading ? "正在加载 PayPal…" : "正在确认订阅…"}</span>
+            <span>{loading ? copy.paymentButtonLoading : copy.paymentConfirming}</span>
           </div>
         </div>
       )}

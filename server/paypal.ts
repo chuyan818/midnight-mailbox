@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
-import { eq } from "drizzle-orm";
-import { memberships } from "../drizzle/schema";
+import { and, eq } from "drizzle-orm";
+import { memberships, subscriptionRecords } from "../drizzle/schema";
 import { getDb } from "./db";
 
 export type PayPalPaymentStatus = "none" | "pending" | "active" | "failed";
@@ -11,6 +11,8 @@ const PAYPAL_API_BASE = process.env.PAYPAL_ENV === "live"
 
 export const PAYPAL_PLAN_ID = process.env.PAYPAL_PLAN_ID || "P-72U41601JC0053143NLAFGMY";
 const PAYPAL_PLAN_TYPE = process.env.PAYPAL_PLAN_TYPE === "monthly" ? "monthly" : "yearly";
+const PAYPAL_PLAN_AMOUNT = process.env.PAYPAL_PLAN_AMOUNT || "0.00";
+const PAYPAL_PLAN_CURRENCY = process.env.PAYPAL_PLAN_CURRENCY || "USD";
 
 function requiredPayPalConfig() {
   const clientId = process.env.PAYPAL_CLIENT_ID;
@@ -55,6 +57,7 @@ async function paypalRequest<T>(path: string, init: RequestInit = {}): Promise<T
     const detail = await response.text();
     throw new Error(`PayPal API ${response.status}: ${detail.slice(0, 300)}`);
   }
+  if (response.status === 204) return undefined as T;
   return await response.json() as T;
 }
 
@@ -95,16 +98,35 @@ export async function registerPayPalSubscription(userId: number, subscriptionId:
       : current?.membershipType === "free" || !current
         ? { membershipType: "free" as const, membershipExpiry: null }
         : {}),
+    autoRenew: true,
+    cancelledAt: null,
     updatedAt: new Date(),
   }).where(eq(memberships.userId, userId));
 
   if (existing.length === 0) {
     await db.insert(memberships).values({
       userId,
-      membershipType: "free",
-      membershipExpiry: null,
+      membershipType: paymentStatus === "active" ? PAYPAL_PLAN_TYPE : "free",
+      membershipExpiry: paymentStatus === "active" ? getNextBillingDate({ resource: subscription }) : null,
       paypalSubscriptionId: normalizedId,
       paymentStatus,
+      autoRenew: true,
+    });
+  }
+
+  const existingRecord = await db.select({ id: subscriptionRecords.id })
+    .from(subscriptionRecords)
+    .where(eq(subscriptionRecords.paypalSubscriptionId, normalizedId))
+    .limit(1);
+  if (existingRecord.length === 0) {
+    await db.insert(subscriptionRecords).values({
+      userId,
+      membershipType: PAYPAL_PLAN_TYPE,
+      amount: PAYPAL_PLAN_AMOUNT,
+      currency: PAYPAL_PLAN_CURRENCY,
+      provider: "paypal",
+      paypalSubscriptionId: normalizedId,
+      status: paymentStatus === "active" ? "completed" : "pending",
     });
   }
 
@@ -146,12 +168,41 @@ async function updateMembershipFromPayPalEvent(event: Record<string, any>) {
     || eventType === "PAYMENT.SALE.DENIED"
     || eventType === "PAYMENT.SALE.REFUNDED"
     || eventType === "PAYMENT.SALE.REVERSED";
+  const isCancelled = eventType === "BILLING.SUBSCRIPTION.CANCELLED";
+  const transactionId = event.resource?.id && event.resource.id !== subscriptionId ? String(event.resource.id) : undefined;
+  if (transactionId && (isActive || isFailed)) {
+    const transactionExists = await db.select({ id: subscriptionRecords.id })
+      .from(subscriptionRecords)
+      .where(eq(subscriptionRecords.paypalTransactionId, transactionId))
+      .limit(1);
+    if (transactionExists.length === 0) {
+      await db.insert(subscriptionRecords).values({
+        userId: membership.userId,
+        membershipType: PAYPAL_PLAN_TYPE,
+        amount: String(event.resource?.amount?.total || event.resource?.amount?.value || PAYPAL_PLAN_AMOUNT),
+        currency: String(event.resource?.amount?.currency || event.resource?.amount?.currency_code || PAYPAL_PLAN_CURRENCY).slice(0, 3),
+        provider: "paypal",
+        paypalSubscriptionId: subscriptionId,
+        paypalTransactionId: transactionId,
+        status: isActive ? "completed" : "failed",
+      });
+    }
+  }
 
   if (isActive) {
     await db.update(memberships).set({
       membershipType: PAYPAL_PLAN_TYPE,
       membershipExpiry: getNextBillingDate(event, membership.membershipExpiry),
       paymentStatus: "active",
+      autoRenew: true,
+      cancelledAt: null,
+      updatedAt: new Date(),
+    }).where(eq(memberships.id, membership.id));
+  } else if (isCancelled) {
+    await db.update(memberships).set({
+      paymentStatus: membership.membershipType === "free" ? "failed" : "active",
+      autoRenew: false,
+      cancelledAt: new Date(),
       updatedAt: new Date(),
     }).where(eq(memberships.id, membership.id));
   } else if (isFailed) {
@@ -159,9 +210,76 @@ async function updateMembershipFromPayPalEvent(event: Record<string, any>) {
       membershipType: "free",
       membershipExpiry: null,
       paymentStatus: "failed",
+      autoRenew: false,
+      cancelledAt: new Date(),
       updatedAt: new Date(),
     }).where(eq(memberships.id, membership.id));
   }
+
+  const historyStatus = isActive
+    ? "completed"
+    : eventType.includes("CANCELLED")
+      ? "cancelled"
+      : eventType.includes("EXPIRED")
+        ? "expired"
+        : "failed";
+  if (eventType === "BILLING.SUBSCRIPTION.ACTIVATED") {
+    await db.update(subscriptionRecords).set({ status: "completed", updatedAt: new Date() })
+      .where(and(eq(subscriptionRecords.paypalSubscriptionId, subscriptionId), eq(subscriptionRecords.status, "pending")));
+  } else if (eventType.includes("CANCELLED") || eventType.includes("EXPIRED")) {
+    const eventId = event.id ? String(event.id) : undefined;
+    if (eventId) {
+      const cancellationExists = await db.select({ id: subscriptionRecords.id })
+        .from(subscriptionRecords)
+        .where(and(
+          eq(subscriptionRecords.paypalSubscriptionId, subscriptionId),
+          eq(subscriptionRecords.status, historyStatus),
+        ))
+        .limit(1);
+      if (cancellationExists.length === 0) {
+        await db.insert(subscriptionRecords).values({
+          userId: membership.userId,
+          membershipType: PAYPAL_PLAN_TYPE,
+          amount: PAYPAL_PLAN_AMOUNT,
+          currency: PAYPAL_PLAN_CURRENCY,
+          provider: "paypal",
+          paypalSubscriptionId: subscriptionId,
+          paypalTransactionId: eventId,
+          status: historyStatus,
+        });
+      }
+    }
+  }
+}
+
+export async function cancelPayPalSubscription(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(memberships).where(eq(memberships.userId, userId)).limit(1);
+  const membership = rows[0];
+  if (!membership?.paypalSubscriptionId) throw new Error("No PayPal subscription found");
+
+  await paypalRequest<void>(`/v1/billing/subscriptions/${encodeURIComponent(membership.paypalSubscriptionId)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason: "Cancelled by customer from Midnight Mailbox" }),
+  });
+  await db.update(memberships).set({
+    autoRenew: false,
+    cancelledAt: new Date(),
+    updatedAt: new Date(),
+  }).where(eq(memberships.id, membership.id));
+  const cancellationId = `cancel-${membership.paypalSubscriptionId}-${Date.now()}`;
+  await db.insert(subscriptionRecords).values({
+    userId,
+    membershipType: membership.membershipType,
+    amount: PAYPAL_PLAN_AMOUNT,
+    currency: PAYPAL_PLAN_CURRENCY,
+    provider: "paypal",
+    paypalSubscriptionId: membership.paypalSubscriptionId,
+    paypalTransactionId: cancellationId,
+    status: "cancelled",
+  });
+  return { success: true };
 }
 
 export async function verifyPayPalWebhook(event: Record<string, any>, headers: Record<string, string | undefined>) {
