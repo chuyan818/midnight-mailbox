@@ -309,7 +309,7 @@ export default function UserLogin() {
           </div>
 
           {/* {copy.login}表单 */}
-          <form onSubmit={handleLogin} className="space-y-4 mb-6">
+          <form onSubmit={handleLogin} noValidate className="space-y-4 mb-6">
             {/* 邮箱输入 */}
             <div className="relative">
               <Input
@@ -324,7 +324,6 @@ export default function UserLogin() {
                     ? 'border-green-500 focus:border-green-500 focus:bg-white focus:ring-2 focus:ring-green-500/20'
                     : 'border-slate-200 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20'
                 }`}
-                required
               />
               <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
               {isEmailValid && !errors.email && (
@@ -342,7 +341,7 @@ export default function UserLogin() {
               {email && !isEmailValid && !errors.email && (
                 <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  请输入有效的邮箱地址
+                  {copy.emailInvalid}
                 </p>
               )}
               {isEmailValid && !errors.email && (
@@ -358,7 +357,7 @@ export default function UserLogin() {
               <Input
                 ref={passwordInputRef}
                 type={showPassword ? 'text' : 'password'}
-                placeholder="请输入密码"
+                placeholder={copy.passwordPlaceholder}
                 value={password}
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 className={`bg-slate-50 border-2 text-slate-900 placeholder:text-slate-400 pl-10 pr-10 h-12 rounded-lg transition-all ${
@@ -368,7 +367,6 @@ export default function UserLogin() {
                     ? 'border-green-500 focus:border-green-500 focus:bg-white focus:ring-2 focus:ring-green-500/20'
                     : 'border-slate-200 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20'
                 }`}
-                required
               />
               <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
               <button
