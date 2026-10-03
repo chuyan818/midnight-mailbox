@@ -9,6 +9,7 @@ interface UpgradePromptDialogProps {
   copy: ProfileCopy;
   onClose: () => void;
   onApproved: (subscriptionId: string) => void | Promise<void>;
+  onFailed?: () => void;
 }
 
 const BENEFITS = [
@@ -18,7 +19,7 @@ const BENEFITS = [
   "upgradeFeatureThemes",
 ] as const;
 
-export default function UpgradePromptDialog({ open, copy, onClose, onApproved }: UpgradePromptDialogProps) {
+export default function UpgradePromptDialog({ open, copy, onClose, onApproved, onFailed }: UpgradePromptDialogProps) {
   if (!open) return null;
 
   return (
@@ -64,7 +65,13 @@ export default function UpgradePromptDialog({ open, copy, onClose, onApproved }:
         </div>
 
         <div className="mt-5 rounded-xl border border-[#FFD580]/20 bg-black/10 p-3">
-          <PayPalSubscriptionButton onApproved={onApproved} copy={copy} />
+          <PayPalSubscriptionButton
+            onApproved={onApproved}
+            onFailed={onFailed}
+            copy={copy}
+            heading={copy.providerPaypal}
+            description={copy.paymentPendingMessage}
+          />
         </div>
         <button type="button" onClick={onClose} className="mt-4 w-full rounded-lg border border-white/10 px-4 py-2 text-sm text-white/65 transition hover:bg-white/10 hover:text-white">
           {copy.upgradeClose}

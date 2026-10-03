@@ -28,6 +28,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import SecuritySettings from "./pages/SecuritySettings";
 import PremiumSupport from "./pages/PremiumSupport";
+import PaymentResult from "./pages/PaymentResult";
 import AdminSupport from "./pages/AdminSupport";
 import LegalPage from "./pages/LegalPage";
 import { SessionTimeoutProvider } from "./components/SessionTimeoutProvider";
@@ -45,6 +46,7 @@ function Router() {
       <Route path={"/forgot-password"} component={ForgotPassword} />
       <Route path={"/security-settings"} component={SecuritySettings} />
       <Route path={"/premium-support"} component={PremiumSupport} />
+      <Route path={"/payment-result"} component={PaymentResult} />
       <Route path={"/write"} component={Write} />
       <Route path={"/letter/:id"} component={Letter} />
       <Route path={"/mailbox"} component={Mailbox} />

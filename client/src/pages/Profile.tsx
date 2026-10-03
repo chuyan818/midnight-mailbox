@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { useLocation } from "wouter";
+import { useLocation, useSearchParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowLeft,
@@ -28,6 +28,7 @@ import UpgradePromptDialog from "@/components/UpgradePromptDialog";
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
+  const [searchParams] = useSearchParams();
   const { language, setLanguage } = useLanguage();
   const profileText = translations[language].profile;
   const extra = pageTranslations[language].profile;
@@ -77,12 +78,16 @@ export default function Profile() {
   useEffect(() => {
     if (previousPaymentStatus.current === "pending" && paymentStatus === "active") {
       toast.success(extra.paymentActiveMessage);
-      navigate("/profile?payment=success");
+      navigate("/payment-result?status=success");
     } else if (previousPaymentStatus.current === "pending" && paymentStatus === "failed") {
       toast.error(extra.paymentFailedMessage);
     }
     previousPaymentStatus.current = paymentStatus;
   }, [extra.paymentActiveMessage, extra.paymentFailedMessage, navigate, paymentStatus]);
+
+  useEffect(() => {
+    if (searchParams.get("payment") === "retry") setShowUpgradeDialog(true);
+  }, [searchParams]);
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
@@ -116,6 +121,7 @@ export default function Profile() {
   const handleUpgradeApproved = async (subscriptionId: string) => {
     await handlePayPalApproved(subscriptionId);
     setShowUpgradeDialog(false);
+    navigate("/payment-result?status=success");
   };
 
   const handleCancelPayPal = () => {
@@ -390,6 +396,13 @@ export default function Profile() {
                 <p className="text-sm font-semibold">{paymentStatusLabel}</p>
                 <p className="mt-1 text-xs opacity-85">{paymentStatusMessage}</p>
               </div>
+              {paymentStatus === "active" && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/65">
+                  <span className="rounded-full border border-[#FFD580]/30 bg-[#FFD580]/10 px-2.5 py-1 text-[#FFD580]">{extra.providerPaypal}</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">{profile?.membership?.membershipType === "yearly" ? extra.upgradeYearly : extra.upgradeMonthly}</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">{autoRenewEnabled ? extra.autoRenewOn : extra.autoRenewOff}</span>
+                </div>
+              )}
               {paymentStatus === "active" ? (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-white/60">{extra.benefitDesc}</p>
@@ -540,7 +553,13 @@ export default function Profile() {
             </div>
           </div>
         )}
-        <UpgradePromptDialog open={showUpgradeDialog} copy={extra} onClose={() => setShowUpgradeDialog(false)} onApproved={handleUpgradeApproved} />
+        <UpgradePromptDialog
+          open={showUpgradeDialog}
+          copy={extra}
+          onClose={() => setShowUpgradeDialog(false)}
+          onApproved={handleUpgradeApproved}
+          onFailed={() => navigate("/payment-result?status=failed")}
+        />
       </div>
     </div>
   );

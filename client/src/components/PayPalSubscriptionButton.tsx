@@ -6,7 +6,7 @@ declare global {
   interface Window {
     paypal?: {
       Buttons: (options: {
-        style?: { shape?: string; color?: string; layout?: string; label?: string };
+        style?: { shape?: string; color?: string; layout?: string; label?: string; height?: number };
         createSubscription: (data: unknown, actions: { subscription: { create: (input: { plan_id: string }) => Promise<string> } }) => Promise<string>;
         onClick?: () => void;
         onApprove: (data: { subscriptionID?: string }) => void | Promise<void>;
@@ -32,10 +32,13 @@ export interface PayPalCopy {
 
 interface PayPalSubscriptionButtonProps {
   onApproved?: (subscriptionId: string) => void | Promise<void>;
+  onFailed?: () => void;
   copy: PayPalCopy;
+  heading?: string;
+  description?: string;
 }
 
-export default function PayPalSubscriptionButton({ onApproved, copy }: PayPalSubscriptionButtonProps) {
+export default function PayPalSubscriptionButton({ onApproved, onFailed, copy, heading, description }: PayPalSubscriptionButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -49,7 +52,7 @@ export default function PayPalSubscriptionButton({ onApproved, copy }: PayPalSub
       renderedRef.current = true;
       try {
         await window.paypal.Buttons({
-          style: { shape: "rect", color: "gold", layout: "vertical", label: "subscribe" },
+          style: { shape: "rect", color: "gold", layout: "vertical", label: "subscribe", height: 48 },
           onClick: () => setProcessing(true),
           createSubscription: (_data, actions) => actions.subscription.create({ plan_id: PAYPAL_PLAN_ID }),
           onApprove: async (data) => {
@@ -63,6 +66,7 @@ export default function PayPalSubscriptionButton({ onApproved, copy }: PayPalSub
               toast.success(copy.paymentSubmitted);
             } catch (error) {
               console.error("PayPal pending registration error", error);
+              onFailed?.();
               toast.error(copy.paymentUnavailable);
             } finally {
               setProcessing(false);
@@ -75,6 +79,7 @@ export default function PayPalSubscriptionButton({ onApproved, copy }: PayPalSub
           onError: (error) => {
             setProcessing(false);
             console.error("PayPal subscription error", error);
+            onFailed?.();
             toast.error(copy.paymentUnavailable);
           },
         }).render("#paypal-subscription-button");
@@ -116,7 +121,14 @@ export default function PayPalSubscriptionButton({ onApproved, copy }: PayPalSub
   }, [copy, onApproved]);
 
   return (
-    <div className="relative mt-4 rounded-lg border border-white/10 bg-black/10 p-3" data-testid="paypal-subscription">
+    <div className="relative mt-4 overflow-hidden rounded-2xl border border-[#FFD580]/45 bg-gradient-to-br from-[#FFD580]/15 via-white/[0.06] to-transparent p-4 shadow-[0_12px_40px_rgba(255,213,128,0.12)] transition-all duration-300 hover:border-[#FFD580]/70 hover:shadow-[0_16px_48px_rgba(255,213,128,0.2)]" data-testid="paypal-subscription">
+      <div className="mb-3 flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFD580] text-sm font-black text-[#0B0F2F] shadow-lg">P</div>
+        <div>
+          {heading && <p className="text-sm font-bold text-white">{heading}</p>}
+          {description && <p className="mt-1 text-xs leading-5 text-white/60">{description}</p>}
+        </div>
+      </div>
       {(loading || processing) && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-[#0B0F2F]/65 backdrop-blur-[1px]" data-testid="paypal-loading">
           <div className="flex items-center gap-2 rounded-full bg-[#1C1F4A] px-3 py-2 text-xs text-white/85 shadow-lg">
