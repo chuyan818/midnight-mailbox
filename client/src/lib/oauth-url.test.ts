@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_OAUTH_PORTAL_URL, resolveOAuthPortalUrl } from "@/const";
 
 describe("OAuth portal URL resolution", () => {
-  it("uses the Manus OAuth portal when Railway omits the variable", () => {
+  it("uses the production OAuth portal when Railway omits the variable", () => {
     expect(resolveOAuthPortalUrl()).toBe(DEFAULT_OAUTH_PORTAL_URL);
   });
 

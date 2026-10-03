@@ -50,7 +50,7 @@ DATABASE_URL=mysql://user:password@localhost:3306/midnight_mailbox
 # OAuth配置（Manus）
 VITE_APP_ID=your_app_id
 OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=https://oauth.manus.im
+VITE_OAUTH_PORTAL_URL=https://www.shenye.xin
 JWT_SECRET=your_jwt_secret
 
 # LLM配置

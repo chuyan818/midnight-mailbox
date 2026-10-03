@@ -1,6 +1,6 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-export const DEFAULT_OAUTH_PORTAL_URL = "https://oauth.manus.im";
+export const DEFAULT_OAUTH_PORTAL_URL = "https://www.shenye.xin";
 
 export const resolveOAuthPortalUrl = (configuredUrl?: string) => {
   try {
