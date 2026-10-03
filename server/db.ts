@@ -334,7 +334,6 @@ export async function createSubscriptionRecord(userId: number, data: {
   amount: number;
   currency?: string;
   provider?: string;
-  stripePaymentIntentId?: string;
   paypalSubscriptionId?: string;
   status: string;
 }) {
@@ -347,7 +346,6 @@ export async function createSubscriptionRecord(userId: number, data: {
     amount: data.amount.toString(),
     currency: data.currency,
     provider: data.provider,
-    stripePaymentIntentId: data.stripePaymentIntentId,
     paypalSubscriptionId: data.paypalSubscriptionId,
     status: data.status,
   });

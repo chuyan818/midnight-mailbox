@@ -36,7 +36,6 @@ import {
   checkContentSafety,
   detectLanguage,
 } from "./llm-hybrid";
-import { createTestCheckoutSession } from "./test-payment";
 import { users } from "../drizzle/schema";
 
 // Emotion types
@@ -264,7 +263,7 @@ export const appRouter = router({
         void input;
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "请先完成 PayPal 或 Stripe 付款，服务端确认支付后才能升级会员",
+          message: "请先完成 PayPal 付款，服务端确认支付后才能升级会员",
         });
       }),
 
@@ -306,46 +305,6 @@ export const appRouter = router({
           message: "取消 PayPal 订阅失败，请稍后重试",
           cause: error,
         });
-      }
-    }),
-  }),
-
-  subscription: router({
-    createCheckoutSession: protectedProcedure
-      .input(z.object({
-        planType: z.enum(["monthly", "yearly"]),
-        successUrl: z.string(),
-        cancelUrl: z.string(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        try {
-          // 使用测试模式支付
-          const session = await createTestCheckoutSession(
-            ctx.user.id,
-            input.planType,
-            input.successUrl,
-            input.cancelUrl
-          );
-          return session;
-        } catch (error) {
-          console.error("Failed to create checkout session:", error);
-          throw error;
-        }
-      }),
-
-    getInfo: protectedProcedure.query(async ({ ctx }) => {
-      const { getSubscriptionInfo } = await import('./stripe');
-      return await getSubscriptionInfo(ctx.user.id);
-    }),
-
-    cancel: protectedProcedure.mutation(async ({ ctx }) => {
-      const { cancelSubscription } = await import('./stripe');
-      try {
-        await cancelSubscription(ctx.user.id);
-        return { success: true };
-      } catch (error) {
-        console.error("Failed to cancel subscription:", error);
-        throw error;
       }
     }),
   }),

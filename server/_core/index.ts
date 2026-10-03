@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express, { raw } from "express";
+import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -7,7 +7,6 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import stripeWebhookRouter from "../stripe-webhook";
 import { registerMembershipExpiryReminderRoute } from "../scheduled/membership-expiry-reminder";
 import { registerEmailAuthRoutes } from "../auth/routes";
 import { registerPayPalRoutes } from "../paypal";
@@ -34,9 +33,6 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  
-  // Stripe Webhook - must be registered BEFORE express.json()
-  app.use('/api/stripe', raw({ type: 'application/json' }), stripeWebhookRouter);
   
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
@@ -78,7 +74,6 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    console.log(`Stripe Webhook endpoint: http://localhost:${port}/api/stripe/webhook`);
     console.log(`PayPal Webhook endpoint: http://localhost:${port}/api/paypal/webhook`);
     console.log(`Health check: http://localhost:${port}/api/health`);
   });

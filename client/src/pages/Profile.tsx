@@ -448,7 +448,7 @@ export default function Profile() {
                   </div>
                   <div>
                     <p className="text-white/45">{extra.historyProvider}</p>
-                    <p className="mt-1 text-white/80">{record.provider === "paypal" ? extra.providerPaypal : extra.providerStripe}</p>
+                    <p className="mt-1 text-white/80">{record.provider === "paypal" ? extra.providerPaypal : record.provider}</p>
                   </div>
                   <div>
                     <p className="text-white/45">{extra.historyStatus}</p>
