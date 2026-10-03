@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getAllThemes, getThemeConfig, ThemeType } from "@/config/themes";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -18,6 +18,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   className = "",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const touchStartY = useRef<number | null>(null);
   const { language } = useLanguage();
   const copy = pageTranslations[language].write;
   const currentTheme = getThemeConfig(selectedTheme);
@@ -85,6 +86,19 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
     setIsOpen(false);
   };
 
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const startY = touchStartY.current;
+    const endY = event.changedTouches[0]?.clientY;
+    touchStartY.current = null;
+    if (startY !== null && endY !== undefined && endY - startY > 56) {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className={`relative ${className}`}>
       <Button
@@ -103,7 +117,12 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 max-h-[min(70vh,28rem)] overflow-y-auto rounded-lg border border-white/15 bg-[#151a3d] shadow-xl z-50">
+        <div
+          className="absolute top-full left-0 right-0 mt-2 max-h-[min(70vh,28rem)] overflow-y-auto rounded-lg border border-white/15 bg-[#151a3d] shadow-xl z-50 touch-pan-y"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          aria-label="Theme options"
+        >
           {themes.map((theme) => (
             <button
               type="button"

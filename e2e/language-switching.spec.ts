@@ -45,8 +45,8 @@ test("login and registration pages render translated labels", async ({ page }) =
 
 test("privacy policy and terms pages are independently accessible in four languages", async ({ page }) => {
   const legalPages = [
-    { path: "/privacy-policy", heading: ["隐私政策", "Privacy Policy", "プライバシーポリシー", "개인정보 처리방침"] },
-    { path: "/terms-of-service", heading: ["用户协议", "Terms of Service", "利用規約", "서비스 약관"] },
+    { path: "/privacy-policy", heading: ["隐私政策", "Privacy Policy", "プライバシーポリシー", "개인정보 처리방침"], version: ["版本 1.0.0", "Version 1.0.0", "バージョン 1.0.0", "버전 1.0.0"], date: ["生效日期：2026年10月3日", "Effective date: October 3, 2026", "施行日：2026年10月3日", "시행일: 2026년 10월 3일"] },
+    { path: "/terms-of-service", heading: ["用户协议", "Terms of Service", "利用規約", "서비스 약관"], version: ["版本 1.0.0", "Version 1.0.0", "バージョン 1.0.0", "버전 1.0.0"], date: ["生效日期：2026年10月3日", "Effective date: October 3, 2026", "施行日：2026年10月3日", "시행일: 2026년 10월 3일"] },
   ];
   for (const legal of legalPages) {
     for (const [index, code] of ["zh", "en", "ja", "ko"].entries()) {
@@ -54,6 +54,8 @@ test("privacy policy and terms pages are independently accessible in four langua
       await page.getByRole("button", { name: "Select language" }).click();
       await page.getByRole("button", { name: new RegExp(languageLabel(code)) }).click();
       await expect(page.getByRole("heading", { name: legal.heading[index] })).toBeVisible();
+      await expect(page.getByText(legal.version[index])).toBeVisible();
+      await expect(page.getByText(legal.date[index])).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("lang", code);
       await expect(page.getByRole("link", { name: /←/ })).toBeVisible();
     }
@@ -116,6 +118,9 @@ test.describe("mobile layout", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true });
 
   test("keeps theme reset and share dialog usable on a small screen", async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async () => undefined } });
+    });
     await loginAsTestUser(page);
     await page.goto("/write");
 
@@ -123,6 +128,13 @@ test.describe("mobile layout", () => {
     const themeMenu = page.locator(".absolute.top-full");
     await expect(themeMenu).toBeVisible();
     expect(await themeMenu.evaluate((element) => element.getBoundingClientRect().right <= window.innerWidth)).toBe(true);
+    await themeMenu.evaluate((element) => {
+      const touch = (type: string, y: number) => element.dispatchEvent(new TouchEvent(type, { bubbles: true, changedTouches: [new Touch({ identifier: 1, target: element, clientY: y })], touches: type === "touchstart" ? [new Touch({ identifier: 1, target: element, clientY: y })] : [] }));
+      touch("touchstart", 100);
+      touch("touchend", 190);
+    });
+    await expect(page.locator(".absolute.top-full")).toHaveCount(0);
+    await page.getByTestId("theme-selector-trigger").click();
     await page.getByTestId("theme-reset-button").evaluate((element) => (element as HTMLElement).click());
     await expect.poll(() => page.evaluate(() => localStorage.getItem("midnight-mailbox-selected-theme"))).toBeNull();
     await expect(page.locator(".absolute.top-full")).toHaveCount(0);
@@ -143,5 +155,7 @@ test.describe("mobile layout", () => {
       expect(bounds).not.toBeNull();
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
     }
+    await dialog.getByRole("button", { name: "复制链接" }).click();
+    await expect(dialog.getByRole("status")).toBeVisible();
   });
 });

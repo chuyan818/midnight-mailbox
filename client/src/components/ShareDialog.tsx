@@ -41,10 +41,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`).then(() => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast.success(copy.copiedClipboard);
+    }).catch(() => {
+      toast.error(copy.copy);
     });
   };
 
@@ -110,6 +112,11 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             )}
           </button>
         </div>
+        {copied && (
+          <p role="status" aria-live="polite" className="mb-4 text-center text-sm text-emerald-300">
+            {copy.copiedClipboard}
+          </p>
+        )}
 
         {/* 关闭按钮 */}
         <button
