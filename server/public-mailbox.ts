@@ -170,7 +170,7 @@ export async function selectDailyQuote() {
   const existing = await db
     .select()
     .from(dailyQuotes)
-    .where(eq(dailyQuotes.date, new Date(today)))
+    .where(eq(dailyQuotes.date, today))
     .limit(1);
 
   if (existing.length > 0) return existing[0];
@@ -201,7 +201,7 @@ export async function selectDailyQuote() {
     letterId: publicLetter.letterId,
     quote: firstSentence,
     emotionTags: publicLetter.emotionTags,
-    date: new Date(today),
+    date: today,
   });
 
   return result;

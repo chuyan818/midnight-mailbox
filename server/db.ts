@@ -1,15 +1,21 @@
 import { eq, and, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { InsertUser, users, letters, emotions, memberships, subscriptionRecords, InsertMembership, letterTemplates, InsertLetterTemplate, LetterTemplate } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: Pool | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+      });
+      _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -76,8 +82,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
+      set: updateSet as Partial<InsertUser>,
     });
     
     // Create membership record if not exists
@@ -270,7 +277,7 @@ export async function canUserWriteLetter(userId: number): Promise<boolean> {
   // Free users: 1 letter per day
   if (membership.membershipType === 'free') {
     const today = new Date().toISOString().split('T')[0];
-    const lastLetterDate = membership.lastLetterDate?.toISOString().split('T')[0];
+    const lastLetterDate = membership.lastLetterDate;
     
     if (lastLetterDate === today && membership.dailyLetterCount >= 1) {
       return false;
@@ -300,7 +307,7 @@ export async function incrementDailyLetterCount(userId: number) {
     await db.update(memberships)
       .set({
         dailyLetterCount: newCount,
-        lastLetterDate: today,
+        lastLetterDate: today.toISOString().split("T")[0],
         updatedAt: new Date(),
       })
       .where(eq(memberships.userId, userId));

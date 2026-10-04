@@ -1,6 +1,6 @@
 /**
  * Persistent customer support service for premium members.
- * Tickets are stored in MySQL so members and admins share the same workflow.
+ * Tickets are stored in PostgreSQL so members and admins share the same workflow.
  */
 
 import { desc, eq } from "drizzle-orm";
@@ -57,19 +57,21 @@ export async function createSupportTicket(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(supportTickets).values({
+  const [inserted] = await db.insert(supportTickets).values({
     userId: numericId,
     subject: normalizedSubject,
     description: normalizedDescription,
     category,
     priority: "high",
     status: "open",
-  });
+  }).returning({ id: supportTickets.id });
+
+  if (!inserted) return null;
 
   const [ticket] = await db
     .select()
     .from(supportTickets)
-    .where(eq(supportTickets.id, result[0].insertId));
+    .where(eq(supportTickets.id, inserted.id));
 
   return ticket ?? null;
 }

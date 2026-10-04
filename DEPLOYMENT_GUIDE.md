@@ -15,7 +15,7 @@
 ### 必需环境
 - **Node.js** >= 18.0.0
 - **npm/pnpm** >= 8.0.0
-- **MySQL** >= 8.0 或 TiDB
+- **PostgreSQL** >= 14（Railway PostgreSQL 18 可用）
 - **Git** >= 2.20
 
 ### 推荐配置
@@ -45,7 +45,10 @@ pnpm install
 
 ```bash
 # 数据库配置
-DATABASE_URL=mysql://user:password@localhost:3306/midnight_mailbox
+DATABASE_URL=postgresql://user:password@localhost:5432/midnight_mailbox
+# Railway 中建议引用 Postgres 服务生成的连接串：
+# DATABASE_URL=${{Postgres.DATABASE_URL}}
+# 不要把实际密码提交到代码仓库。
 
 # OAuth配置（Manus）
 VITE_APP_ID=your_app_id
@@ -59,13 +62,7 @@ BUILT_IN_FORGE_API_KEY=your_forge_api_key
 VITE_FRONTEND_FORGE_API_KEY=your_frontend_forge_api_key
 VITE_FRONTEND_FORGE_API_URL=https://api.manus.im
 
-# OpenAI配置（可选，作为备用方案）
-OPENAI_API_KEY=your_openai_api_key
 
-# Stripe配置
-STRIPE_SECRET_KEY=your_stripe_secret_key
-VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 
 # 应用配置
 OWNER_NAME=Your Name
@@ -82,13 +79,13 @@ VITE_ANALYTICS_WEBSITE_ID=your_website_id
 
 ```bash
 # 生成迁移文件
-pnpm drizzle-kit generate
+pnpm db:generate
 
 # 执行迁移
-pnpm drizzle-kit migrate
+pnpm db:migrate
 
 # 或使用webdev_execute_sql执行SQL文件
-# 参考 drizzle/ 目录中的SQL文件
+# 参考 drizzle-pg/ 目录中的 PostgreSQL SQL 文件
 ```
 
 ---
@@ -217,7 +214,7 @@ server {
     }
     
     # Webhook端点（不缓存）
-    location /api/stripe/webhook {
+    location /api/paypal/webhook {
         proxy_pass http://midnight_mailbox;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -229,44 +226,23 @@ server {
 
 ## 支付系统配置
 
-### Stripe沙箱配置
+### PayPal 配置
 
-1. **声明Stripe沙箱**
-   - 访问: https://dashboard.stripe.com/claim_sandbox/[YOUR_SANDBOX_URL]
-   - 完成身份验证
-
-2. **获取API密钥**
-   - 登录Stripe Dashboard
-   - 进入Settings → API Keys
-   - 复制Secret Key和Publishable Key
-
-3. **配置Webhook**
-   - 进入Developers → Webhooks
-   - 添加端点: `https://your-domain.com/api/stripe/webhook`
-   - 选择事件:
-     - `checkout.session.completed`
-     - `customer.subscription.updated`
-     - `customer.subscription.deleted`
-     - `invoice.payment_succeeded`
-     - `invoice.payment_failed`
-   - 复制Signing Secret
-
-4. **测试支付**
-   - 使用测试卡号: `4242 4242 4242 4242`
-   - 任意未来日期和CVC
-   - 验证订阅流程
+1. 在 PayPal Developer Dashboard 创建 Sandbox 或 Live 应用。
+2. 创建订阅 Plan，并配置以下环境变量：
+   ```bash
+   PAYPAL_ENV=sandbox
+   PAYPAL_CLIENT_ID=your_paypal_client_id
+   PAYPAL_CLIENT_SECRET=your_paypal_client_secret
+   PAYPAL_PLAN_ID=your_paypal_plan_id
+   PAYPAL_WEBHOOK_ID=your_paypal_webhook_id
+   ```
+3. Webhook 地址：`https://your-domain.com/api/paypal/webhook`。
+4. 订阅成功、取消和付款失败均由 Webhook 同步到会员状态和交易历史。
 
 ### 生产环境切换
 
-1. 完成Stripe KYC验证
-2. 获取生产环境API密钥
-3. 更新环境变量:
-   ```bash
-   STRIPE_SECRET_KEY=sk_live_...
-   VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
-   STRIPE_WEBHOOK_SECRET=whsec_live_...
-   ```
-4. 重新部署应用
+将 `PAYPAL_ENV` 改为 `live`，替换 Live Client ID、Secret、Plan ID 和 Webhook ID，然后重新部署应用。
 
 ---
 
@@ -279,7 +255,7 @@ server {
 错误: Failed to connect to database
 解决:
 - 检查DATABASE_URL格式是否正确
-- 确认MySQL服务已启动
+- 确认PostgreSQL服务已启动
 - 验证用户名和密码
 - 检查防火墙规则
 ```
@@ -304,14 +280,14 @@ server {
 - 如果Manus LLM失败，系统会自动降级到OpenAI
 ```
 
-#### 4. Stripe Webhook未收到
+#### 4. PayPal Webhook未收到
 ```
 错误: Webhook not received
 解决:
-- 确认Webhook URL正确
-- 检查STRIPE_WEBHOOK_SECRET是否正确
-- 验证防火墙允许Stripe IP访问
-- 查看Stripe Dashboard的Webhook日志
+- 确认 /api/paypal/webhook 地址正确
+- 检查 PAYPAL_WEBHOOK_ID 是否正确
+- 确认 PAYPAL_ENV 与 PayPal 应用环境一致
+- 查看 PayPal Developer Dashboard 的 Webhook 日志
 - 确保应用已启动并可访问
 ```
 
