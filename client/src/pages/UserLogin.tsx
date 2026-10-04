@@ -175,10 +175,10 @@ export default function UserLogin() {
         credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
-      const result = await response.json() as { error?: string };
+      const result = await response.json() as { error?: string; suspiciousLogin?: boolean };
       if (!response.ok) throw new Error(result.error || copy.loginFailed);
       setIsSuccess(true);
-      setTimeout(() => navigate('/'), 500);
+      setTimeout(() => navigate(result.suspiciousLogin ? '/profile?security=unusual' : '/'), 500);
     } catch (error) {
       setErrors({ submit: error instanceof Error ? error.message : copy.loginFailed });
     } finally {

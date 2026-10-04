@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
 import { promisify } from "node:util";
 import nodemailer from "nodemailer";
-import { and, desc, eq, gte, isNull } from "drizzle-orm";
-import { emailVerificationCodes, users } from "../../drizzle/schema";
+import { and, desc, eq, gte, isNull, or } from "drizzle-orm";
+import { emailVerificationCodes, loginEvents, users } from "../../drizzle/schema";
 import { getDb, getUserByEmail, getUserById, getUserByOpenId, upsertUser } from "../db";
 
 const scryptAsync = promisify(crypto.scrypt);
@@ -10,6 +10,9 @@ const CODE_TTL_MS = 10 * 60 * 1000;
 const CODE_MIN_INTERVAL_MS = 60 * 1000;
 const CODE_DAILY_LIMIT = 10;
 const MAX_CODE_ATTEMPTS = 5;
+const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const MAX_LOGIN_FAILURES = 5;
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -154,6 +157,82 @@ export async function authenticateEmailUser(emailInput: string, password: string
   return user;
 }
 
+function normalizeIp(ipAddress: string) {
+  return ipAddress.replace(/^::ffff:/, "").trim().slice(0, 128) || "unknown";
+}
+
+export async function checkLoginRateLimit(emailInput: string, ipAddress: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const since = new Date(Date.now() - LOGIN_FAILURE_WINDOW_MS);
+  const failures = await db.select({ createdAt: loginEvents.createdAt })
+    .from(loginEvents)
+    .where(and(
+      eq(loginEvents.success, false),
+      gte(loginEvents.createdAt, since),
+      or(eq(loginEvents.email, normalizeEmail(emailInput)), eq(loginEvents.ipAddress, normalizeIp(ipAddress))),
+    ));
+  const lockedUntil = failures.length >= MAX_LOGIN_FAILURES
+    ? new Date(Date.now() + LOGIN_LOCK_MS)
+    : null;
+  return { allowed: !lockedUntil, retryAfterSeconds: lockedUntil ? Math.ceil(LOGIN_LOCK_MS / 1000) : 0 };
+}
+
+export async function recordLoginEvent(input: {
+  userId?: number;
+  email: string;
+  ipAddress: string;
+  userAgent?: string;
+  success: boolean;
+  failureReason?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const email = normalizeEmail(input.email);
+  const ipAddress = normalizeIp(input.ipAddress);
+  let suspicious = false;
+  if (input.success && input.userId) {
+    const previous = await db.select({ ipAddress: loginEvents.ipAddress, userAgent: loginEvents.userAgent })
+      .from(loginEvents)
+      .where(and(eq(loginEvents.userId, input.userId), eq(loginEvents.success, true)))
+      .orderBy(desc(loginEvents.createdAt))
+      .limit(20);
+    suspicious = previous.length > 0 && !previous.some((event) => event.ipAddress === ipAddress && event.userAgent === input.userAgent);
+  }
+  await db.insert(loginEvents).values({
+    userId: input.userId,
+    email,
+    ipAddress,
+    userAgent: input.userAgent?.slice(0, 512),
+    success: input.success,
+    failureReason: input.failureReason,
+  });
+  if (input.success && input.userId) {
+    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, input.userId));
+  }
+  return { suspicious };
+}
+
+export async function getRecentLoginEvents(userId: number, limit = 12) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const events = await db.select({
+    id: loginEvents.id,
+    success: loginEvents.success,
+    ipAddress: loginEvents.ipAddress,
+    userAgent: loginEvents.userAgent,
+    failureReason: loginEvents.failureReason,
+    createdAt: loginEvents.createdAt,
+  }).from(loginEvents)
+    .where(eq(loginEvents.userId, userId))
+    .orderBy(desc(loginEvents.createdAt))
+    .limit(limit);
+  return events.map((event) => ({
+    ...event,
+    ipAddress: event.ipAddress.includes(".") ? event.ipAddress.replace(/\.\d+$/, ".***") : event.ipAddress,
+  }));
+}
+
 export async function changeEmailPassword(userId: number, currentPassword: string, newPassword: string) {
   if (!validateAuthPassword(newPassword)) throw new Error("新密码至少 8 位，并包含字母和数字");
   if (currentPassword === newPassword) throw new Error("新密码不能与当前密码相同");
@@ -175,4 +254,7 @@ export const authLimits = {
   codeMinIntervalMs: CODE_MIN_INTERVAL_MS,
   codeDailyLimit: CODE_DAILY_LIMIT,
   maxCodeAttempts: MAX_CODE_ATTEMPTS,
+  loginFailureWindowMs: LOGIN_FAILURE_WINDOW_MS,
+  maxLoginFailures: MAX_LOGIN_FAILURES,
+  loginLockMs: LOGIN_LOCK_MS,
 };

@@ -53,6 +53,21 @@ export const emailVerificationCodes = pgTable("email_verification_codes", {
 export type EmailVerificationCode = typeof emailVerificationCodes.$inferSelect;
 export type InsertEmailVerificationCode = typeof emailVerificationCodes.$inferInsert;
 
+/** Login audit trail used for rate limiting, anomaly detection and user activity history. */
+export const loginEvents = pgTable("login_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId"),
+  email: varchar("email", { length: 320 }).notNull(),
+  ipAddress: varchar("ipAddress", { length: 128 }).notNull(),
+  userAgent: varchar("userAgent", { length: 512 }),
+  success: boolean("success").default(false).notNull(),
+  failureReason: varchar("failureReason", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type LoginEvent = typeof loginEvents.$inferSelect;
+export type InsertLoginEvent = typeof loginEvents.$inferInsert;
+
 /**
  * Letters table - stores user letters and AI responses
  */

@@ -13,7 +13,8 @@ export async function getDb() {
     try {
       _pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+        // Railway PostgreSQL requires TLS; allow explicit opt-out for local databases.
+        ssl: process.env.DATABASE_SSL === "false" ? undefined : { rejectUnauthorized: false },
       });
       _db = drizzle(_pool);
     } catch (error) {

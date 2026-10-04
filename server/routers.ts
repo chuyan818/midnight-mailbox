@@ -38,7 +38,7 @@ import {
 } from "./llm-hybrid";
 import { users } from "../drizzle/schema";
 import { getOnlineCount, heartbeat } from "./presence";
-import { changeEmailPassword } from "./auth/email-auth";
+import { changeEmailPassword, getRecentLoginEvents } from "./auth/email-auth";
 
 // Emotion types
 const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫", "压力", "思念"] as const;
@@ -147,6 +147,7 @@ export const appRouter = router({
         membership,
       };
     }),
+    loginHistory: protectedProcedure.query(({ ctx }) => getRecentLoginEvents(ctx.user.id)),
   }),
 
   emotion: router({

@@ -16,6 +16,8 @@ import {
   Info,
   LogOut,
   History,
+  Monitor,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import MembershipBadge from "@/components/MembershipBadge";
@@ -61,6 +63,7 @@ export default function Profile() {
     onSuccess: () => profileQuery.refetch(),
   });
   const historyQuery = trpc.paypal.history.useQuery(undefined, { enabled: isAuthenticated });
+  const loginHistoryQuery = trpc.user.loginHistory.useQuery(undefined, { enabled: isAuthenticated });
   const cancelPayPal = trpc.paypal.cancel.useMutation({
     onSuccess: async () => {
       setShowCancelConfirm(false);
@@ -95,6 +98,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (searchParams.get("payment") === "retry") setShowUpgradeDialog(true);
+    if (searchParams.get("security") === "unusual") toast.warning(loginActivityCopy.unusualNotice);
   }, [searchParams]);
   if (!isAuthenticated) {
     return (
@@ -197,6 +201,12 @@ export default function Profile() {
     en: { title: "Change password", description: "Keep your mailbox secure. Use at least 8 characters with letters and numbers.", current: "Current password", next: "New password", confirm: "Confirm new password", submit: "Save new password", saving: "Saving…", success: "Password updated", unavailable: "This account does not have an email password. Please use its third-party sign-in method." },
     ja: { title: "パスワードを変更", description: "メールボックスを守るため、英字と数字を含む8文字以上のパスワードを設定してください。", current: "現在のパスワード", next: "新しいパスワード", confirm: "新しいパスワードを確認", submit: "新しいパスワードを保存", saving: "保存中…", success: "パスワードを更新しました", unavailable: "このアカウントにはメールパスワードがありません。登録した外部ログインをご利用ください。" },
     ko: { title: "비밀번호 변경", description: "사서함을 안전하게 보호하세요. 영문과 숫자를 포함한 8자 이상의 비밀번호를 사용하세요.", current: "현재 비밀번호", next: "새 비밀번호", confirm: "새 비밀번호 확인", submit: "새 비밀번호 저장", saving: "저장 중…", success: "비밀번호가 변경되었습니다", unavailable: "이 계정에는 이메일 비밀번호가 없습니다. 연결된 외부 로그인을 이용하세요." },
+  }[language];
+  const loginActivityCopy = {
+    zh: { title: "最近登录记录", loading: "正在加载登录记录…", empty: "暂时没有登录记录", success: "登录成功", failed: "登录失败", current: "当前账号活动", unusualNotice: "检测到新的登录环境，请确认这是你本人的操作。" },
+    en: { title: "Recent sign-ins", loading: "Loading sign-in activity…", empty: "No sign-in activity yet", success: "Successful", failed: "Failed", current: "Account activity", unusualNotice: "A new sign-in environment was detected. Please make sure it was you." },
+    ja: { title: "最近のログイン履歴", loading: "ログイン履歴を読み込み中…", empty: "ログイン履歴はありません", success: "成功", failed: "失敗", current: "アカウントの活動", unusualNotice: "新しいログイン環境を検出しました。本人の操作か確認してください。" },
+    ko: { title: "최근 로그인 기록", loading: "로그인 활동을 불러오는 중…", empty: "로그인 기록이 없습니다", success: "성공", failed: "실패", current: "계정 활동", unusualNotice: "새 로그인 환경이 감지되었습니다. 본인의 활동인지 확인해 주세요." },
   }[language];
 
   const handleChangePassword = (event: FormEvent<HTMLFormElement>) => {
@@ -496,6 +506,33 @@ export default function Profile() {
             </div>
           ) : (
             <p className="text-sm text-white/50">{extra.historyEmpty}</p>
+          )}
+        </section>
+
+        <section className="mb-8 rounded-lg border border-white/10 bg-white/5 p-6" data-testid="login-history">
+          <div className="mb-4 flex items-center gap-2">
+            <Monitor className="h-4 w-4 text-[#FFD580]" />
+            <h3 className="text-sm font-semibold">{loginActivityCopy.title}</h3>
+          </div>
+          {loginHistoryQuery.isLoading ? (
+            <p className="text-sm text-white/50">{loginActivityCopy.loading}</p>
+          ) : loginHistoryQuery.data?.length ? (
+            <div className="space-y-2">
+              {loginHistoryQuery.data.map((event) => (
+                <div key={event.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/10 p-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    {event.success ? <span className="h-2 w-2 rounded-full bg-emerald-300" /> : <ShieldAlert className="h-4 w-4 text-rose-300" />}
+                    <div>
+                      <p className={event.success ? "text-emerald-100" : "text-rose-100"}>{event.success ? loginActivityCopy.success : loginActivityCopy.failed}</p>
+                      <p className="mt-1 text-white/45">{event.ipAddress} · {event.userAgent?.split(" ")[0] || "Browser"}</p>
+                    </div>
+                  </div>
+                  <time className="text-white/45" dateTime={new Date(event.createdAt).toISOString()}>{new Date(event.createdAt).toLocaleString(language)}</time>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-white/50">{loginActivityCopy.empty}</p>
           )}
         </section>
 

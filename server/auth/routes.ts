@@ -5,11 +5,14 @@ import { getSessionCookieOptions } from "../_core/cookies";
 import { sdk } from "../_core/sdk";
 import {
   authenticateEmailUser,
+  checkLoginRateLimit,
   issueEmailVerificationCode,
+  recordLoginEvent,
   registerEmailUser,
   validateAuthEmail,
   validateAuthPassword,
 } from "./email-auth";
+import { getUserByEmail } from "../db";
 import {
   authenticateGoogleCallback,
   getGoogleAuthorizationUrl,
@@ -77,13 +80,24 @@ export function registerEmailAuthRoutes(app: Express) {
       return;
     }
     try {
+      const forwardedFor = req.headers["x-forwarded-for"];
+      const ipAddress = typeof forwardedFor === "string" ? forwardedFor.split(",")[0].trim() : req.ip ?? "unknown";
+      const userAgent = req.get("user-agent") ?? undefined;
+      const rateLimit = await checkLoginRateLimit(parsed.data.email, ipAddress);
+      if (!rateLimit.allowed) {
+        res.status(429).json({ success: false, error: `登录失败次数过多，请 ${Math.ceil(rateLimit.retryAfterSeconds / 60)} 分钟后再试`, retryAfterSeconds: rateLimit.retryAfterSeconds });
+        return;
+      }
+      const account = await getUserByEmail(parsed.data.email);
       const user = await authenticateEmailUser(parsed.data.email, parsed.data.password);
       if (!user) {
+        await recordLoginEvent({ userId: account?.id, email: parsed.data.email, ipAddress, userAgent, success: false, failureReason: "invalid_credentials" });
         res.status(401).json({ success: false, error: "邮箱或密码错误" });
         return;
       }
+      const audit = await recordLoginEvent({ userId: user.id, email: parsed.data.email, ipAddress, userAgent, success: true });
       await establishSession(req, res, user);
-      res.json({ success: true, user: publicUser(user) });
+      res.json({ success: true, user: publicUser(user), suspiciousLogin: audit.suspicious });
     } catch (error) {
       console.error("[Auth] Email login failed", error);
       res.status(500).json({ success: false, error: "登录暂时不可用" });
