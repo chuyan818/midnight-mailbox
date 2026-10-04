@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, Eye, EyeOff, Chrome, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Chrome, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { isValidEmail, isValidLoginPassword } from '@/lib/auth-validation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { pageTranslations } from '@/lib/page-translations';
@@ -130,6 +130,7 @@ export default function UserLogin() {
   // 处理{copy.login}
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || isSuccess) return;
     const newErrors: Record<string, string> = {};
 
     // 验证邮箱
@@ -151,6 +152,7 @@ export default function UserLogin() {
       return;
     }
 
+    setErrors({});
     setIsLoading(true);
 
     // 处理"{copy.remember}"功能
@@ -316,6 +318,9 @@ export default function UserLogin() {
                 type="email"
                 placeholder={copy.emailPlaceholder}
                 value={email}
+                autoComplete="email"
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'login-email-error' : undefined}
                 onChange={(e) => handleEmailChange(e.target.value)}
                 className={`bg-slate-50 border-2 text-slate-900 placeholder:text-slate-400 pl-10 h-12 rounded-lg transition-all ${
                   errors.email 
@@ -333,7 +338,7 @@ export default function UserLogin() {
                 <AlertCircle className="absolute right-3 top-3.5 w-5 h-5 text-red-500" />
               )}
               {errors.email && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <p id="login-email-error" className="text-red-500 text-xs mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {errors.email}
                 </p>
@@ -359,6 +364,9 @@ export default function UserLogin() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder={copy.passwordPlaceholder}
                 value={password}
+                autoComplete="current-password"
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={errors.password ? 'login-password-error' : undefined}
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 className={`bg-slate-50 border-2 text-slate-900 placeholder:text-slate-400 pl-10 pr-10 h-12 rounded-lg transition-all ${
                   errors.password 
@@ -382,7 +390,7 @@ export default function UserLogin() {
                 </div>
               )}
               {errors.password && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <p id="login-password-error" className="text-red-500 text-xs mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {errors.password}
                 </p>
@@ -440,14 +448,19 @@ export default function UserLogin() {
 
           {/* {copy.login}按钮 */}
           {errors.submit && (
-            <p className="mb-3 text-center text-sm text-red-500" role="alert">{errors.submit}</p>
+            <p className="mb-3 flex items-center justify-center gap-2 text-center text-sm text-red-500" role="alert">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {errors.submit}
+            </p>
           )}
           <Button
               type="submit"
               disabled={isLoading || isSuccess}
               className="w-full h-12 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? copy.loggingIn : isSuccess ? copy.loginSuccess : copy.login}
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{copy.loggingIn}</span>
+              ) : isSuccess ? copy.loginSuccess : copy.login}
             </Button>
           </form>
 

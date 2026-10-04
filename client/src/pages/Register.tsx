@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, Eye, EyeOff, Chrome, Check } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Chrome, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { getPasswordStrength as getSharedPasswordStrength, isValidEmail, isValidRegistrationPassword } from '@/lib/auth-validation';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -38,7 +38,8 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [verificationCodeSent, setVerificationCodeSent] = useState(false);
@@ -103,7 +104,7 @@ export default function Register() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSendingCode(true);
     try {
       const response = await fetch('/api/auth/email/send-code', {
         method: 'POST',
@@ -130,7 +131,7 @@ export default function Register() {
     } catch (error) {
       setErrors((current) => ({ ...current, verificationCode: error instanceof Error ? error.message : copy.codeFailed }));
     } finally {
-      setIsLoading(false);
+      setIsSendingCode(false);
     }
   };
 
@@ -174,7 +175,8 @@ export default function Register() {
       return;
     }
 
-    setIsLoading(true);
+    setErrors({});
+    setIsSubmitting(true);
     try {
       // 处理"{copy.remember}"功能
       if (rememberMe) {
@@ -204,7 +206,7 @@ export default function Register() {
     } catch (error) {
       setErrors((current) => ({ ...current, submit: error instanceof Error ? error.message : copy.registerFailed }));
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -269,10 +271,10 @@ export default function Register() {
               />
               <Button
                 onClick={handleSendVerificationCode}
-                disabled={isLoading || verificationCountdown > 0 || !validateEmail(email)}
+                disabled={isSendingCode || isSubmitting || verificationCountdown > 0 || !validateEmail(email)}
                 className="bg-blue-500 hover:bg-blue-600 text-white px-4 whitespace-nowrap"
               >
-                {verificationCountdown > 0 ? `${verificationCountdown}s` : copy.sendCode}
+                {isSendingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : verificationCountdown > 0 ? `${verificationCountdown}s` : copy.sendCode}
               </Button>
             </div>
             {errors.verificationCode && <p className="text-red-400 text-xs mt-1">{errors.verificationCode}</p>}
@@ -413,12 +415,12 @@ export default function Register() {
             </label>
           </div>
           {errors.agreeTerms && <p className="text-red-400 text-xs">{errors.agreeTerms}</p>}
-          {errors.submit && <p className="text-red-400 text-xs">{errors.submit}</p>}
+          {errors.submit && <p className="flex items-center gap-2 text-red-400 text-xs" role="alert"><AlertCircle className="h-4 w-4 shrink-0" />{errors.submit}</p>}
 
           {/* {copy.createAccount}按钮 */}
           <Button
             onClick={handleRegister}
-            disabled={isLoading || isSuccess}
+            disabled={isSubmitting || isSuccess}
             className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium py-3 rounded-lg mt-6"
           >
             {isSuccess ? (
@@ -426,8 +428,8 @@ export default function Register() {
                 <Check className="w-4 h-4" />
                 {copy.registerSuccess}
               </span>
-            ) : isLoading ? (
-              copy.creating
+            ) : isSubmitting ? (
+              <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{copy.creating}</span>
             ) : (
               copy.createAccount
             )}
