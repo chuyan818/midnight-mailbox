@@ -136,7 +136,7 @@ pnpm build
 
 ### 2. 启动生产服务器
 ```bash
-NODE_ENV=production node dist/index.js
+NODE_ENV=production node dist/server.js
 ```
 
 ### 3. 使用PM2进程管理（推荐）
@@ -151,7 +151,7 @@ npm install -g pm2
 module.exports = {
   apps: [{
     name: 'midnight-mailbox',
-    script: './dist/index.js',
+    script: './dist/server.js',
     instances: 'max',
     exec_mode: 'cluster',
     env: {
