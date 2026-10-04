@@ -2,8 +2,8 @@ import crypto from "node:crypto";
 import { promisify } from "node:util";
 import nodemailer from "nodemailer";
 import { and, desc, eq, gte, isNull } from "drizzle-orm";
-import { emailVerificationCodes } from "../../drizzle/schema";
-import { getDb, getUserByEmail, getUserByOpenId, upsertUser } from "../db";
+import { emailVerificationCodes, users } from "../../drizzle/schema";
+import { getDb, getUserByEmail, getUserById, getUserByOpenId, upsertUser } from "../db";
 
 const scryptAsync = promisify(crypto.scrypt);
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -152,6 +152,22 @@ export async function authenticateEmailUser(emailInput: string, password: string
   const user = await getUserByEmail(email);
   if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) return undefined;
   return user;
+}
+
+export async function changeEmailPassword(userId: number, currentPassword: string, newPassword: string) {
+  if (!validateAuthPassword(newPassword)) throw new Error("新密码至少 8 位，并包含字母和数字");
+  if (currentPassword === newPassword) throw new Error("新密码不能与当前密码相同");
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const user = await getUserById(userId);
+  if (!user?.passwordHash) throw new Error("当前账号未设置邮箱密码");
+  if (!(await verifyPassword(currentPassword, user.passwordHash))) throw new Error("当前密码错误");
+
+  await db.update(users)
+    .set({ passwordHash: await hashPassword(newPassword), updatedAt: new Date() })
+    .where(eq(users.id, userId));
+  return { success: true } as const;
 }
 
 export const authLimits = {

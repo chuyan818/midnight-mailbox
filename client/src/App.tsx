@@ -32,6 +32,7 @@ import PaymentResult from "./pages/PaymentResult";
 import AdminSupport from "./pages/AdminSupport";
 import LegalPage from "./pages/LegalPage";
 import { SessionTimeoutProvider } from "./components/SessionTimeoutProvider";
+import PresenceTracker from "./components/PresenceTracker";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -88,6 +89,7 @@ function App() {
         <LanguageProvider>
           <SessionTimeoutProvider>
             <TooltipProvider>
+              <PresenceTracker />
               <Toaster />
               <Router />
             </TooltipProvider>

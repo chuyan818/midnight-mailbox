@@ -37,6 +37,8 @@ import {
   detectLanguage,
 } from "./llm-hybrid";
 import { users } from "../drizzle/schema";
+import { getOnlineCount, heartbeat } from "./presence";
+import { changeEmailPassword } from "./auth/email-auth";
 
 // Emotion types
 const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫", "压力", "思念"] as const;
@@ -61,6 +63,12 @@ async function getDbConnection() {
  */
 export const appRouter = router({
   system: systemRouter,
+  presence: router({
+    heartbeat: publicProcedure
+      .input(z.object({ visitorId: z.string().min(16).max(128) }))
+      .mutation(({ input }) => heartbeat(input.visitorId)),
+    onlineCount: publicProcedure.query(() => getOnlineCount()),
+  }),
   admin: adminRouter,
   social: socialCompleteRouter,
   auth: router({
@@ -110,6 +118,16 @@ export const appRouter = router({
           user: newUser,
         };
       }),
+    changePassword: protectedProcedure
+      .input(z.object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(8),
+        confirmPassword: z.string().min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.newPassword !== input.confirmPassword) throw new Error("两次输入的新密码不一致");
+        return changeEmailPassword(ctx.user.id, input.currentPassword, input.newPassword);
+      }),
   }),
 
   user: router({
@@ -117,7 +135,15 @@ export const appRouter = router({
       const user = await getUserById(ctx.user.id);
       const membership = await getUserMembership(ctx.user.id);
       return {
-        user,
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          loginMethod: user.loginMethod,
+          role: user.role,
+          emailVerifiedAt: user.emailVerifiedAt,
+          hasPassword: Boolean(user.passwordHash),
+        } : null,
         membership,
       };
     }),

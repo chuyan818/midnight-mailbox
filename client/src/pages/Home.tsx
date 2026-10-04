@@ -6,6 +6,7 @@ import { Sparkles, Heart, TrendingUp, Lock, Clock } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { pageTranslations } from "@/lib/page-translations";
 import LanguageSelector from "@/components/LanguageSelector";
+import OnlineCountBadge from "@/components/OnlineCountBadge";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
@@ -42,6 +43,7 @@ export default function Home() {
             <h1 className="text-xl md:text-2xl font-bold">{copy.brand}</h1>
           </div>
           <div className="flex items-center gap-3">
+            <OnlineCountBadge />
             <LanguageSelector compact />
             {isAuthenticated ? (
               <>

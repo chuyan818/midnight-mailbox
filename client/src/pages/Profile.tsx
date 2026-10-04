@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation, useSearchParams } from "wouter";
@@ -37,6 +37,7 @@ export default function Profile() {
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("notificationsEnabled") !== "false");
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
   const profileQuery = trpc.user.getProfile.useQuery(
     undefined,
@@ -67,6 +68,13 @@ export default function Profile() {
       toast.success(extra.cancelSuccess);
     },
     onError: () => toast.error(extra.cancelFailed),
+  });
+  const changePassword = trpc.auth.changePassword.useMutation({
+    onSuccess: () => {
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      toast.success(passwordCopy.success);
+    },
+    onError: (error) => toast.error(error.message),
   });
 
   useEffect(() => {
@@ -183,6 +191,22 @@ export default function Profile() {
     ja: { language: "言語設定", notifications: "通知設定", privacy: "プライバシー", help: "ヘルプとフィードバック", about: "深夜信箱について" },
     ko: { language: "언어 설정", notifications: "알림 설정", privacy: "개인정보 보호", help: "도움말 및 피드백", about: "심야 우편함 정보" },
   }[language];
+
+  const passwordCopy = {
+    zh: { title: "修改密码", description: "定期更新密码可以保护你的信箱。密码至少 8 位，并包含字母和数字。", current: "当前密码", next: "新密码", confirm: "确认新密码", submit: "保存新密码", saving: "保存中…", success: "密码已更新", unavailable: "当前账号未设置邮箱密码，请使用对应的第三方登录方式。" },
+    en: { title: "Change password", description: "Keep your mailbox secure. Use at least 8 characters with letters and numbers.", current: "Current password", next: "New password", confirm: "Confirm new password", submit: "Save new password", saving: "Saving…", success: "Password updated", unavailable: "This account does not have an email password. Please use its third-party sign-in method." },
+    ja: { title: "パスワードを変更", description: "メールボックスを守るため、英字と数字を含む8文字以上のパスワードを設定してください。", current: "現在のパスワード", next: "新しいパスワード", confirm: "新しいパスワードを確認", submit: "新しいパスワードを保存", saving: "保存中…", success: "パスワードを更新しました", unavailable: "このアカウントにはメールパスワードがありません。登録した外部ログインをご利用ください。" },
+    ko: { title: "비밀번호 변경", description: "사서함을 안전하게 보호하세요. 영문과 숫자를 포함한 8자 이상의 비밀번호를 사용하세요.", current: "현재 비밀번호", next: "새 비밀번호", confirm: "새 비밀번호 확인", submit: "새 비밀번호 저장", saving: "저장 중…", success: "비밀번호가 변경되었습니다", unavailable: "이 계정에는 이메일 비밀번호가 없습니다. 연결된 외부 로그인을 이용하세요." },
+  }[language];
+
+  const handleChangePassword = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error(language === "zh" ? "两次输入的新密码不一致" : language === "en" ? "New passwords do not match" : language === "ja" ? "新しいパスワードが一致しません" : "새 비밀번호가 일치하지 않습니다");
+      return;
+    }
+    changePassword.mutate(passwordForm);
+  };
 
   const handleSettingsItem = (setting: string) => {
     if (setting === "language") {
@@ -518,6 +542,55 @@ export default function Profile() {
             </div>
           )}
         </div>
+
+        <section className="mb-8 rounded-lg border border-white/10 bg-white/5 p-6" aria-labelledby="change-password-title">
+          <h3 id="change-password-title" className="mb-2 flex items-center gap-2 text-sm font-semibold">
+            <Lock size={16} className="text-[#FFD580]" />
+            {passwordCopy.title}
+          </h3>
+          {profile?.user?.hasPassword ? (
+            <form onSubmit={handleChangePassword} className="max-w-xl space-y-3">
+              <p className="text-xs leading-5 text-white/55">{passwordCopy.description}</p>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={passwordForm.currentPassword}
+                onChange={(event) => setPasswordForm((form) => ({ ...form, currentPassword: event.target.value }))}
+                placeholder={passwordCopy.current}
+                aria-label={passwordCopy.current}
+                className="w-full rounded-lg border border-white/10 bg-black/15 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#FFD580]/60"
+                required
+              />
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={passwordForm.newPassword}
+                onChange={(event) => setPasswordForm((form) => ({ ...form, newPassword: event.target.value }))}
+                placeholder={passwordCopy.next}
+                aria-label={passwordCopy.next}
+                minLength={8}
+                className="w-full rounded-lg border border-white/10 bg-black/15 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#FFD580]/60"
+                required
+              />
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={passwordForm.confirmPassword}
+                onChange={(event) => setPasswordForm((form) => ({ ...form, confirmPassword: event.target.value }))}
+                placeholder={passwordCopy.confirm}
+                aria-label={passwordCopy.confirm}
+                minLength={8}
+                className="w-full rounded-lg border border-white/10 bg-black/15 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#FFD580]/60"
+                required
+              />
+              <Button type="submit" disabled={changePassword.isPending} className="bg-[#FFD580] text-[#0B0F2F] hover:bg-[#FFC857]">
+                {changePassword.isPending ? passwordCopy.saving : passwordCopy.submit}
+              </Button>
+            </form>
+          ) : (
+            <p className="text-xs leading-5 text-white/55">{passwordCopy.unavailable}</p>
+          )}
+        </section>
 
         {/* 登出按钮 */}
         <Button
