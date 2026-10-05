@@ -8,7 +8,10 @@ import {
 
 describe("OpenAI Integration", () => {
   // Network-backed tests are opt-in so local CI remains deterministic.
-  const runExternalAiTests = Boolean(process.env.OPENAI_API_KEY && process.env.RUN_EXTERNAL_AI_TESTS === "true");
+  const runExternalAiTests = Boolean(
+    (process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY || process.env.OPENAI_API_KEY) &&
+      process.env.RUN_EXTERNAL_AI_TESTS === "true"
+  );
   const skipExternal = () => !runExternalAiTests;
 
   describe("Language Detection", () => {

@@ -1,7 +1,7 @@
 /**
  * 混合LLM集成模块
- * 主方案：Manus LLM（可靠稳定）
- * 备用方案：OpenAI API（等待有效Key）
+ * 主方案：Manus LLM（可用时）
+ * 备用方案：阿里云百炼通义千问（OpenAI 兼容接口）
  */
 
 import { invokeLLM } from "./_core/llm";
@@ -13,11 +13,11 @@ import {
 } from "./openai";
 
 /**
- * 检测是否有有效的OpenAI API Key
+ * 检测是否配置了可用的兼容模型密钥
  */
 function hasValidOpenAIKey(): boolean {
-  const key = process.env.OPENAI_API_KEY;
-  return !!(key && key.length > 20 && key.startsWith('sk-'));
+  const key = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY || process.env.OPENAI_API_KEY;
+  return !!(key && key.length > 20);
 }
 
 /**

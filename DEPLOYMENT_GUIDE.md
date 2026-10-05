@@ -60,7 +60,14 @@ OAUTH_SERVER_URL=https://api.manus.im
 VITE_OAUTH_PORTAL_URL=https://www.shenye.xin
 JWT_SECRET=your_jwt_secret
 
-# LLM配置
+# LLM配置：阿里云百炼通义千问（OpenAI兼容接口）
+QWEN_API_KEY=your_dashscope_api_key
+QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+QWEN_MODEL=qwen-plus
+# 也兼容使用 DASHSCOPE_API_KEY 作为 QWEN_API_KEY 的别名。
+# 海外地域可使用：https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+
+# 可选：Manus 内置 LLM（未配置时自动回退到 Qwen）
 BUILT_IN_FORGE_API_URL=https://api.manus.im
 BUILT_IN_FORGE_API_KEY=your_forge_api_key
 VITE_FRONTEND_FORGE_API_KEY=your_frontend_forge_api_key

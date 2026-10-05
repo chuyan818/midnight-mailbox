@@ -1,14 +1,26 @@
 /**
- * OpenAI API集成模块
+ * OpenAI 兼容模型集成模块（默认支持阿里云百炼通义千问）
  * 用于AI回信、情绪分析、关键词提取和内容安全检测
  */
 
 import OpenAI from 'openai';
 
-// 初始化OpenAI客户端
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const qwenApiKey = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY;
+const apiKey = qwenApiKey || process.env.OPENAI_API_KEY;
+const baseURL = process.env.QWEN_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1";
+const model = process.env.QWEN_MODEL || "qwen-plus";
+
+let openai: OpenAI | null = null;
+
+function getClient(): OpenAI {
+  if (!apiKey) {
+    throw new Error("QWEN_API_KEY (or DASHSCOPE_API_KEY) is not configured");
+  }
+  if (!openai) {
+    openai = new OpenAI({ apiKey, baseURL });
+  }
+  return openai;
+}
 
 /**
  * 生成AI回信 - "夜航人"人格
@@ -17,7 +29,7 @@ export async function generateAIReply(letterContent: string, language: string = 
   try {
     const systemPrompt = getSystemPrompt(language);
 
-    const response = await openai.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
@@ -61,8 +73,8 @@ export async function analyzeEmotion(letterContent: string, language: string = '
 
     const lang = languageMap[language] || '中文';
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const response = await getClient().chat.completions.create({
+      model,
       messages: [
         {
           role: 'system',
@@ -108,8 +120,8 @@ export async function checkContentSafety(letterContent: string): Promise<{
   issues: string[];
 }> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const response = await getClient().chat.completions.create({
+      model,
       messages: [
         {
           role: 'system',
@@ -301,8 +313,8 @@ Now, please read the user's letter and write a warm reply.`,
  */
 export async function detectLanguage(text: string): Promise<string> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const response = await getClient().chat.completions.create({
+      model,
       messages: [
         {
           role: 'system',
