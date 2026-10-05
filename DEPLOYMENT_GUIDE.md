@@ -46,8 +46,12 @@ pnpm install
 ```bash
 # 数据库配置
 DATABASE_URL=postgresql://user:password@localhost:5432/midnight_mailbox
-# Railway 中建议引用 Postgres 服务生成的连接串：
+# Railway 中，应用服务与 Postgres 必须位于同一 Project 和 Environment，
+# 并在应用服务 Variables 中引用 Postgres 服务生成的连接串：
 # DATABASE_URL=${{Postgres.DATABASE_URL}}
+# 如果应用和数据库不在同一 Project/Environment，postgres.railway.internal
+# 无法解析；请使用 Postgres 服务面板显示的公开连接串变量（通常为
+# DATABASE_PUBLIC_URL），或将两个服务移动到同一 Project/Environment。
 # 不要把实际密码提交到代码仓库。
 
 # OAuth配置（Manus）
@@ -259,6 +263,24 @@ server {
 - 验证用户名和密码
 - 检查防火墙规则
 ```
+
+#### 1.1 `getaddrinfo ENOTFOUND postgres.railway.internal`
+```
+原因：应用拿到了 Railway 私有网络地址，但当前应用容器不在该 Postgres
+服务所属的同一 Project/Environment，或两个服务尚未建立连接。
+
+修复步骤：
+1. 打开 Railway 应用服务，确认 Project 和 Environment 与 Postgres 服务完全一致。
+2. 在应用服务 Variables 中删除手写的 DATABASE_URL。
+3. 通过 Add Variable Reference 选择 Postgres 服务的 DATABASE_URL，结果应为：
+   DATABASE_URL=${{Postgres.DATABASE_URL}}
+4. 如果应用必须跨 Project/Environment 连接数据库，改用 Postgres 服务面板提供的
+   公开连接串（通常是 DATABASE_PUBLIC_URL），不要使用 postgres.railway.internal。
+5. 重新部署应用；启动日志应先出现 `pnpm db:migrate` 成功，再启动 `dist/server.js`。
+```
+
+不要把本地电脑的 `127.0.0.1` 或 `localhost` 写入 Railway 的 DATABASE_URL，
+因为它们指向 Railway 应用容器自身，而不是你的本地 PostgreSQL。
 
 #### 2. OAuth登录失败
 ```
