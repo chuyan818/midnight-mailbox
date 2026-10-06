@@ -363,12 +363,50 @@ curl http://localhost:3000/api/db-health
 
 ### 定期备份
 ```bash
-# 备份数据库
-mysqldump -u user -p database_name > backup.sql
+# 安装 PostgreSQL 客户端后执行一次备份
+DATABASE_URL='postgresql://...' pnpm db:backup
 
-# 恢复数据库
-mysql -u user -p database_name < backup.sql
+# 恢复 custom-format 备份（先确认目标库）
+pg_restore --clean --if-exists --no-owner --no-privileges \
+  --dbname="$DATABASE_URL" backups/postgres/midnight-mailbox-*.dump
 ```
+
+`scripts/backup-postgres.sh` 使用 `pg_dump --format=custom` 生成一致性备份、写入 SHA-256 校验文件，并按 `RETENTION_DAYS` 清理本地旧备份。Railway 容器文件系统不是可靠的长期存储，生产环境必须配置 S3 兼容对象存储后再启用定期任务：
+
+```bash
+export DATABASE_URL='${{Postgres.DATABASE_URL}}'
+export S3_BUCKET='your-private-backup-bucket'
+export S3_PREFIX='midnight-mailbox/postgres'
+export S3_ENDPOINT_URL='https://<s3-compatible-endpoint>' # AWS S3 可省略
+export AWS_ACCESS_KEY_ID='...'
+export AWS_SECRET_ACCESS_KEY='...'
+export AWS_REGION='...'
+export RETENTION_DAYS=14
+pnpm db:backup
+```
+
+在可持久运行的备份主机或 CI 中使用 cron（例如每天 UTC 02:15）：
+
+```cron
+15 2 * * * cd /srv/midnight-mailbox && /usr/bin/flock -n /tmp/midnight-mailbox-backup.lock /usr/bin/env bash -lc 'set -a; . .env.backup; set +a; pnpm db:backup >> /var/log/midnight-mailbox-backup.log 2>&1'
+```
+
+项目也提供 `.github/workflows/postgres-backup.yml`，支持每天 UTC 02:15 运行或手动触发。启用前，请在 GitHub 仓库 Secrets 中配置 `RAILWAY_DATABASE_URL`、`BACKUP_S3_BUCKET`、`BACKUP_AWS_ACCESS_KEY_ID`、`BACKUP_AWS_SECRET_ACCESS_KEY`、`BACKUP_AWS_REGION`；使用 Cloudflare R2、MinIO 等 S3 兼容服务时再配置 `BACKUP_S3_ENDPOINT_URL`，并可选配置 `BACKUP_S3_PREFIX`。`RAILWAY_DATABASE_URL` 应使用 Postgres 服务的公开连接串，不能填应用容器外无法解析的 `postgres.railway.internal` 私网地址。
+
+不要把数据库密码、对象存储密钥或 `.env.backup` 提交到 Git。建议每月在隔离数据库执行一次 `pg_restore --list` 和实际恢复演练。Railway 原生卷备份/PITR 可作为额外保护，但不能替代异地逻辑备份。
+
+### 数据库连接延迟与性能检查
+
+```bash
+# 从应用所在网络执行，避免把 Railway 私网地址从本地电脑直接测试
+time psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'SELECT 1;'
+
+# 查看连接数与基础运行指标
+psql "$DATABASE_URL" -c "SELECT state, count(*) FROM pg_stat_activity GROUP BY state ORDER BY state;"
+psql "$DATABASE_URL" -c "SELECT now() - pg_postmaster_start_time() AS uptime;"
+```
+
+观察重点：`SELECT 1` 的网络往返延迟、连接池等待数、活跃连接数、CPU/内存/磁盘吞吐及错误日志。当前应用健康检查 `/api/health` 已返回 HTTP 200；精确数据库 RTT 必须从 Railway 应用容器或同一私网环境执行，不能用沙箱到 `postgres.railway.internal` 的结果代替。
 
 ### 性能监控
 - 使用PM2 Plus进行实时监控

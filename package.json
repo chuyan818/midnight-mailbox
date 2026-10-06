@@ -15,6 +15,7 @@
     "db:push": "pnpm db:generate && pnpm db:migrate",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:backup": "bash scripts/backup-postgres.sh",
     "start:server": "NODE_ENV=production node dist/server.js"
   },
   "dependencies": {
