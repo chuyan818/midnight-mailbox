@@ -1,0 +1,42 @@
+name: PostgreSQL backup
+
+on:
+  schedule:
+    # Daily at 02:15 UTC (10:15 Asia/Shanghai).
+    - cron: "15 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+      BACKUP_DIR: backups/postgres
+      RETENTION_DAYS: "14"
+      S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+      S3_PREFIX: ${{ secrets.BACKUP_S3_PREFIX }}
+      S3_ENDPOINT_URL: ${{ secrets.BACKUP_S3_ENDPOINT_URL }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.BACKUP_AWS_REGION }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Create and upload backup
+        run: bash scripts/backup-postgres.sh
+
+      - name: Retain a short-lived workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: midnight-mailbox-postgres-backup-${{ github.run_id }}
+          path: backups/postgres/*
+          retention-days: 14
+          if-no-files-found: error

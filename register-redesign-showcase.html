@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深夜信箱 - 注册页面重新设计展示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(to bottom, #0f172a, #1e1b4b, #0f172a);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #fbbf24 0%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #cbd5e1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .showcase-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+
+        .showcase-item {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            color: white;
+        }
+
+        .showcase-item h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #60a5fa;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .showcase-item h2::before {
+            content: "✓";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: #10b981;
+            border-radius: 50%;
+            font-weight: bold;
+            color: white;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li::before {
+            content: "→";
+            color: #fbbf24;
+            font-weight: bold;
+            min-width: 20px;
+        }
+
+        .register-form-demo {
+            background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .form-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-title h1 {
+            font-size: 1.8em;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .form-title p {
+            color: #94a3b8;
+            font-size: 0.95em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: flex;
+            align-items: center;
+            color: white;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+
+        .form-label-icon {
+            width: 16px;
+            height: 16px;
+            color: #60a5fa;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95em;
+            transition: all 0.2s ease-out;
+        }
+
+        .form-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #60a5fa;
+        }
+
+        .form-input::placeholder {
+            color: #64748b;
+        }
+
+        .verification-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .verification-group .form-input {
+            flex: 1;
+        }
+
+        .btn-send {
+            padding: 12px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease-out;
+        }
+
+        .btn-send:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .btn-send:active {
+            transform: translateY(0);
+        }
+
+        .countdown {
+            color: #fbbf24;
+            font-size: 0.85em;
+            margin-top: 8px;
+        }
+
+        .password-strength {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 0.85em;
+        }
+
+        .strength-label {
+            color: #94a3b8;
+        }
+
+        .strength-indicators {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .strength-item {
+            font-size: 0.8em;
+            font-weight: 500;
+            opacity: 0.4;
+            transition: opacity 0.2s ease-out;
+        }
+
+        .strength-item.weak {
+            color: #ef4444;
+        }
+
+        .strength-item.medium {
+            color: #eab308;
+        }
+
+        .strength-item.strong {
+            color: #10b981;
+        }
+
+        .strength-item.active {
+            opacity: 1;
+        }
+
+        .strength-divider {
+            color: #64748b;
+            opacity: 0.5;
+        }
+
+        .form-checkbox {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .form-checkbox input {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: #3b82f6;
+        }
+
+        .form-checkbox label {
+            color: #cbd5e1;
+            font-size: 0.9em;
+            cursor: pointer;
+            line-height: 1.4;
+        }
+
+        .form-checkbox a {
+            color: #60a5fa;
+            text-decoration: none;
+            transition: color 0.2s ease-out;
+        }
+
+        .form-checkbox a:hover {
+            color: #93c5fd;
+            text-decoration: underline;
+        }
+
+        .btn-register {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #3b82f6 0%, #a855f7 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease-out;
+            margin-top: 10px;
+        }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-register:active {
+            transform: translateY(0);
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .form-footer a {
+            color: #60a5fa;
+            text-decoration: none;
+            transition: color 0.2s ease-out;
+        }
+
+        .form-footer a:hover {
+            color: #93c5fd;
+        }
+
+        .features-section {
+            margin-top: 60px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+        }
+
+        .features-section h2 {
+            color: #60a5fa;
+            font-size: 1.8em;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+        }
+
+        .feature-card h3 {
+            color: #fbbf24;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-card p {
+            color: #cbd5e1;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .comparison-table th {
+            background: rgba(255, 255, 255, 0.05);
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            font-size: 0.9em;
+        }
+
+        .check-mark {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #64748b;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .showcase-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .register-form-demo {
+                padding: 24px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .demo-note {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            color: #93c5fd;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌙 深夜信箱 - 注册页面重新设计</h1>
+            <p>第二十四阶段：添加验证码、密码强度提示和完整表单验证</p>
+        </div>
+
+        <div class="showcase-grid">
+            <div class="showcase-item">
+                <h2>✨ 核心功能</h2>
+                <ul class="feature-list">
+                    <li>邮箱格式校验</li>
+                    <li>验证码发送与倒计时</li>
+                    <li>验证码限频保护</li>
+                    <li>密码强度提示</li>
+                    <li>密码一致校验</li>
+                    <li>用户协议勾选</li>
+                    <li>注册成功自动跳转</li>
+                    <li>完整的表单验证</li>
+                </ul>
+            </div>
+
+            <div class="showcase-item">
+                <h2>🎨 设计特点</h2>
+                <ul class="feature-list">
+                    <li>紫蓝渐变背景</li>
+                    <li>毛玻璃效果表单卡片</li>
+                    <li>清晰的图标指示</li>
+                    <li>实时验证反馈</li>
+                    <li>倒计时和使用次数统计</li>
+                    <li>密码强度实时显示</li>
+                    <li>流畅的交互动画</li>
+                    <li>响应式设计</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="register-form-demo">
+            <div class="form-title">
+                <h1>创建你的账号</h1>
+                <p>今晚，让情绪有个地方安放。</p>
+            </div>
+
+            <form onsubmit="return false;">
+                <!-- 邮箱地址 -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="form-label-icon">✉️</span>
+                        邮箱地址
+                    </label>
+                    <input type="email" class="form-input" placeholder="请输入邮箱地址" value="user@example.com">
+                </div>
+
+                <!-- 验证码 -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="form-label-icon">📧</span>
+                        验证码
+                    </label>
+                    <div class="verification-group">
+                        <input type="text" class="form-input" placeholder="输入验证码">
+                        <button type="button" class="btn-send">发送验证码</button>
+                    </div>
+                    <div class="countdown">
+                        ⏱️ 倒计时：53秒 | 今天已发送 1/10 次
+                    </div>
+                </div>
+
+                <!-- 设置密码 -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="form-label-icon">🔒</span>
+                        设置密码
+                    </label>
+                    <input type="password" class="form-input" placeholder="至少6位" value="Test123456">
+                    <div class="password-strength">
+                        <span class="strength-label">密码强度：</span>
+                        <div class="strength-indicators">
+                            <span class="strength-item weak">弱</span>
+                            <span class="strength-divider">|</span>
+                            <span class="strength-item medium">中</span>
+                            <span class="strength-divider">|</span>
+                            <span class="strength-item strong active">强</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 确认密码 -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="form-label-icon">🔒</span>
+                        确认密码
+                    </label>
+                    <input type="password" class="form-input" placeholder="再输入一次密码">
+                </div>
+
+                <!-- 用户协议 -->
+                <div class="form-checkbox">
+                    <input type="checkbox" id="terms" checked>
+                    <label for="terms">
+                        我已阅读并同意<a href="#">《用户协议》</a>和<a href="#">《隐私政策》</a>
+                    </label>
+                </div>
+
+                <!-- 提交按钮 -->
+                <button type="submit" class="btn-register">创建账号</button>
+
+                <!-- 底部链接 -->
+                <div class="form-footer">
+                    已有账号？<a href="#">立即登录 →</a>
+                </div>
+            </form>
+
+            <div class="demo-note">
+                💡 这是一个交互式演示。实际的注册页面支持实时验证、倒计时、密码强度提示等功能。
+            </div>
+        </div>
+
+        <div class="features-section">
+            <h2>📊 功能详解</h2>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>📧 邮箱格式校验</h3>
+                    <p>使用正则表达式验证邮箱格式，确保用户输入有效的邮箱地址。验证码按钮依赖邮箱有效性。</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>⏱️ 验证码倒计时</h3>
+                    <p>发送验证码后显示60秒倒计时。倒计时期间按钮禁用，防止用户重复发送。</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🛡️ 限频保护</h3>
+                    <p>每分钟最多发送1次，每天最多10次。显示"今天已发送 X/10 次"统计信息。</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>💪 密码强度提示</h3>
+                    <p>实时显示密码强度：弱（<6位）、中（6-8位）、强（8位+含大小写数字特殊符号）。</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>✔️ 密码一致校验</h3>
+                    <p>验证两次输入的密码是否相同。不一致时显示错误提示。</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📋 用户协议勾选</h3>
+                    <p>必须勾选《用户协议》和《隐私政策》才能提交注册。未勾选时显示错误提示。</p>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 40px; color: #60a5fa; font-size: 1.5em;">⚙️ 验证码限频规则</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>限制项</th>
+                        <th>规则</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>每分钟限制</strong></td>
+                        <td>最多发送1次</td>
+                        <td>防止用户频繁发送验证码</td>
+                    </tr>
+                    <tr>
+                        <td><strong>每日限制</strong></td>
+                        <td>最多发送10次</td>
+                        <td>防止滥用和恶意攻击</td>
+                    </tr>
+                    <tr>
+                        <td><strong>倒计时</strong></td>
+                        <td>60秒</td>
+                        <td>用户可见的实时倒计时</td>
+                    </tr>
+                    <tr>
+                        <td><strong>统计显示</strong></td>
+                        <td>"今天已发送 X/10 次"</td>
+                        <td>让用户了解剩余发送次数</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2 style="margin-top: 40px; color: #60a5fa; font-size: 1.5em;">🔐 密码强度判断标准</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>强度等级</th>
+                        <th>判断条件</th>
+                        <th>示例</th>
+                        <th>颜色</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>弱</strong></td>
+                        <td>少于6位</td>
+                        <td>abc, 123</td>
+                        <td style="color: #ef4444;">🔴 红色</td>
+                    </tr>
+                    <tr>
+                        <td><strong>中</strong></td>
+                        <td>6-8位，包含字母和数字</td>
+                        <td>abc123, Test123</td>
+                        <td style="color: #eab308;">🟡 黄色</td>
+                    </tr>
+                    <tr>
+                        <td><strong>强</strong></td>
+                        <td>8位+，包含大小写、数字、特殊符号</td>
+                        <td>Test123!@, Secure#2024</td>
+                        <td style="color: #10b981;">🟢 绿色</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="features-section" style="margin-top: 40px;">
+            <h2>📁 项目文件</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>文件路径</th>
+                        <th>描述</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>client/src/pages/Register.tsx</code></td>
+                        <td>完整的注册页面组件</td>
+                        <td><span class="check-mark">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>server/auth.register.test.ts</code></td>
+                        <td>单元测试（15个测试用例）</td>
+                        <td><span class="check-mark">✓</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>todo.md</code></td>
+                        <td>项目任务清单（已更新）</td>
+                        <td><span class="check-mark">✓</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 深夜信箱 (Midnight Mailbox) | 注册页面重新设计展示</p>
+            <p style="margin-top: 10px; color: #475569;">第二十四阶段：重新设计注册页面（添加验证码、密码强度提示、完整表单验证）</p>
+        </div>
+    </div>
+
+    <script>
+        // 简单的交互演示
+        document.querySelector('.btn-send').addEventListener('click', function() {
+            const countdown = document.querySelector('.countdown');
+            let seconds = 60;
+            
+            countdown.innerHTML = `⏱️ 倒计时：${seconds}秒 | 今天已发送 1/10 次`;
+            
+            const interval = setInterval(() => {
+                seconds--;
+                countdown.innerHTML = `⏱️ 倒计时：${seconds}秒 | 今天已发送 1/10 次`;
+                
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    countdown.innerHTML = `⏱️ 倒计时：已结束 | 今天已发送 1/10 次`;
+                }
+            }, 1000);
+        });
+
+        // 密码强度演示
+        const passwordInput = document.querySelector('input[type="password"]');
+        const strengthIndicators = document.querySelectorAll('.strength-item');
+
+        passwordInput.addEventListener('input', function() {
+            const pwd = this.value;
+            let strength = 'weak';
+
+            if (pwd.length >= 8 && /[a-z]/.test(pwd) && /[A-Z]/.test(pwd) && /\d/.test(pwd) && /[!@#$%^&*]/.test(pwd)) {
+                strength = 'strong';
+            } else if (pwd.length >= 6 && /[a-z]/.test(pwd) && /[A-Z]/.test(pwd) && /\d/.test(pwd)) {
+                strength = 'medium';
+            } else if (pwd.length < 6) {
+                strength = 'weak';
+            } else if (pwd.length >= 6) {
+                strength = 'medium';
+            }
+
+            strengthIndicators.forEach(item => {
+                item.classList.remove('active');
+                if (item.classList.contains(strength)) {
+                    item.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

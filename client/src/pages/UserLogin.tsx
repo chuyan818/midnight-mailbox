@@ -1,0 +1,503 @@
+import { useState, useRef, useEffect } from 'react';
+import { useLocation, useSearchParams } from 'wouter';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Mail, Lock, Eye, EyeOff, Chrome, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { isValidEmail, isValidLoginPassword } from '@/lib/auth-validation';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { pageTranslations } from '@/lib/page-translations';
+import LanguageSelector from '@/components/LanguageSelector';
+
+
+interface MousePosition {
+  x: number;
+  y: number;
+}
+
+interface Star {
+  id: number;
+  x: number;
+  y: number;
+  size: number;
+  opacity: number;
+  duration: number;
+}
+
+export default function UserLogin() {
+  const [, navigate] = useLocation();
+  const { language } = useLanguage();
+  const copy = pageTranslations[language].auth;
+  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(() => {
+    const paramEmail = searchParams.get('email');
+    if (paramEmail) return paramEmail;
+    // 从localStorage读取记住的邮箱
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('rememberedEmail') || '';
+    }
+    return '';
+  });
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('rememberMe') === 'true';
+    }
+    return false;
+  });
+  const [mousePos, setMousePos] = useState<MousePosition>({ x: 0, y: 0 });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const spiritRef = useRef<HTMLDivElement>(null);
+  const leftSectionRef = useRef<HTMLDivElement>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const [stars, setStars] = useState<Star[]>([]);
+
+  // 验证邮箱格式
+  const validateEmail = (email: string) => {
+    return isValidEmail(email);
+  };
+
+  // 当邮箱自动填充时，焦点移到密码输入框
+  useEffect(() => {
+    if (searchParams.get('email') && passwordInputRef.current) {
+      setTimeout(() => {
+        passwordInputRef.current?.focus();
+      }, 100);
+    }
+  }, [searchParams]);
+
+  // 初始化星空
+  useEffect(() => {
+    const generatedStars: Star[] = Array.from({ length: 50 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 2 + 0.5,
+      opacity: Math.random() * 0.5 + 0.3,
+      duration: Math.random() * 3 + 2,
+    }));
+    setStars(generatedStars);
+  }, []);
+
+  // 计算精灵位置
+  const calculateSpiritPosition = (mouseX: number, mouseY: number) => {
+    if (!spiritRef.current || !leftSectionRef.current) return { x: 0, y: 0 };
+    
+    const rect = leftSectionRef.current.getBoundingClientRect();
+    const spiritRect = spiritRef.current.getBoundingClientRect();
+    
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const deltaX = mouseX - centerX;
+    const deltaY = mouseY - centerY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // 限制移动范围
+    const maxMove = 40;
+    const moveX = (deltaX / distance) * Math.min(maxMove, distance / 10);
+    const moveY = (deltaY / distance) * Math.min(maxMove, distance / 10);
+    
+    return { x: moveX, y: moveY };
+  };
+
+  // 监听鼠标移动
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // 处理{copy.login}
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLoading || isSuccess) return;
+    const newErrors: Record<string, string> = {};
+
+    // 验证邮箱
+    if (!email) {
+      newErrors.email = copy.emailInvalid;
+    } else if (!validateEmail(email)) {
+      newErrors.email = copy.emailInvalid;
+    }
+
+    // 验证密码
+    if (!password) {
+      newErrors.password = copy.passwordPlaceholder;
+    } else if (!isValidLoginPassword(password)) {
+      newErrors.password = copy.passwordMin;
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+    setIsLoading(true);
+
+    // 处理"{copy.remember}"功能
+    if (rememberMe) {
+      // 保存邮箱和{copy.remember}状态
+      localStorage.setItem('rememberedEmail', email);
+      localStorage.setItem('rememberMe', 'true');
+      localStorage.setItem('rememberMeTimestamp', new Date().toISOString());
+    } else {
+      // {copy.clear}已记住的邮箱
+      localStorage.removeItem('rememberedEmail');
+      localStorage.removeItem('rememberMe');
+      localStorage.removeItem('rememberMeTimestamp');
+    }
+    
+    try {
+      const response = await fetch('/api/auth/email/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+      const result = await response.json() as { error?: string; suspiciousLogin?: boolean };
+      if (!response.ok) throw new Error(result.error || copy.loginFailed);
+      setIsSuccess(true);
+      setTimeout(() => navigate(result.suspiciousLogin ? '/profile?security=unusual' : '/'), 500);
+    } catch (error) {
+      setErrors({ submit: error instanceof Error ? error.message : copy.loginFailed });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 仅保留 Google 邮箱登录
+  const handleGoogleLogin = () => {
+    window.location.assign('/api/auth/google/start?returnPath=/');
+  };
+
+  // 邮箱输入变化处理
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (errors.email) {
+      setErrors({ ...errors, email: '' });
+    }
+  };
+
+  // 密码输入变化处理
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (errors.password) {
+      setErrors({ ...errors, password: '' });
+    }
+  };
+
+  // 检查邮箱是否有效
+  const isEmailValid = email && validateEmail(email);
+  const isPasswordValid = password && isValidLoginPassword(password);
+
+  const spiritPos = calculateSpiritPosition(mousePos.x, mousePos.y);
+
+  return (
+    <div className="min-h-screen bg-white flex overflow-hidden">
+      {/* 左侧动画区 */}
+      <div 
+        ref={leftSectionRef}
+        className="hidden lg:flex w-1/2 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden flex-col items-center justify-center"
+      >
+        {/* 星空背景 */}
+        <div className="absolute inset-0 overflow-hidden">
+          {stars.map((star) => (
+            <div
+              key={star.id}
+              className="absolute rounded-full bg-white animate-pulse"
+              style={{
+                left: `${star.x}%`,
+                top: `${star.y}%`,
+                width: `${star.size}px`,
+                height: `${star.size}px`,
+                opacity: star.opacity,
+                animation: `twinkle ${star.duration}s infinite`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* 装饰圆形 */}
+        <div className="absolute top-20 right-20 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl" />
+
+        {/* 夜谈精灵角色 */}
+        <div className="relative z-10">
+          <div 
+            ref={spiritRef}
+            className="transition-transform duration-300 ease-out"
+            style={{ 
+              transform: `translate(${spiritPos.x}px, ${spiritPos.y}px)`,
+            }}
+          >
+            {/* 精灵头部 */}
+            <div className="w-24 h-24 bg-gradient-to-b from-purple-300 to-purple-400 rounded-full relative shadow-2xl mx-auto mb-2">
+              {/* 眼睛 */}
+              <div className="absolute top-7 left-0 right-0 flex justify-center gap-4">
+                <div className="w-3 h-3 rounded-full bg-white shadow-inner">
+                  <div className="w-1.5 h-1.5 bg-purple-900 rounded-full ml-0.75 mt-0.75" />
+                </div>
+                <div className="w-3 h-3 rounded-full bg-white shadow-inner">
+                  <div className="w-1.5 h-1.5 bg-purple-900 rounded-full ml-0.75 mt-0.75" />
+                </div>
+              </div>
+
+              {/* 嘴巴 */}
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                <div className="w-6 h-1 bg-purple-600 rounded-full" />
+              </div>
+
+              {/* 光晕 */}
+              <div className="absolute -inset-4 rounded-full border-2 border-purple-300/30 animate-pulse" />
+            </div>
+
+            {/* 精灵身体 */}
+            <div className="w-16 h-20 bg-gradient-to-b from-purple-300/80 to-purple-400/60 rounded-3xl mx-auto relative">
+              {/* 翅膀 */}
+              <div className="absolute top-2 -left-6 w-6 h-10 bg-purple-200/60 rounded-full blur-sm animate-bounce" />
+              <div className="absolute top-2 -right-6 w-6 h-10 bg-purple-200/60 rounded-full blur-sm animate-bounce" style={{ animationDelay: '0.2s' }} />
+            </div>
+
+            {/* 魔法光效 */}
+            <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 blur-2xl animate-pulse" />
+          </div>
+        </div>
+
+        {/* 底部文案 */}
+        <div className="absolute bottom-12 text-center z-10">
+          <p className="text-white/80 text-sm font-medium">{copy.spirit}</p>
+          <p className="text-white/50 text-xs mt-1">{copy.spiritSub}</p>
+        </div>
+      </div>
+
+      {/* 右侧{copy.login}区 */}
+      <div className="w-full lg:w-1/2 bg-white flex flex-col items-center justify-center p-8 md:p-12">
+        <div className="w-full max-w-md">
+          <div className="flex justify-end mb-4"><LanguageSelector compact /></div>
+          {/* Logo 和标题 */}
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">深</span>
+              </div>
+              <h1 className="text-3xl font-bold text-slate-900">{copy.loginTitle}</h1>
+            </div>
+            <p className="text-slate-600 text-sm">{copy.tagline}</p>
+          </div>
+
+          {/* {copy.login}表单 */}
+          <form onSubmit={handleLogin} noValidate className="space-y-4 mb-6">
+            {/* 邮箱输入 */}
+            <div className="relative">
+              <Input
+                type="email"
+                placeholder={copy.emailPlaceholder}
+                value={email}
+                autoComplete="email"
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'login-email-error' : undefined}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                className={`bg-slate-50 border-2 text-slate-900 placeholder:text-slate-400 pl-10 h-12 rounded-lg transition-all ${
+                  errors.email 
+                    ? 'border-red-500 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20' 
+                    : isEmailValid
+                    ? 'border-green-500 focus:border-green-500 focus:bg-white focus:ring-2 focus:ring-green-500/20'
+                    : 'border-slate-200 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20'
+                }`}
+              />
+              <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+              {isEmailValid && !errors.email && (
+                <CheckCircle className="absolute right-3 top-3.5 w-5 h-5 text-green-500" />
+              )}
+              {errors.email && (
+                <AlertCircle className="absolute right-3 top-3.5 w-5 h-5 text-red-500" />
+              )}
+              {errors.email && (
+                <p id="login-email-error" className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.email}
+                </p>
+              )}
+              {email && !isEmailValid && !errors.email && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {copy.emailInvalid}
+                </p>
+              )}
+              {isEmailValid && !errors.email && (
+                <p className="text-green-500 text-xs mt-1 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  {copy.emailValid}
+                </p>
+              )}
+            </div>
+
+            {/* 密码输入 */}
+            <div className="relative">
+              <Input
+                ref={passwordInputRef}
+                type={showPassword ? 'text' : 'password'}
+                placeholder={copy.passwordPlaceholder}
+                value={password}
+                autoComplete="current-password"
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={errors.password ? 'login-password-error' : undefined}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                className={`bg-slate-50 border-2 text-slate-900 placeholder:text-slate-400 pl-10 pr-10 h-12 rounded-lg transition-all ${
+                  errors.password 
+                    ? 'border-red-500 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20' 
+                    : isPasswordValid
+                    ? 'border-green-500 focus:border-green-500 focus:bg-white focus:ring-2 focus:ring-green-500/20'
+                    : 'border-slate-200 focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-500/20'
+                }`}
+              />
+              <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+              {isPasswordValid && !errors.password && (
+                <div className="absolute right-12 top-3.5">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                </div>
+              )}
+              {errors.password && (
+                <p id="login-password-error" className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.password}
+                </p>
+              )}
+              {password && password.length < 6 && !errors.password && (
+                <p className="text-yellow-600 text-xs mt-1 flex items-center gap-1">
+                  {copy.passwordMin}
+                </p>
+              )}
+              {isPasswordValid && !errors.password && (
+                <p className="text-green-500 text-xs mt-1 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  {copy.passwordValid}
+                </p>
+              )}
+            </div>
+
+            {/* {copy.remember} */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-purple-500 focus:ring-purple-500"
+                />
+                <span className="text-sm text-slate-600">{copy.remember}</span>
+              </label>
+              <div className="flex items-center gap-3">
+                {localStorage.getItem('rememberMe') === 'true' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('rememberedEmail');
+                      localStorage.removeItem('rememberMe');
+                      localStorage.removeItem('rememberMeTimestamp');
+                      setEmail('');
+                      setRememberMe(false);
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                    title={copy.clear}
+                  >
+                    {copy.clear}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
+                >
+                  {copy.forgot}
+                </button>
+              </div>
+            </div>
+
+          {/* {copy.login}按钮 */}
+          {errors.submit && (
+            <p className="mb-3 flex items-center justify-center gap-2 text-center text-sm text-red-500" role="alert">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {errors.submit}
+            </p>
+          )}
+          <Button
+              type="submit"
+              disabled={isLoading || isSuccess}
+              className="w-full h-12 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{copy.loggingIn}</span>
+              ) : isSuccess ? copy.loginSuccess : copy.login}
+            </Button>
+          </form>
+
+          {/* 分割线 */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-slate-500">{copy.or}</span>
+            </div>
+          </div>
+
+          {/* Google 邮箱登录 */}
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              aria-label={copy.google}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 transition-colors hover:bg-slate-50"
+              title={copy.google}
+            >
+              <Chrome className="w-5 h-5 text-slate-600" />
+              <span className="text-sm font-medium text-slate-700">{copy.google}</span>
+            </button>
+          </div>
+
+          {/* 注册链接 */}
+          <div className="text-center">
+            <p className="text-slate-600 text-sm">
+              {copy.noAccount}
+              <button
+                type="button"
+                onClick={() => navigate('/register')}
+                className="text-purple-600 hover:text-purple-700 font-semibold transition-colors ml-1 bg-none border-none cursor-pointer p-0"
+              >
+                {copy.registerNow}
+              </button>
+            </p>
+          </div>
+        </div>
+
+        {/* 底部Footer */}
+        <div className="absolute bottom-6 left-0 right-0 text-center text-xs text-slate-500">
+          <p>© 2026 {copy.loginTitle} · <a href="/privacy-policy" className="hover:text-slate-700">{copy.privacy}</a> · <a href="/terms-of-service" className="hover:text-slate-700">{copy.terms}</a></p>
+        </div>
+      </div>
+
+      {/* 星空闪烁动画 */}
+      <style>{`
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.8; }
+        }
+      `}</style>
+    </div>
+  );
+}

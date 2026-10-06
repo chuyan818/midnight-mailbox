@@ -1,0 +1,97 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1774746244334,
+      "tag": "0000_bumpy_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1774746940658,
+      "tag": "0001_robust_mimic",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774749006005,
+      "tag": "0002_tranquil_the_phantom",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1774751598089,
+      "tag": "0003_majestic_namor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1774778054378,
+      "tag": "0004_wide_zodiak",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1778285724123,
+      "tag": "0005_open_sage",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1789737315518,
+      "tag": "0006_mean_swordsman",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1789773132931,
+      "tag": "0007_orange_maestro",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1789773173617,
+      "tag": "0008_familiar_kang",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1789859504196,
+      "tag": "0009_loving_captain_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1790989895368,
+      "tag": "0010_easy_blur",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1791000750653,
+      "tag": "0011_remarkable_marvel_apes",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1791001107078,
+      "tag": "0012_romantic_captain_midlands",
+      "breakpoints": true
+    }
+  ]
+}
