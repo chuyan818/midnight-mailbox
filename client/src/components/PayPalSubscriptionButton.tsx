@@ -18,7 +18,10 @@ declare global {
 }
 
 const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || "BAAYBLuXWAsSCiV36z-hShXpFEaY9gYmUg5esI_n4W5796X-K2HO-OTg4WDGi-7YqGm0RS4worre4erQng";
-const PAYPAL_PLAN_ID = import.meta.env.VITE_PAYPAL_PLAN_ID || "P-72U41601JC0053143NLAFGMY";
+const PAYPAL_PLAN_IDS = {
+  monthly: import.meta.env.VITE_PAYPAL_MONTHLY_PLAN_ID || "",
+  yearly: import.meta.env.VITE_PAYPAL_YEARLY_PLAN_ID || import.meta.env.VITE_PAYPAL_PLAN_ID || "P-72U41601JC0053143NLAFGMY",
+} as const;
 const PAYPAL_SCRIPT_ID = "paypal-subscription-sdk";
 
 export interface PayPalCopy {
@@ -30,15 +33,18 @@ export interface PayPalCopy {
   paymentLoadFailed: string;
 }
 
+export type PayPalPlanType = "monthly" | "yearly";
+
 interface PayPalSubscriptionButtonProps {
-  onApproved?: (subscriptionId: string) => void | Promise<void>;
+  planType: PayPalPlanType;
+  onApproved?: (subscriptionId: string, planType: PayPalPlanType) => void | Promise<void>;
   onFailed?: () => void;
   copy: PayPalCopy;
   heading?: string;
   description?: string;
 }
 
-export default function PayPalSubscriptionButton({ onApproved, onFailed, copy, heading, description }: PayPalSubscriptionButtonProps) {
+export default function PayPalSubscriptionButton({ planType, onApproved, onFailed, copy, heading, description }: PayPalSubscriptionButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -46,6 +52,8 @@ export default function PayPalSubscriptionButton({ onApproved, onFailed, copy, h
 
   useEffect(() => {
     let cancelled = false;
+    renderedRef.current = false;
+    if (containerRef.current) containerRef.current.innerHTML = "";
 
     const renderButton = async () => {
       if (!window.paypal || !containerRef.current || renderedRef.current || cancelled) return;
@@ -54,7 +62,11 @@ export default function PayPalSubscriptionButton({ onApproved, onFailed, copy, h
         await window.paypal.Buttons({
           style: { shape: "rect", color: "gold", layout: "vertical", label: "subscribe", height: 48 },
           onClick: () => setProcessing(true),
-          createSubscription: (_data, actions) => actions.subscription.create({ plan_id: PAYPAL_PLAN_ID }),
+          createSubscription: (_data, actions) => {
+            const planId = PAYPAL_PLAN_IDS[planType];
+            if (!planId) throw new Error(`PayPal ${planType} plan is not configured`);
+            return actions.subscription.create({ plan_id: planId });
+          },
           onApprove: async (data) => {
             if (!data.subscriptionID) {
               setProcessing(false);
@@ -62,7 +74,7 @@ export default function PayPalSubscriptionButton({ onApproved, onFailed, copy, h
               return;
             }
             try {
-              await onApproved?.(data.subscriptionID);
+              await onApproved?.(data.subscriptionID, planType);
               toast.success(copy.paymentSubmitted);
             } catch (error) {
               console.error("PayPal pending registration error", error);
@@ -94,7 +106,7 @@ export default function PayPalSubscriptionButton({ onApproved, onFailed, copy, h
 
     if (window.paypal) {
       void renderButton();
-      return () => { cancelled = true; };
+      return () => { cancelled = true; renderedRef.current = false; };
     }
 
     let script = document.getElementById(PAYPAL_SCRIPT_ID) as HTMLScriptElement | null;
@@ -116,9 +128,10 @@ export default function PayPalSubscriptionButton({ onApproved, onFailed, copy, h
 
     return () => {
       cancelled = true;
+      renderedRef.current = false;
       script?.removeEventListener("load", renderButton);
     };
-  }, [copy, onApproved]);
+  }, [copy, onApproved, planType]);
 
   return (
     <div className="relative mt-4 overflow-hidden rounded-2xl border border-[#FFD580]/45 bg-gradient-to-br from-[#FFD580]/15 via-white/[0.06] to-transparent p-4 shadow-[0_12px_40px_rgba(255,213,128,0.12)] transition-all duration-300 hover:border-[#FFD580]/70 hover:shadow-[0_16px_48px_rgba(255,213,128,0.2)]" data-testid="paypal-subscription">

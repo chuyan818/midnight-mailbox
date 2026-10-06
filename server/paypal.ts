@@ -10,9 +10,26 @@ const PAYPAL_API_BASE = process.env.PAYPAL_ENV === "live"
   : "https://api-m.sandbox.paypal.com";
 
 export const PAYPAL_PLAN_ID = process.env.PAYPAL_PLAN_ID || "P-72U41601JC0053143NLAFGMY";
-const PAYPAL_PLAN_TYPE = process.env.PAYPAL_PLAN_TYPE === "monthly" ? "monthly" : "yearly";
-const PAYPAL_PLAN_AMOUNT = process.env.PAYPAL_PLAN_AMOUNT || "0.00";
+export type PayPalPlanType = "monthly" | "yearly";
+export const PAYPAL_PLAN_IDS: Record<PayPalPlanType, string> = {
+  monthly: process.env.PAYPAL_MONTHLY_PLAN_ID || "",
+  yearly: process.env.PAYPAL_YEARLY_PLAN_ID || PAYPAL_PLAN_ID,
+};
+const PAYPAL_PLAN_AMOUNTS: Record<PayPalPlanType, string> = {
+  monthly: process.env.PAYPAL_MONTHLY_PLAN_AMOUNT || "29.00",
+  yearly: process.env.PAYPAL_YEARLY_PLAN_AMOUNT || "288.00",
+};
 const PAYPAL_PLAN_CURRENCY = process.env.PAYPAL_PLAN_CURRENCY || "USD";
+
+export function getPayPalPlanType(planId: string): PayPalPlanType | undefined {
+  if (planId && planId === PAYPAL_PLAN_IDS.monthly) return "monthly";
+  if (planId && planId === PAYPAL_PLAN_IDS.yearly) return "yearly";
+  return undefined;
+}
+
+export function getPayPalPlanAmount(planType: PayPalPlanType): string {
+  return PAYPAL_PLAN_AMOUNTS[planType];
+}
 
 function requiredPayPalConfig() {
   const clientId = process.env.PAYPAL_CLIENT_ID;
@@ -68,14 +85,15 @@ interface PayPalSubscriptionDetails {
   billing_info?: { next_billing_time?: string };
 }
 
-export async function registerPayPalSubscription(userId: number, subscriptionId: string) {
+export async function registerPayPalSubscription(userId: number, subscriptionId: string, requestedPlanType: PayPalPlanType) {
   const normalizedId = subscriptionId.trim();
   if (!/^I-[A-Z0-9]+$/i.test(normalizedId)) {
     throw new Error("Invalid PayPal subscription ID");
   }
 
   const subscription = await paypalRequest<PayPalSubscriptionDetails>(`/v1/billing/subscriptions/${encodeURIComponent(normalizedId)}`);
-  if (subscription.id !== normalizedId || subscription.plan_id !== PAYPAL_PLAN_ID) {
+  const actualPlanType = getPayPalPlanType(subscription.plan_id || "");
+  if (subscription.id !== normalizedId || !actualPlanType || actualPlanType !== requestedPlanType) {
     throw new Error("PayPal subscription does not match the configured plan");
   }
   if (subscription.status === "CANCELLED" || subscription.status === "EXPIRED" || subscription.status === "SUSPENDED") {
@@ -92,8 +110,8 @@ export async function registerPayPalSubscription(userId: number, subscriptionId:
     paymentStatus,
     ...(paymentStatus === "active"
       ? {
-          membershipType: PAYPAL_PLAN_TYPE as "monthly" | "yearly",
-          membershipExpiry: getNextBillingDate({ resource: subscription }, current?.membershipExpiry),
+          membershipType: actualPlanType,
+          membershipExpiry: getNextBillingDate(actualPlanType, { resource: subscription }, current?.membershipExpiry),
         }
       : current?.membershipType === "free" || !current
         ? { membershipType: "free" as const, membershipExpiry: null }
@@ -106,8 +124,8 @@ export async function registerPayPalSubscription(userId: number, subscriptionId:
   if (existing.length === 0) {
     await db.insert(memberships).values({
       userId,
-      membershipType: paymentStatus === "active" ? PAYPAL_PLAN_TYPE : "free",
-      membershipExpiry: paymentStatus === "active" ? getNextBillingDate({ resource: subscription }) : null,
+      membershipType: paymentStatus === "active" ? actualPlanType : "free",
+      membershipExpiry: paymentStatus === "active" ? getNextBillingDate(actualPlanType, { resource: subscription }) : null,
       paypalSubscriptionId: normalizedId,
       paymentStatus,
       autoRenew: true,
@@ -121,8 +139,8 @@ export async function registerPayPalSubscription(userId: number, subscriptionId:
   if (existingRecord.length === 0) {
     await db.insert(subscriptionRecords).values({
       userId,
-      membershipType: PAYPAL_PLAN_TYPE,
-      amount: PAYPAL_PLAN_AMOUNT,
+      membershipType: actualPlanType,
+      amount: getPayPalPlanAmount(actualPlanType),
       currency: PAYPAL_PLAN_CURRENCY,
       provider: "paypal",
       paypalSubscriptionId: normalizedId,
@@ -137,12 +155,12 @@ function getSubscriptionId(event: Record<string, any>): string | undefined {
   return event.resource?.billing_agreement_id || event.resource?.subscription_id || event.resource?.id;
 }
 
-function getNextBillingDate(event: Record<string, any>, currentExpiry?: Date | null) {
+function getNextBillingDate(planType: PayPalPlanType, event: Record<string, any>, currentExpiry?: Date | null) {
   const nextBillingTime = event.resource?.billing_info?.next_billing_time;
   if (nextBillingTime) return new Date(nextBillingTime);
   if (currentExpiry && currentExpiry.getTime() > Date.now()) return currentExpiry;
   const expiry = new Date();
-  if (PAYPAL_PLAN_TYPE === "monthly") expiry.setMonth(expiry.getMonth() + 1);
+  if (planType === "monthly") expiry.setMonth(expiry.getMonth() + 1);
   else expiry.setFullYear(expiry.getFullYear() + 1);
   return expiry;
 }
@@ -158,6 +176,9 @@ async function updateMembershipFromPayPalEvent(event: Record<string, any>) {
     console.warn(`[PayPal] No pending membership found for ${subscriptionId}`);
     return;
   }
+
+  const planType = getPayPalPlanType(String(event.resource?.plan_id || ""))
+    || (membership.membershipType === "monthly" || membership.membershipType === "yearly" ? membership.membershipType : "yearly");
 
   const eventType = String(event.event_type || "");
   const isActive = eventType === "BILLING.SUBSCRIPTION.ACTIVATED" || eventType === "PAYMENT.SALE.COMPLETED";
@@ -178,8 +199,8 @@ async function updateMembershipFromPayPalEvent(event: Record<string, any>) {
     if (transactionExists.length === 0) {
       await db.insert(subscriptionRecords).values({
         userId: membership.userId,
-        membershipType: PAYPAL_PLAN_TYPE,
-        amount: String(event.resource?.amount?.total || event.resource?.amount?.value || PAYPAL_PLAN_AMOUNT),
+        membershipType: planType,
+        amount: String(event.resource?.amount?.total || event.resource?.amount?.value || getPayPalPlanAmount(planType)),
         currency: String(event.resource?.amount?.currency || event.resource?.amount?.currency_code || PAYPAL_PLAN_CURRENCY).slice(0, 3),
         provider: "paypal",
         paypalSubscriptionId: subscriptionId,
@@ -191,8 +212,8 @@ async function updateMembershipFromPayPalEvent(event: Record<string, any>) {
 
   if (isActive) {
     await db.update(memberships).set({
-      membershipType: PAYPAL_PLAN_TYPE,
-      membershipExpiry: getNextBillingDate(event, membership.membershipExpiry),
+      membershipType: planType,
+      membershipExpiry: getNextBillingDate(planType, event, membership.membershipExpiry),
       paymentStatus: "active",
       autoRenew: true,
       cancelledAt: null,
@@ -239,8 +260,8 @@ async function updateMembershipFromPayPalEvent(event: Record<string, any>) {
       if (cancellationExists.length === 0) {
         await db.insert(subscriptionRecords).values({
           userId: membership.userId,
-          membershipType: PAYPAL_PLAN_TYPE,
-          amount: PAYPAL_PLAN_AMOUNT,
+          membershipType: planType,
+          amount: getPayPalPlanAmount(planType),
           currency: PAYPAL_PLAN_CURRENCY,
           provider: "paypal",
           paypalSubscriptionId: subscriptionId,
@@ -272,7 +293,7 @@ export async function cancelPayPalSubscription(userId: number) {
   await db.insert(subscriptionRecords).values({
     userId,
     membershipType: membership.membershipType,
-    amount: PAYPAL_PLAN_AMOUNT,
+    amount: getPayPalPlanAmount(membership.membershipType === "monthly" ? "monthly" : "yearly"),
     currency: PAYPAL_PLAN_CURRENCY,
     provider: "paypal",
     paypalSubscriptionId: membership.paypalSubscriptionId,

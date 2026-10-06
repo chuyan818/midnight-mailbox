@@ -240,12 +240,16 @@ server {
 ### PayPal 配置
 
 1. 在 PayPal Developer Dashboard 创建 Sandbox 或 Live 应用。
-2. 创建订阅 Plan，并配置以下环境变量：
+2. 分别创建月付和年付两个订阅 Plan，并配置以下环境变量。不要只配置单一 `PAYPAL_PLAN_ID`，否则月付/年付无法被服务端区分：
    ```bash
    PAYPAL_ENV=sandbox
    PAYPAL_CLIENT_ID=your_paypal_client_id
    PAYPAL_CLIENT_SECRET=your_paypal_client_secret
-   PAYPAL_PLAN_ID=your_paypal_plan_id
+   PAYPAL_MONTHLY_PLAN_ID=your_monthly_plan_id
+   PAYPAL_YEARLY_PLAN_ID=your_yearly_plan_id
+   PAYPAL_MONTHLY_PLAN_AMOUNT=29.00
+   PAYPAL_YEARLY_PLAN_AMOUNT=288.00
+   PAYPAL_PLAN_CURRENCY=USD
    PAYPAL_WEBHOOK_ID=your_paypal_webhook_id
    ```
 3. Webhook 地址：`https://your-domain.com/api/paypal/webhook`。
@@ -253,7 +257,7 @@ server {
 
 ### 生产环境切换
 
-将 `PAYPAL_ENV` 改为 `live`，替换 Live Client ID、Secret、Plan ID 和 Webhook ID，然后重新部署应用。
+将 `PAYPAL_ENV` 改为 `live`，替换 Live Client ID、Secret、月付/年付 Plan ID 和 Webhook ID，然后重新部署应用。前端同时配置 `VITE_PAYPAL_MONTHLY_PLAN_ID` 与 `VITE_PAYPAL_YEARLY_PLAN_ID`，并与服务端变量保持完全一致。
 
 ---
 

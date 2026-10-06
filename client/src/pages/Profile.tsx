@@ -26,6 +26,7 @@ import { useLanguage, translations, type Language } from "@/contexts/LanguageCon
 import { pageTranslations } from "@/lib/page-translations";
 import LanguageSelector from "@/components/LanguageSelector";
 import UpgradePromptDialog from "@/components/UpgradePromptDialog";
+import type { PayPalPlanType } from "@/components/PayPalSubscriptionButton";
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -125,13 +126,13 @@ export default function Profile() {
     }
   };
 
-  const handlePayPalApproved = async (subscriptionId: string) => {
-    await registerPayPalPending.mutateAsync({ subscriptionId });
+  const handlePayPalApproved = async (subscriptionId: string, planType: PayPalPlanType) => {
+    await registerPayPalPending.mutateAsync({ subscriptionId, planType });
     await profileQuery.refetch();
   };
 
-  const handleUpgradeApproved = async (subscriptionId: string) => {
-    await handlePayPalApproved(subscriptionId);
+  const handleUpgradeApproved = async (subscriptionId: string, planType: PayPalPlanType) => {
+    await handlePayPalApproved(subscriptionId, planType);
     setShowUpgradeDialog(false);
     navigate("/payment-result?status=success");
   };

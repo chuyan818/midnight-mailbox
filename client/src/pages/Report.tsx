@@ -2,8 +2,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import EmotionTrendChart from "@/components/EmotionTrendChart";
 
 export default function Report() {
   const { isAuthenticated } = useAuth();
@@ -192,10 +193,12 @@ export default function Report() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-white">7天情绪趋势</h2>
           {!hasPaidMembership ? (
-            <div className="p-6 rounded-lg bg-[#FFD580]/10 border border-[#FFD580]/30 text-center">
-              <p className="text-[#FFD580] font-semibold">7天情绪趋势为会员专属功能</p>
-              <p className="text-sm text-gray-300 mt-2">免费版可查看当前情绪报告；升级后解锁完整情绪报告和7天趋势。</p>
-              <Button onClick={() => navigate("/profile?payment=retry")} className="mt-4 bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400">升级会员</Button>
+            <div data-testid="report-upgrade-prompt" className="group relative overflow-hidden rounded-2xl border border-[#FFD580]/35 bg-gradient-to-br from-[#FFD580]/20 via-[#FFD580]/[0.06] to-transparent p-6 text-center shadow-[0_16px_55px_rgba(255,213,128,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#FFD580]/70 hover:shadow-[0_20px_65px_rgba(255,213,128,0.2)] motion-safe:animate-[fadeIn_500ms_ease-out]">
+              <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#FFD580]/15 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+              <Sparkles className="mx-auto mb-3 h-7 w-7 text-[#FFD580] transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" aria-hidden="true" />
+              <p className="text-lg font-semibold text-[#FFE7A8]">7天情绪趋势为会员专属功能</p>
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-gray-300">免费版可查看当前情绪报告；升级后解锁完整情绪报告和7天趋势。</p>
+              <Button onClick={() => navigate("/profile?payment=retry")} className="mt-5 bg-[#FFD580] text-[#0B0F2F] shadow-[0_8px_24px_rgba(255,213,128,0.2)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-yellow-400 active:scale-[0.97]">升级会员</Button>
             </div>
           ) : loadingTrend ? (
             <div className="flex items-center justify-center h-64">
@@ -203,38 +206,7 @@ export default function Report() {
             </div>
           ) : trendData && trendData.length > 0 ? (
             <div className="p-6 rounded-lg bg-white/5 border border-white/10">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis
-                    dataKey="date"
-                    stroke="#9CA3AF"
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(date) => {
-                      const d = new Date(date);
-                      return `${d.getMonth() + 1}/${d.getDate()}`;
-                    }}
-                  />
-                  <YAxis stroke="#9CA3AF" tick={{ fontSize: 12 }} domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#1C1F4A",
-                      border: "1px solid #FFD580",
-                      borderRadius: "8px",
-                    }}
-                    labelStyle={{ color: "#FFD580" }}
-                    formatter={(value: any) => [value, "评分"]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    stroke="#FFD580"
-                    strokeWidth={2}
-                    dot={{ fill: "#FFD580", r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <EmotionTrendChart data={trendData} scoreLabel="评分" />
             </div>
           ) : (
             <div className="p-6 rounded-lg bg-white/5 border border-white/10 text-center text-gray-400">

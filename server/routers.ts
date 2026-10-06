@@ -313,10 +313,10 @@ export const appRouter = router({
     history: protectedProcedure.query(async ({ ctx }) => getUserSubscriptionRecords(ctx.user.id)),
 
     registerPending: protectedProcedure
-      .input(z.object({ subscriptionId: z.string().min(10).max(80) }))
+      .input(z.object({ subscriptionId: z.string().min(10).max(80), planType: z.enum(["monthly", "yearly"]) }))
       .mutation(async ({ ctx, input }) => {
         try {
-          return await registerPayPalSubscription(ctx.user.id, input.subscriptionId);
+          return await registerPayPalSubscription(ctx.user.id, input.subscriptionId, input.planType);
         } catch (error) {
           console.error("[PayPal] Failed to register pending subscription", error);
           throw new TRPCError({

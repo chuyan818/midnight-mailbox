@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Check, X } from "lucide-react";
-import PayPalSubscriptionButton from "@/components/PayPalSubscriptionButton";
+import PayPalSubscriptionButton, { type PayPalPlanType } from "@/components/PayPalSubscriptionButton";
 import { pageTranslations } from "@/lib/page-translations";
 
 type ProfileCopy = (typeof pageTranslations)[keyof typeof pageTranslations]["profile"];
@@ -8,7 +9,7 @@ interface UpgradePromptDialogProps {
   open: boolean;
   copy: ProfileCopy;
   onClose: () => void;
-  onApproved: (subscriptionId: string) => void | Promise<void>;
+  onApproved: (subscriptionId: string, planType: PayPalPlanType) => void | Promise<void>;
   onFailed?: () => void;
 }
 
@@ -20,6 +21,7 @@ const BENEFITS = [
 ] as const;
 
 export default function UpgradePromptDialog({ open, copy, onClose, onApproved, onFailed }: UpgradePromptDialogProps) {
+  const [planType, setPlanType] = useState<PayPalPlanType>("yearly");
   if (!open) return null;
 
   return (
@@ -48,24 +50,25 @@ export default function UpgradePromptDialog({ open, copy, onClose, onApproved, o
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2" data-testid="paypal-plan-selector">
+          <button type="button" onClick={() => setPlanType("monthly")} className={`rounded-xl border p-4 text-left transition-all duration-200 ${planType === "monthly" ? "border-[#FFD580]/70 bg-[#FFD580]/10 shadow-[0_0_24px_rgba(255,213,128,0.12)]" : "border-white/10 bg-white/[0.04] hover:border-white/25"}`}>
             <p className="text-sm font-semibold text-white">{copy.upgradeMonthly}</p>
             <p className="mt-2 text-xs leading-5 text-white/60">{copy.upgradeFeatureLetters}</p>
             <p className="mt-1 text-xs leading-5 text-white/60">{copy.upgradeFeatureThemes}</p>
-          </div>
-          <div className="rounded-xl border border-[#FFD580]/35 bg-[#FFD580]/10 p-4">
+          </button>
+          <button type="button" onClick={() => setPlanType("yearly")} className={`rounded-xl border p-4 text-left transition-all duration-200 ${planType === "yearly" ? "border-[#FFD580]/70 bg-[#FFD580]/10 shadow-[0_0_24px_rgba(255,213,128,0.12)]" : "border-white/10 bg-white/[0.04] hover:border-white/25"}`}>
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-[#FFD580]">{copy.upgradeYearly}</p>
               <span className="rounded-full bg-[#FFD580]/20 px-2 py-1 text-[10px] text-[#FFD580]">{copy.upgradeRecommended}</span>
             </div>
             <p className="mt-2 text-xs leading-5 text-white/75">{copy.upgradeFeatureSupport}</p>
             <p className="mt-1 text-xs leading-5 text-white/75">{copy.upgradeFeatureAnalysis}</p>
-          </div>
+          </button>
         </div>
 
         <div className="mt-5 rounded-xl border border-[#FFD580]/20 bg-black/10 p-3">
           <PayPalSubscriptionButton
+            planType={planType}
             onApproved={onApproved}
             onFailed={onFailed}
             copy={copy}
