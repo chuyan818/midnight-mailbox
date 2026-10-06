@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { InsertUser, users, letters, emotions, memberships, subscriptionRecords, InsertMembership, letterTemplates, InsertLetterTemplate, LetterTemplate } from "../drizzle/schema";
@@ -240,6 +240,26 @@ export async function getUserMembership(userId: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+/** A paid tier is effective only after PayPal confirmation and before expiry. */
+export function isPaidMembershipActive(membership: {
+  membershipType?: string | null;
+  paymentStatus?: string | null;
+  membershipExpiry?: Date | string | null;
+} | null | undefined): boolean {
+  if (!membership || !["monthly", "yearly"].includes(membership.membershipType || "")) return false;
+  if (membership.paymentStatus !== "active") return false;
+  if (!membership.membershipExpiry) return true;
+  return new Date(membership.membershipExpiry).getTime() > Date.now();
+}
+
+export function getEffectiveMembershipType(
+  membership: Awaited<ReturnType<typeof getUserMembership>>,
+): "free" | "monthly" | "yearly" {
+  return isPaidMembershipActive(membership)
+    ? (membership!.membershipType as "monthly" | "yearly")
+    : "free";
+}
+
 /**
  * Create or update user membership
  */
@@ -275,8 +295,8 @@ export async function canUserWriteLetter(userId: number): Promise<boolean> {
   const membership = await getUserMembership(userId);
   if (!membership) return true; // Default allow
   
-  // Free users: 1 letter per day
-  if (membership.membershipType === 'free') {
+  // Only a confirmed, non-expired paid membership has unlimited letters.
+  if (getEffectiveMembershipType(membership) === 'free') {
     const today = new Date().toISOString().split('T')[0];
     const lastLetterDate = membership.lastLetterDate;
     
@@ -328,7 +348,7 @@ export async function getUserEmotionsTrend(userId: number, days: number = 7) {
   const result = await db.select()
     .from(emotions)
     .innerJoin(letters, eq(emotions.letterId, letters.id))
-    .where(eq(letters.userId, userId))
+    .where(and(eq(letters.userId, userId), gte(emotions.createdAt, startDate)))
     .orderBy((t) => t.emotions.createdAt);
   
   return result;

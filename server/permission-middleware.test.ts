@@ -18,14 +18,14 @@ describe('权限检查中间件', () => {
       expect(freePerms.writeLetterCooldown).toBe(300000);
     });
 
-    it('标准会员权限配置正确', () => {
+    it('月会员权限配置正确', () => {
       const monthlyPerms = membershipPermissions.monthly;
       
-      expect(monthlyPerms.maxLettersPerDay).toBe(5);
-      expect(monthlyPerms.maxCollections).toBe(100);
+      expect(monthlyPerms.maxLettersPerDay).toBe(Infinity);
+      expect(monthlyPerms.maxCollections).toBe(Infinity);
       expect(monthlyPerms.canAccessThematicMailbox).toBe(true);
-      expect(monthlyPerms.canAccessPremiumSupport).toBe(false);
-      expect(monthlyPerms.canAccessAIAnalysis).toBe(false);
+      expect(monthlyPerms.canAccessPremiumSupport).toBe(true);
+      expect(monthlyPerms.canAccessAIAnalysis).toBe(true);
       expect(monthlyPerms.writeLetterCooldown).toBe(0);
     });
 
@@ -52,8 +52,8 @@ describe('权限检查中间件', () => {
     it('应能获取标准会员权限', () => {
       const perms = getUserPermissions('monthly');
       
-      expect(perms.maxLettersPerDay).toBe(5);
-      expect(perms.maxCollections).toBe(100);
+      expect(perms.maxLettersPerDay).toBe(Infinity);
+      expect(perms.maxCollections).toBe(Infinity);
     });
 
     it('应能获取年会员权限', () => {
@@ -82,13 +82,13 @@ describe('权限检查中间件', () => {
       expect(summary.writeLetterCooldown).toBe('300000毫秒');
     });
 
-    it('标准会员摘要正确', () => {
+    it('月会员摘要正确', () => {
       const summary = getPermissionSummary('monthly');
       
-      expect(summary.maxLettersPerDay).toBe(5);
-      expect(summary.maxCollections).toBe(100);
+      expect(summary.maxLettersPerDay).toBe('无限');
+      expect(summary.maxCollections).toBe('无限');
       expect(summary.canAccessThematicMailbox).toBe(true);
-      expect(summary.canAccessPremiumSupport).toBe(false);
+      expect(summary.canAccessPremiumSupport).toBe(true);
       expect(summary.writeLetterCooldown).toBe('无');
     });
 
@@ -115,13 +115,13 @@ describe('权限检查中间件', () => {
       expect(monthlyPerms.canAccessThematicMailbox).toBe(true);
     });
 
-    it('标准会员权限应少于年会员', () => {
+    it('月会员与年会员均为无限会员权限', () => {
       const monthlyPerms = membershipPermissions.monthly;
       const yearlyPerms = membershipPermissions.yearly;
       
-      expect(monthlyPerms.maxLettersPerDay).toBeLessThan(yearlyPerms.maxLettersPerDay);
-      expect(monthlyPerms.maxCollections).toBeLessThan(yearlyPerms.maxCollections);
-      expect(monthlyPerms.canAccessPremiumSupport).toBe(false);
+      expect(monthlyPerms.maxLettersPerDay).toBe(Infinity);
+      expect(monthlyPerms.maxCollections).toBe(Infinity);
+      expect(monthlyPerms.canAccessPremiumSupport).toBe(true);
       expect(yearlyPerms.canAccessPremiumSupport).toBe(true);
     });
 
@@ -144,10 +144,10 @@ describe('权限检查中间件', () => {
       expect(perms.maxLettersPerDay).toBe(1);
     });
 
-    it('标准会员每天可发送5封信', () => {
+    it('月会员可无限发送信', () => {
       const perms = membershipPermissions.monthly;
       
-      expect(perms.maxLettersPerDay).toBe(5);
+      expect(perms.maxLettersPerDay).toBe(Infinity);
     });
 
     it('年会员可无限发送信', () => {
@@ -162,10 +162,10 @@ describe('权限检查中间件', () => {
       expect(perms.maxCollections).toBe(10);
     });
 
-    it('标准会员最多收藏100个', () => {
+    it('月会员可无限收藏', () => {
       const perms = membershipPermissions.monthly;
       
-      expect(perms.maxCollections).toBe(100);
+      expect(perms.maxCollections).toBe(Infinity);
     });
 
     it('年会员可无限收藏', () => {
@@ -206,7 +206,7 @@ describe('权限检查中间件', () => {
       const yearlyPerms = membershipPermissions.yearly;
       
       expect(freePerms.canAccessPremiumSupport).toBe(false);
-      expect(monthlyPerms.canAccessPremiumSupport).toBe(false);
+      expect(monthlyPerms.canAccessPremiumSupport).toBe(true);
       expect(yearlyPerms.canAccessPremiumSupport).toBe(true);
     });
 
@@ -216,7 +216,7 @@ describe('权限检查中间件', () => {
       const yearlyPerms = membershipPermissions.yearly;
       
       expect(freePerms.canAccessAIAnalysis).toBe(false);
-      expect(monthlyPerms.canAccessAIAnalysis).toBe(false);
+      expect(monthlyPerms.canAccessAIAnalysis).toBe(true);
       expect(yearlyPerms.canAccessAIAnalysis).toBe(true);
     });
   });

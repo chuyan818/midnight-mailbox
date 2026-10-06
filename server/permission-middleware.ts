@@ -17,14 +17,18 @@ export const membershipPermissions = {
     canAccessThematicMailbox: false,
     canAccessPremiumSupport: false,
     canAccessAIAnalysis: false,
+    canAccessCompleteReport: false,
+    canAccessSevenDayTrend: false,
     writeLetterCooldown: 300000, // 5 minutes
   },
   monthly: {
-    maxLettersPerDay: 5,
-    maxCollections: 100,
+    maxLettersPerDay: Infinity,
+    maxCollections: Infinity,
     canAccessThematicMailbox: true,
-    canAccessPremiumSupport: false,
-    canAccessAIAnalysis: false,
+    canAccessPremiumSupport: true,
+    canAccessAIAnalysis: true,
+    canAccessCompleteReport: true,
+    canAccessSevenDayTrend: true,
     writeLetterCooldown: 0,
   },
   yearly: {
@@ -33,6 +37,8 @@ export const membershipPermissions = {
     canAccessThematicMailbox: true,
     canAccessPremiumSupport: true,
     canAccessAIAnalysis: true,
+    canAccessCompleteReport: true,
+    canAccessSevenDayTrend: true,
     writeLetterCooldown: 0,
   },
 };
@@ -42,7 +48,7 @@ export const membershipPermissions = {
  */
 export async function checkPermission(
   ctx: TrpcContext,
-  action: 'send_letter' | 'collect_letter' | 'access_thematic_mailbox' | 'access_premium_support' | 'access_ai_analysis',
+  action: 'send_letter' | 'collect_letter' | 'access_thematic_mailbox' | 'access_premium_support' | 'access_ai_analysis' | 'access_complete_report' | 'access_seven_day_trend',
   options?: {
     letterId?: number;
     collectionCount?: number;
@@ -146,6 +152,20 @@ export async function checkPermission(
       return { allowed: true };
     }
 
+    case 'access_complete_report': {
+      if (!permissions.canAccessCompleteReport) {
+        return { allowed: false, reason: '完整情绪报告仅限已确认付款的会员使用，请先升级会员' };
+      }
+      return { allowed: true };
+    }
+
+    case 'access_seven_day_trend': {
+      if (!permissions.canAccessSevenDayTrend) {
+        return { allowed: false, reason: '7天情绪趋势仅限已确认付款的会员使用，请先升级会员' };
+      }
+      return { allowed: true };
+    }
+
     default:
       return { allowed: true };
   }
@@ -155,7 +175,7 @@ export async function checkPermission(
  * 权限检查中间件 - 用于tRPC过程
  */
 export function createPermissionMiddleware(
-  action: 'send_letter' | 'collect_letter' | 'access_thematic_mailbox' | 'access_premium_support' | 'access_ai_analysis'
+  action: 'send_letter' | 'collect_letter' | 'access_thematic_mailbox' | 'access_premium_support' | 'access_ai_analysis' | 'access_complete_report' | 'access_seven_day_trend'
 ) {
   return async (opts: any) => {
     const { ctx, next } = opts;
@@ -192,6 +212,8 @@ export function getPermissionSummary(membershipType: string) {
     canAccessThematicMailbox: permissions.canAccessThematicMailbox,
     canAccessPremiumSupport: permissions.canAccessPremiumSupport,
     canAccessAIAnalysis: permissions.canAccessAIAnalysis,
+    canAccessCompleteReport: permissions.canAccessCompleteReport,
+    canAccessSevenDayTrend: permissions.canAccessSevenDayTrend,
     writeLetterCooldown: permissions.writeLetterCooldown === 0 ? '无' : `${permissions.writeLetterCooldown}毫秒`,
   };
 }

@@ -9,12 +9,19 @@ export default function Report() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
+  const { data: profile } = trpc.user.getProfile.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const hasPaidMembership = profile?.membership?.paymentStatus === "active"
+    && (profile.membership.membershipType === "monthly" || profile.membership.membershipType === "yearly")
+    && (!profile.membership.membershipExpiry || new Date(profile.membership.membershipExpiry).getTime() > Date.now());
+
   const { data: todayScore, isLoading: loadingToday } = trpc.emotion.getTodayScore.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
   const { data: trendData, isLoading: loadingTrend } = trpc.emotion.getTrendData.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && hasPaidMembership,
   });
 
   if (!isAuthenticated) {
@@ -184,7 +191,13 @@ export default function Report() {
         {/* Trend Chart */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-white">7天情绪趋势</h2>
-          {loadingTrend ? (
+          {!hasPaidMembership ? (
+            <div className="p-6 rounded-lg bg-[#FFD580]/10 border border-[#FFD580]/30 text-center">
+              <p className="text-[#FFD580] font-semibold">7天情绪趋势为会员专属功能</p>
+              <p className="text-sm text-gray-300 mt-2">免费版可查看当前情绪报告；升级后解锁完整情绪报告和7天趋势。</p>
+              <Button onClick={() => navigate("/profile?payment=retry")} className="mt-4 bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400">升级会员</Button>
+            </div>
+          ) : loadingTrend ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="w-8 h-8 animate-spin text-[#FFD580]" />
             </div>
@@ -233,8 +246,14 @@ export default function Report() {
 
         {/* Keywords Cloud */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-white">高频关键词</h2>
-          <div className="p-6 rounded-lg bg-white/5 border border-white/10">
+          <h2 className="text-xl font-semibold text-white">完整情绪报告</h2>
+          {!hasPaidMembership ? (
+            <div className="p-6 rounded-lg bg-[#FFD580]/10 border border-[#FFD580]/30 text-center">
+              <p className="text-[#FFD580] font-semibold">关键词和情绪洞察为会员专属</p>
+              <p className="text-sm text-gray-300 mt-2">升级会员后可查看完整的情绪分析结果。</p>
+              <Button onClick={() => navigate("/profile?payment=retry")} className="mt-4 bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400">立即升级</Button>
+            </div>
+          ) : <div className="p-6 rounded-lg bg-white/5 border border-white/10">
             <div className="flex flex-wrap gap-3">
               {topKeywords.map((keyword, idx) => (
                 <div
@@ -254,10 +273,11 @@ export default function Report() {
               这些是你最常提到的词汇，可以帮助你更好地理解自己的情绪模式。
             </p>
           </div>
+          }
         </div>
 
         {/* Insights */}
-        <div className="space-y-4">
+        {hasPaidMembership && <div className="space-y-4">
           <h2 className="text-xl font-semibold text-white">情绪洞察</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-6 rounded-lg bg-white/5 border border-white/10 space-y-3">
@@ -279,6 +299,7 @@ export default function Report() {
             </div>
           </div>
         </div>
+        }
 
         {/* Navigation */}
         <div className="flex gap-3">

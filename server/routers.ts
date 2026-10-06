@@ -14,6 +14,7 @@ import {
   getUserLetters,
   getLetterById,
   getUserMembership,
+  isPaidMembershipActive,
   getUserSubscriptionRecords,
   upsertMembership,
   canUserWriteLetter,
@@ -166,16 +167,20 @@ export const appRouter = router({
     }),
 
     getTrendData: protectedProcedure.query(async ({ ctx }) => {
-      const dates = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        dates.push({
-          date: date.toISOString().split('T')[0],
-          score: Math.floor(Math.random() * 100),
+      const membership = await getUserMembership(ctx.user.id);
+      if (!isPaidMembershipActive(membership)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "7天情绪趋势仅限已确认付款的会员使用，请先升级会员",
         });
       }
-      return dates;
+
+      const rows = await getUserEmotionsTrend(ctx.user.id, 7);
+      return rows.map(({ emotions }) => ({
+        date: emotions.createdAt.toISOString().split("T")[0],
+        score: emotions.emotionScore,
+        type: emotions.emotionType,
+      }));
     }),
   }),
 
