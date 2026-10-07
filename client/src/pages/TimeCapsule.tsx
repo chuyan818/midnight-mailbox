@@ -1,20 +1,34 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CalendarDays, Clock, Lock, Unlock, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  Clock,
+  Filter,
+  Loader2,
+  Lock,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Unlock,
+} from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 interface TimeCapsuleItem {
   id: number;
   content: string;
-  openDate: string;
-  createdDate: string;
-  isOpened: boolean;
-  autoReply?: string;
+  openDate: Date;
+  createdAt: Date;
+  status: "pending" | "opened";
+  autoReply?: string | null;
 }
-
+type StatusFilter = "all" | "pending" | "opened";
+type SortOrder = "soonest" | "latest";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const datePresets = [
   { label: "7天后", days: 7 },
@@ -29,36 +43,40 @@ function toDateInputValue(date: Date) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
-
 function addDays(days: number) {
   const date = new Date();
   date.setHours(12, 0, 0, 0);
   date.setDate(date.getDate() + days);
   return toDateInputValue(date);
 }
-
-function formatCapsuleDate(value: string) {
-  if (!value) return "";
+function formatDate(date: Date) {
   return new Intl.DateTimeFormat("zh-CN", {
     year: "numeric",
     month: "long",
     day: "numeric",
     weekday: "short",
-  }).format(new Date(`${value}T12:00:00`));
+  }).format(date);
 }
-
-function daysUntil(value: string) {
-  if (!value) return 0;
+function daysUntil(date: Date) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const target = new Date(`${value}T00:00:00`);
-  return Math.max(0, Math.round((target.getTime() - today.getTime()) / DAY_MS));
+  return Math.max(0, Math.round((date.getTime() - today.getTime()) / DAY_MS));
+}
+function progressPercent(createdAt: Date, openDate: Date) {
+  const total = openDate.getTime() - createdAt.getTime();
+  if (total <= 0) return 100;
+  return Math.min(
+    100,
+    Math.max(0, ((Date.now() - createdAt.getTime()) / total) * 100)
+  );
 }
 
 export default function TimeCapsule() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [showForm, setShowForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("soonest");
   const [formData, setFormData] = useState({
     content: "",
     openDate: "",
@@ -66,32 +84,48 @@ export default function TimeCapsule() {
   });
   const [dateError, setDateError] = useState("");
   const minOpenDate = addDays(1);
-  const [capsules, setCapsules] = useState<TimeCapsuleItem[]>([
-    {
-      id: 1,
-      content:
-        "亲爱的未来的我，希望你已经度过了这个困难的时期。记住，你比你想象的要强大。",
-      openDate: "2026-06-29",
-      createdDate: "2026-03-29",
-      isOpened: false,
-      autoReply: "我已经打开了这个胶囊，感谢过去的自己。",
-    },
-    {
-      id: 2,
-      content: "三个月后的我，希望你已经完成了那个项目。相信自己！",
-      openDate: "2026-04-29",
-      createdDate: "2026-03-29",
-      isOpened: false,
-    },
-  ]);
 
-  if (!isAuthenticated) {
+  const listQuery = trpc.social.timeCapsule.list.useQuery(
+    { status: "all" },
+    { enabled: isAuthenticated }
+  );
+  const createMutation = trpc.social.timeCapsule.create.useMutation();
+  const deleteMutation = trpc.social.timeCapsule.delete.useMutation();
+  const openMutation = trpc.social.timeCapsule.open.useMutation();
+
+  const capsules = useMemo<TimeCapsuleItem[]>(
+    () =>
+      (listQuery.data?.data ?? []).map(capsule => ({
+        id: capsule.id,
+        content: capsule.content,
+        openDate: new Date(capsule.openDate),
+        createdAt: new Date(capsule.createdAt),
+        status: capsule.status as "pending" | "opened",
+        autoReply: capsule.autoReply,
+      })),
+    [listQuery.data]
+  );
+
+  const visibleCapsules = useMemo(
+    () =>
+      capsules
+        .filter(
+          capsule => statusFilter === "all" || capsule.status === statusFilter
+        )
+        .sort((a, b) => {
+          const difference = a.openDate.getTime() - b.openDate.getTime();
+          return sortOrder === "soonest" ? difference : -difference;
+        }),
+    [capsules, sortOrder, statusFilter]
+  );
+
+  if (!isAuthenticated)
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] text-white flex items-center justify-center">
-        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 p-8 max-w-md text-center">
-          <Lock className="w-12 h-12 text-[#FFD580] mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">需要登录</h2>
-          <p className="text-gray-400 mb-6">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] text-white">
+        <Card className="mx-4 max-w-md border border-white/10 bg-white/5 p-8 text-center backdrop-blur-sm">
+          <Lock className="mx-auto mb-4 h-12 w-12 text-[#FFD580]" />
+          <h2 className="mb-2 text-2xl font-bold">需要登录</h2>
+          <p className="mb-6 text-gray-400">
             时间胶囊是一个私密的功能，需要登录后才能使用
           </p>
           <Button
@@ -103,53 +137,61 @@ export default function TimeCapsule() {
         </Card>
       </div>
     );
-  }
-
-  const handleCreateCapsule = () => {
-    if (!formData.content.trim() || !formData.openDate || dateError) {
-      alert(dateError || "请填写信件内容和打开日期");
-      return;
-    }
-
-    const newCapsule: TimeCapsuleItem = {
-      id: capsules.length + 1,
-      content: formData.content,
-      openDate: formData.openDate,
-      createdDate: new Date().toISOString().split("T")[0],
-      isOpened: false,
-      autoReply: formData.autoReply || undefined,
-    };
-
-    setCapsules([...capsules, newCapsule]);
-    setFormData({ content: "", openDate: "", autoReply: "" });
-    setDateError("");
-    setShowForm(false);
-  };
-
-  const handleDeleteCapsule = (id: number) => {
-    setCapsules(capsules.filter(c => c.id !== id));
-  };
 
   const handleOpenDateChange = (value: string) => {
-    setFormData({ ...formData, openDate: value });
+    setFormData(prev => ({ ...prev, openDate: value }));
     setDateError(
       value && value < minOpenDate ? "请至少选择明天，给这封信留一点时间" : ""
     );
   };
-
-  const daysUntilOpen = (openDate: string) => daysUntil(openDate);
-
-  const unopenedCapsules = capsules.filter(c => !c.isOpened);
-  const openedCapsules = capsules.filter(c => c.isOpened);
+  const handleCreateCapsule = async () => {
+    if (!formData.content.trim() || !formData.openDate || dateError) {
+      toast.error(dateError || "请填写信件内容和打开日期");
+      return;
+    }
+    try {
+      await createMutation.mutateAsync({
+        content: formData.content.trim(),
+        openDate: new Date(`${formData.openDate}T23:59:59`),
+        autoReply: formData.autoReply.trim() || undefined,
+      });
+      toast.success("时间胶囊已保存");
+      setFormData({ content: "", openDate: "", autoReply: "" });
+      setDateError("");
+      setShowForm(false);
+      await listQuery.refetch();
+    } catch (error: any) {
+      toast.error(error.message || "创建时间胶囊失败");
+    }
+  };
+  const handleDeleteCapsule = async (id: number) => {
+    if (!window.confirm("确定删除这枚时间胶囊吗？删除后无法恢复。")) return;
+    try {
+      await deleteMutation.mutateAsync({ id });
+      toast.success("时间胶囊已删除");
+      await listQuery.refetch();
+    } catch (error: any) {
+      toast.error(error.message || "删除时间胶囊失败");
+    }
+  };
+  const handleOpenCapsule = async (capsule: TimeCapsuleItem) => {
+    if (capsule.status !== "pending" || daysUntil(capsule.openDate) > 0) return;
+    try {
+      await openMutation.mutateAsync({ id: capsule.id });
+      toast.success("时间胶囊已打开");
+      await listQuery.refetch();
+    } catch (error: any) {
+      toast.error(error.message || "打开时间胶囊失败");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] text-white">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0B0F2F]/80 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-4xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+      <div className="sticky top-0 z-20 border-b border-white/10 bg-[#0B0F2F]/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 md:px-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">时间胶囊</h1>
-            <p className="text-gray-400 text-sm mt-1">写信给未来的自己</p>
+            <h1 className="text-2xl font-bold md:text-3xl">时间胶囊</h1>
+            <p className="mt-1 text-sm text-gray-400">写信给未来的自己</p>
           </div>
           <Button
             variant="outline"
@@ -160,28 +202,37 @@ export default function TimeCapsule() {
           </Button>
         </div>
       </div>
-
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
-        {/* Create Button */}
+      <main className="mx-auto max-w-4xl px-4 py-8 md:px-6">
         {!showForm && (
           <Button
-            className="w-full md:w-auto bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400 font-semibold py-6 mb-8"
+            className="mb-8 min-h-12 w-full bg-[#FFD580] font-semibold text-[#0B0F2F] hover:bg-yellow-400 md:w-auto md:px-6"
             onClick={() => setShowForm(true)}
           >
-            <Plus className="w-5 h-5 mr-2" />
+            <Plus className="mr-2 h-5 w-5" />
             创建新胶囊
           </Button>
         )}
-
-        {/* Create Form */}
         {showForm && (
-          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 p-6 md:p-8 mb-8">
-            <h2 className="text-xl font-semibold mb-6">创建时间胶囊</h2>
-            <div className="space-y-4">
-              {/* Content */}
+          <Card className="mb-8 border border-white/10 bg-white/5 p-5 backdrop-blur-sm md:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <h2 className="text-xl font-semibold">创建时间胶囊</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  写下现在的心情，留给未来的自己。
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="关闭创建表单"
+                onClick={() => setShowForm(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-300">
                   给未来的自己写点什么
                 </label>
                 <textarea
@@ -190,12 +241,10 @@ export default function TimeCapsule() {
                     setFormData({ ...formData, content: e.target.value })
                   }
                   placeholder="写下你的心声、梦想或鼓励..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#FFD580] resize-none"
+                  className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-[#FFD580] focus:outline-none"
                   rows={6}
                 />
               </div>
-
-              {/* Open Date */}
               <div className="rounded-2xl border border-[#FFD580]/20 bg-[#FFD580]/5 p-4 sm:p-5">
                 <div className="mb-3 flex items-start gap-3">
                   <div className="mt-0.5 rounded-full bg-[#FFD580]/15 p-2 text-[#FFD580]">
@@ -247,12 +296,11 @@ export default function TimeCapsule() {
                     className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-black/15 px-3 py-2.5 text-sm"
                   >
                     <span className="text-gray-300">
-                      {formatCapsuleDate(formData.openDate)}
+                      {formatDate(new Date(`${formData.openDate}T12:00:00`))}
                     </span>
                     <span className="shrink-0 font-semibold text-[#FFD580]">
-                      {daysUntil(formData.openDate) === 0
-                        ? "今天打开"
-                        : `${daysUntil(formData.openDate)} 天后`}
+                      {daysUntil(new Date(`${formData.openDate}T00:00:00`))}{" "}
+                      天后
                     </span>
                   </div>
                 ) : (
@@ -273,10 +321,8 @@ export default function TimeCapsule() {
                   </p>
                 )}
               </div>
-
-              {/* Auto Reply */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="mb-2 block text-sm font-medium text-gray-300">
                   打开时的AI回复（可选）
                 </label>
                 <textarea
@@ -284,28 +330,32 @@ export default function TimeCapsule() {
                   onChange={e =>
                     setFormData({ ...formData, autoReply: e.target.value })
                   }
-                  placeholder="当胶囊打开时，系统会自动生成一条AI回复..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#FFD580] resize-none"
+                  placeholder="给未来的自己留一句温柔的回复..."
+                  className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-[#FFD580] focus:outline-none"
                   rows={3}
                 />
               </div>
-
-              {/* Buttons */}
-              <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
                 <Button
-                  className="flex-1 bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
+                  className="min-h-11 bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
                   onClick={handleCreateCapsule}
                   disabled={
+                    createMutation.isPending ||
                     !formData.content.trim() ||
                     !formData.openDate ||
                     !!dateError
                   }
                 >
+                  {createMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="mr-2 h-4 w-4" />
+                  )}
                   创建胶囊
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1 border-white/20 text-gray-300"
+                  className="min-h-11 border-white/20 text-gray-300"
                   onClick={() => setShowForm(false)}
                 >
                   取消
@@ -315,130 +365,183 @@ export default function TimeCapsule() {
           </Card>
         )}
 
-        {/* Unopened Capsules */}
-        {unopenedCapsules.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-[#FFD580]" />
-              待打开的胶囊 ({unopenedCapsules.length})
-            </h2>
-            <div className="space-y-4">
-              {unopenedCapsules.map(capsule => {
-                const days = daysUntilOpen(capsule.openDate);
-                const isReady = days <= 0;
-
-                return (
-                  <Card
-                    key={capsule.id}
-                    className={`backdrop-blur-sm border transition-all ${
-                      isReady
-                        ? "bg-gradient-to-r from-[#FFD580]/20 to-[#FFC857]/10 border-[#FFD580]/50"
-                        : "bg-white/5 border-white/10"
-                    } p-6 hover:border-[#FFD580]/30`}
-                  >
-                    <div className="space-y-4">
-                      {/* Content Preview */}
-                      <p className="text-gray-300 line-clamp-3">
-                        {capsule.content}
-                      </p>
-
-                      {/* Divider */}
-                      <div className="h-px bg-white/10" />
-
-                      {/* Footer */}
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="text-xs text-gray-500">
-                            创建于 {capsule.createdDate}
-                          </p>
-                          <p
-                            className={`text-sm font-medium ${
-                              isReady ? "text-[#FFD580]" : "text-gray-400"
-                            }`}
-                          >
-                            {isReady ? "✨ 已可打开" : `还需 ${days} 天`}
-                          </p>
-                        </div>
-
-                        <div className="flex gap-2">
-                          {isReady && (
-                            <Button
-                              size="sm"
-                              className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
-                            >
-                              <Unlock className="w-4 h-4 mr-1" />
-                              打开
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                            onClick={() => handleDeleteCapsule(capsule.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm text-gray-300">
+            <Filter className="h-4 w-4 text-[#FFD580]" />
+            筛选胶囊
           </div>
-        )}
-
-        {/* Opened Capsules */}
-        {openedCapsules.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Unlock className="w-5 h-5 text-green-400" />
-              已打开的胶囊 ({openedCapsules.length})
-            </h2>
-            <div className="space-y-4">
-              {openedCapsules.map(capsule => (
-                <Card
-                  key={capsule.id}
-                  className="bg-white/5 backdrop-blur-sm border border-white/10 p-6"
-                >
-                  <div className="space-y-4">
-                    <p className="text-gray-300">{capsule.content}</p>
-                    {capsule.autoReply && (
-                      <>
-                        <div className="h-px bg-white/10" />
-                        <div className="bg-[#FFD580]/10 border border-[#FFD580]/20 rounded-lg p-4">
-                          <p className="text-sm text-gray-400 mb-2">AI回复：</p>
-                          <p className="text-gray-300">{capsule.autoReply}</p>
-                        </div>
-                      </>
-                    )}
-                    <div className="text-xs text-gray-500">
-                      打开于 {capsule.openDate}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {capsules.length === 0 && !showForm && (
-          <div className="text-center py-12">
-            <Clock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 mb-6">
-              还没有创建时间胶囊，开始写信给未来的自己吧
-            </p>
-            <Button
-              className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
-              onClick={() => setShowForm(true)}
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <select
+              aria-label="筛选状态"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value as StatusFilter)}
+              className="min-h-10 rounded-xl border border-white/15 bg-[#0B0F2F] px-3 text-sm text-gray-200 focus:border-[#FFD580] focus:outline-none"
             >
-              <Plus className="w-5 h-5 mr-2" />
-              创建第一个胶囊
+              <option value="all">全部</option>
+              <option value="pending">待打开</option>
+              <option value="opened">已打开</option>
+            </select>
+            <select
+              aria-label="排序方式"
+              value={sortOrder}
+              onChange={e => setSortOrder(e.target.value as SortOrder)}
+              className="min-h-10 rounded-xl border border-white/15 bg-[#0B0F2F] px-3 text-sm text-gray-200 focus:border-[#FFD580] focus:outline-none"
+            >
+              <option value="soonest">按打开日期升序</option>
+              <option value="latest">按打开日期降序</option>
+            </select>
+          </div>
+        </div>
+
+        {listQuery.isLoading && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 py-16 text-center text-gray-400">
+            <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-[#FFD580]" />
+            正在加载你的时间胶囊...
+          </div>
+        )}
+        {listQuery.isError && (
+          <div className="rounded-2xl border border-red-300/20 bg-red-400/10 p-6 text-center">
+            <p className="mb-4 text-red-200">时间胶囊加载失败，请稍后重试。</p>
+            <Button
+              variant="outline"
+              className="border-red-200/30 text-red-100"
+              onClick={() => listQuery.refetch()}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              重新加载
             </Button>
           </div>
         )}
-      </div>
+        {!listQuery.isLoading &&
+          !listQuery.isError &&
+          capsules.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-[#FFD580]/30 bg-[#FFD580]/5 px-6 py-14 text-center">
+              <Clock className="mx-auto mb-4 h-12 w-12 text-[#FFD580]/70" />
+              <h2 className="mb-2 text-xl font-semibold">还没有时间胶囊</h2>
+              <p className="mx-auto mb-6 max-w-md text-sm leading-6 text-gray-400">
+                给未来的自己写一封信吧。选择一个打开日期，让这份心意在合适的时间回来找你。
+              </p>
+              <Button
+                className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                创建第一枚胶囊
+              </Button>
+            </div>
+          )}
+        {!listQuery.isLoading &&
+          !listQuery.isError &&
+          capsules.length > 0 &&
+          visibleCapsules.length === 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-12 text-center">
+              <p className="mb-4 text-gray-300">这个筛选条件下没有胶囊</p>
+              <Button
+                variant="outline"
+                className="border-white/20 text-gray-200"
+                onClick={() => setStatusFilter("all")}
+              >
+                查看全部
+              </Button>
+            </div>
+          )}
+
+        <div className="space-y-4">
+          {visibleCapsules.map(capsule => {
+            const ready =
+              capsule.status === "pending" && daysUntil(capsule.openDate) === 0;
+            const days = daysUntil(capsule.openDate);
+            const progress =
+              capsule.status === "opened"
+                ? 100
+                : progressPercent(capsule.createdAt, capsule.openDate);
+            return (
+              <Card
+                key={capsule.id}
+                className={`border p-5 transition-all sm:p-6 ${ready ? "border-[#FFD580]/50 bg-gradient-to-r from-[#FFD580]/20 to-[#FFC857]/10" : "border-white/10 bg-white/5"}`}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="line-clamp-3 flex-1 whitespace-pre-wrap break-words text-gray-300">
+                      {capsule.content}
+                    </p>
+                    {capsule.status === "opened" && (
+                      <span className="shrink-0 rounded-full bg-green-400/15 px-2.5 py-1 text-xs text-green-300">
+                        已打开
+                      </span>
+                    )}
+                  </div>
+                  {capsule.status === "pending" && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span
+                          className={
+                            ready
+                              ? "font-semibold text-[#FFD580]"
+                              : "text-gray-400"
+                          }
+                        >
+                          {ready
+                            ? "✨ 今天可以打开"
+                            : `距离打开还有 ${days} 天`}
+                        </span>
+                        <span className="text-gray-500">
+                          {formatDate(capsule.openDate)}
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#FFD580] to-[#FFC857] transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-gray-500">
+                        {Math.round(progress)}% 的等待旅程已完成
+                      </p>
+                    </div>
+                  )}
+                  {capsule.status === "opened" && capsule.autoReply && (
+                    <div className="rounded-xl border border-[#FFD580]/20 bg-[#FFD580]/10 p-4">
+                      <p className="mb-1 text-xs text-gray-400">给现在的你</p>
+                      <p className="text-sm leading-6 text-gray-300">
+                        {capsule.autoReply}
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-gray-500">
+                      创建于 {formatDate(capsule.createdAt)}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 sm:flex">
+                      {capsule.status === "pending" && ready && (
+                        <Button
+                          size="sm"
+                          className="min-h-10 bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400"
+                          onClick={() => handleOpenCapsule(capsule)}
+                          disabled={openMutation.isPending}
+                        >
+                          <Unlock className="mr-1 h-4 w-4" />
+                          打开
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-10 border-red-500/30 text-red-400 hover:bg-red-500/10"
+                        onClick={() => handleDeleteCapsule(capsule.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="mr-1 h-4 w-4" />
+                        删除
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </main>
     </div>
   );
 }
