@@ -24,20 +24,18 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   const shareUrl = `${window.location.origin}/letter/${letterId}`;
   const shareText = copy.text;
 
-  const shareToWeChat = () => {
-    // 微信分享（需要微信SDK，这里显示提示）
-    toast.success(copy.copiedWechat);
+  const labels = {
+    zh: { x: "分享到 X", wechat: "微信", line: "LINE", kakao: "KakaoTalk", instagram: "Instagram", whatsapp: "WhatsApp", facebook: "Facebook" },
+    en: { x: "Share on X", wechat: "WeChat", line: "LINE", kakao: "KakaoTalk", instagram: "Instagram", whatsapp: "WhatsApp", facebook: "Facebook" },
+    ja: { x: "Xで共有", wechat: "WeChat", line: "LINE", kakao: "KakaoTalk", instagram: "Instagram", whatsapp: "WhatsApp", facebook: "Facebook" },
+    ko: { x: "X에 공유", wechat: "WeChat", line: "LINE", kakao: "KakaoTalk", instagram: "Instagram", whatsapp: "WhatsApp", facebook: "Facebook" },
+  }[language];
+
+  const openShareUrl = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
+  const shareToWeb = (url: string) => openShareUrl(url);
+  const shareToCopyOnly = () => {
     copyToClipboard();
-  };
-
-  const shareToWeibo = () => {
-    const weiboUrl = `https://service.weibo.com/share/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareText)}`;
-    window.open(weiboUrl, "_blank");
-  };
-
-  const shareToQQ = () => {
-    const qqUrl = `https://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareText)}`;
-    window.open(qqUrl, "_blank");
+    toast.success(copy.copiedWechat);
   };
 
   const copyToClipboard = () => {
@@ -71,29 +69,61 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
         <p className="text-gray-300 mb-6 text-center">{shareText}</p>
 
         {/* 分享按钮 */}
-        <div className="space-y-3 mb-6">
-          {/* 微信分享 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+          {/* X */}
           <button
-            onClick={shareToWeChat}
+            onClick={() => shareToWeb(`https://x.com/intent/post?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`)}
+            className="w-full min-h-12 bg-black hover:bg-slate-800 text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
+          >
+            <span aria-hidden="true">𝕏</span> {labels.x}
+          </button>
+
+          {/* 微信：网页端不能直接唤起好友选择，复制链接供微信分享 */}
+          <button
+            onClick={shareToCopyOnly}
             className="w-full min-h-12 bg-[#09B981] hover:bg-[#059669] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
           >
-            <span>🔗</span> {copy.wechat}
+            <span aria-hidden="true">🔗</span> {labels.wechat}
           </button>
 
-          {/* 微博分享 */}
+          {/* LINE */}
           <button
-            onClick={shareToWeibo}
-            className="w-full min-h-12 bg-[#E74C3C] hover:bg-[#C0392B] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
+            onClick={() => shareToWeb(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`)}
+            className="w-full min-h-12 bg-[#06C755] hover:bg-[#05A947] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
           >
-            <span>🌐</span> {copy.weibo}
+            <span aria-hidden="true">◉</span> {labels.line}
           </button>
 
-          {/* QQ分享 */}
+          {/* KakaoTalk：网页端使用复制链接，避免依赖未配置的 Kakao SDK */}
           <button
-            onClick={shareToQQ}
-            className="w-full min-h-12 bg-[#3B5998] hover:bg-[#2D4373] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
+            onClick={shareToCopyOnly}
+            className="w-full min-h-12 bg-[#FEE500] hover:bg-[#E6CF00] text-[#191919] font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
           >
-            <span>💬</span> {copy.qq}
+            <span aria-hidden="true">✦</span> {labels.kakao}
+          </button>
+
+          {/* Instagram：官方不提供网页分享链接，复制链接后可粘贴到动态或私信 */}
+          <button
+            onClick={shareToCopyOnly}
+            className="w-full min-h-12 bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
+          >
+            <span aria-hidden="true">◎</span> {labels.instagram}
+          </button>
+
+          {/* WhatsApp */}
+          <button
+            onClick={() => shareToWeb(`https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`)}
+            className="w-full min-h-12 bg-[#25D366] hover:bg-[#1DA851] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
+          >
+            <span aria-hidden="true">◔</span> {labels.whatsapp}
+          </button>
+
+          {/* Facebook */}
+          <button
+            onClick={() => shareToWeb(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`)}
+            className="w-full min-h-12 bg-[#1877F2] hover:bg-[#1465D1] text-white font-semibold py-3 px-3 rounded-lg transition flex items-center justify-center gap-2 whitespace-normal text-center"
+          >
+            <span aria-hidden="true">f</span> {labels.facebook}
           </button>
 
           {/* 复制链接 */}
