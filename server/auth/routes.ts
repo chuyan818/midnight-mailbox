@@ -39,7 +39,22 @@ async function establishSession(req: Request, res: Response, user: { openId: str
 }
 
 function sendValidationError(res: Response, error: unknown) {
-  const message = error instanceof z.ZodError ? "请求参数不正确" : error instanceof Error ? error.message : "请求失败";
+  if (error instanceof z.ZodError) {
+    res.status(400).json({ success: false, error: "请求参数不正确" });
+    return;
+  }
+
+  const rawMessage = error instanceof Error ? error.message : "请求失败";
+  const isInfrastructureError = /Failed query|database|SMTP|ECONN|ENOTFOUND|ETIMEDOUT|certificate|connection/i.test(rawMessage);
+  if (isInfrastructureError) {
+    console.error("[Auth] Email registration infrastructure error", error);
+  }
+
+  const message = rawMessage === "Email delivery is not configured"
+    ? "邮箱验证码服务尚未配置，请联系管理员"
+    : isInfrastructureError
+      ? "邮箱验证码服务暂时不可用，请稍后重试"
+      : rawMessage;
   res.status(400).json({ success: false, error: message });
 }
 
