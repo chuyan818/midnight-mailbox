@@ -48,7 +48,9 @@ export default function Profile() {
       enabled: isAuthenticated,
     }
   );
+  const profileStatsQuery = trpc.user.profileStats.useQuery(undefined, { enabled: isAuthenticated });
   const { data: profile, isLoading } = profileQuery;
+  const stats = profileStatsQuery.data;
   const paymentStatus = profile?.membership?.paymentStatus === "none" && profile.membership.membershipType !== "free"
     ? "active"
     : profile?.membership?.paymentStatus || "none";
@@ -210,6 +212,12 @@ export default function Profile() {
     ko: { title: "최근 로그인 기록", loading: "로그인 활동을 불러오는 중…", empty: "로그인 기록이 없습니다", success: "성공", failed: "실패", current: "계정 활동", unusualNotice: "새 로그인 환경이 감지되었습니다. 본인의 활동인지 확인해 주세요." },
   }[language];
 
+  const formatLastActive = (value: string | null | undefined) => {
+    if (!value) return "—";
+    return new Date(value).toLocaleTimeString(language === "zh" ? "zh-CN" : language, { hour: "2-digit", minute: "2-digit" });
+  };
+  const emotionEmoji: Record<string, string> = { 快乐: "😊", 开心: "😊", 平静: "😐", 悲伤: "😢", 低落: "😢", 焦虑: "😰", 愤怒: "😠", 孤独: "🌙", 迷茫: "🌫️", 压力: "🫨", 思念: "💭" };
+
   const handleChangePassword = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -284,8 +292,8 @@ export default function Profile() {
                 <span>👋</span>
                 <MembershipBadge tier={badgeTier} size="small" />
               </div>
-              <p className="text-xs text-white/60 mb-2">{extra.days.replace("{days}", "23")}</p>
-              <p className="text-xs text-white/70">{extra.mood} <span>🌙</span></p>
+              <p className="text-xs text-white/60 mb-2">{extra.days.replace("{days}", String(stats?.daysSinceJoined ?? 0))}</p>
+              <p className="text-xs text-white/70">{stats?.moodType ? `今晚的你，状态：${stats.moodType}` : extra.mood} <span>🌙</span></p>
             </div>
 
             {/* 引用语 */}
@@ -302,22 +310,22 @@ export default function Profile() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <button type="button" onClick={() => navigate("/mailbox")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Mail size={18} className="mx-auto mb-2 text-[#FFD580]" />
-            <p className="text-xl font-bold">28</p>
+            <p className="text-xl font-bold">{stats?.totalLetters ?? "—"}</p>
             <p className="text-xs text-white/60">{extra.totalLetters}</p>
           </button>
           <button type="button" onClick={() => navigate("/report")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <TrendingUp size={18} className="mx-auto mb-2 text-[#FFD580]" />
-            <p className="text-xl font-bold">8.7</p>
+            <p className="text-xl font-bold">{stats?.averageMood ?? "—"}</p>
             <p className="text-xs text-white/60">{extra.averageMood}</p>
           </button>
           <button type="button" onClick={() => navigate("/mailbox")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Mail size={18} className="mx-auto mb-2 text-[#FFD580]" />
-            <p className="text-xl font-bold">12</p>
+            <p className="text-xl font-bold">{stats?.pendingReplies ?? "—"}</p>
             <p className="text-xs text-white/60">{extra.unread}</p>
           </button>
           <button type="button" onClick={() => toast.info("最近活跃时间已是最新记录")} className="p-4 rounded-lg bg-white/5 border border-white/10 text-center hover:bg-white/10 transition">
             <Clock size={18} className="mx-auto mb-2 text-[#FFD580]" />
-            <p className="text-xl font-bold">23:45</p>
+            <p className="text-xl font-bold">{formatLastActive(stats?.lastActive)}</p>
             <p className="text-xs text-white/60">{extra.lastActive}</p>
           </button>
         </div>
@@ -331,27 +339,19 @@ export default function Profile() {
             {/* 情绪趋势图 */}
             <div className="mb-4">
               <div className="flex items-end justify-between gap-1 h-20">
-                {[
-                  { date: "5/16", value: 6.5 },
-                  { date: "5/17", value: 7.2 },
-                  { date: "5/18", value: 6.8 },
-                  { date: "5/19", value: 8.1 },
-                  { date: "5/20", value: 7.9 },
-                  { date: "5/21", value: 8.5 },
-                  { date: extra.today, value: 8.7 },
-                ].map((item, idx) => (
+                {(stats?.trend ?? []).map((item) => (
                   <div
-                    key={idx}
+                    key={item.date}
                     className="flex-1 flex flex-col items-center gap-1"
                   >
                     <div
                       className="w-full bg-gradient-to-t from-[#FFD580] to-[#FF9F43] rounded-t-sm transition-all hover:opacity-80"
                       style={{
-                        height: `${(item.value / 10) * 100}%`,
+                        height: `${((item.score ?? 0) / 10) * 100}%`,
                         minHeight: "2px",
                       }}
                     />
-                    <span className="text-xs text-white/50">{item.date}</span>
+                    <span className="text-xs text-white/50">{item.date === new Date().toISOString().slice(0, 10) ? extra.today : `${Number(item.date.slice(5, 7))}/${Number(item.date.slice(8, 10))}`}</span>
                   </div>
                 ))}
               </div>
@@ -359,18 +359,14 @@ export default function Profile() {
 
             {/* 情绪分布 */}
             <div className="space-y-2">
-                {[
-                { emoji: "😊", label: extra.happy, value: 72 },
-                { emoji: "😐", label: extra.calm, value: 56 },
-                { emoji: "😢", label: extra.low, value: 34 },
-              ].map((mood) => (
-                <div key={mood.label} className="flex items-center gap-2">
-                  <span className="text-sm">{mood.emoji}</span>
-                  <span className="text-xs text-white/70 w-8">{mood.label}</span>
+                {(stats?.emotionDistribution ?? []).slice(0, 3).map((mood) => (
+                  <div key={mood.type} className="flex items-center gap-2">
+                  <span className="text-sm">{emotionEmoji[mood.type] || "💭"}</span>
+                  <span className="text-xs text-white/70 w-12">{mood.type}</span>
                   <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-[#FFD580] to-[#FF9F43]"
-                      style={{ width: `${mood.value}%` }}
+                      style={{ width: `${mood.percentage}%` }}
                     />
                   </div>
                 </div>
@@ -382,13 +378,13 @@ export default function Profile() {
           <div className="space-y-4">
             <div className="p-4 rounded-lg bg-white/5 border border-white/10">
               <p className="text-xs text-white/60 mb-1">{extra.weeklyLetters}</p>
-              <p className="text-2xl font-bold mb-1">4 {extra.lettersUnit}</p>
-              <p className="text-xs text-[#FFD580]">{extra.weekChange} +20%</p>
+              <p className="text-2xl font-bold mb-1">{stats?.weeklyLetters ?? "—"} {extra.lettersUnit}</p>
+              <p className="text-xs text-[#FFD580]">{extra.weekChange} {stats?.weeklyChangePercent === undefined ? "—" : `${stats.weeklyChangePercent >= 0 ? "+" : ""}${stats.weeklyChangePercent}%`}</p>
             </div>
             <div className="p-4 rounded-lg bg-white/5 border border-white/10">
               <p className="text-xs text-white/60 mb-1">{extra.hours}</p>
-              <p className="text-2xl font-bold mb-1">3.2 {extra.hoursUnit}</p>
-              <p className="text-xs text-[#FFD580]">{extra.weekChange} +15%</p>
+              <p className="text-2xl font-bold mb-1">{stats?.emotionalHours ?? "—"}{stats?.emotionalHours == null ? "" : ` ${extra.hoursUnit}`}</p>
+              <p className="text-xs text-white/50">数据库暂无情绪停留时长字段</p>
             </div>
           </div>
         </div>

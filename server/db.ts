@@ -466,3 +466,85 @@ export async function updateLetterTemplate(id: number, userId: number, templateD
     })
     .where(and(eq(letterTemplates.id, id), eq(letterTemplates.userId, userId)));
 }
+
+
+/** Build the user-facing profile statistics from persisted letters/emotions. */
+export async function getUserProfileStats(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    return {
+      totalLetters: 0, averageMood: null, pendingReplies: 0, lastActive: null,
+      daysSinceJoined: 0, moodType: null, trend: [], emotionDistribution: [],
+      weeklyLetters: 0, previousWeeklyLetters: 0, weeklyChangePercent: 0, emotionalHours: null,
+    };
+  }
+
+  const [userRows, userLetters, recentEmotionRows] = await Promise.all([
+    db.select({ createdAt: users.createdAt, lastSignedIn: users.lastSignedIn })
+      .from(users).where(eq(users.id, userId)).limit(1),
+    db.select({ id: letters.id, createdAt: letters.createdAt, reply: letters.reply, emotionScore: letters.emotionScore, emotionType: letters.emotionType })
+      .from(letters).where(eq(letters.userId, userId)),
+    db.select({ letterId: emotions.letterId, createdAt: emotions.createdAt, emotionType: emotions.emotionType, emotionScore: emotions.emotionScore })
+      .from(emotions).innerJoin(letters, eq(emotions.letterId, letters.id))
+      .where(eq(letters.userId, userId)).orderBy(desc(emotions.createdAt)),
+  ]);
+
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const trendStart = new Date(todayStart);
+  trendStart.setDate(trendStart.getDate() - 6);
+  const previousWeekStart = new Date(todayStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 14);
+  const currentWeekStart = new Date(todayStart);
+  currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+  const toDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  const analyzedLetterIds = new Set(recentEmotionRows.map(({ letterId }) => letterId));
+  const fallbackEmotions = userLetters
+    .filter(({ id, emotionScore, emotionType }) => emotionScore !== null && Boolean(emotionType) && !analyzedLetterIds.has(id))
+    .map(({ id, createdAt, emotionType, emotionScore }) => ({ letterId: id, createdAt, emotionType: emotionType as string, emotionScore: emotionScore as number }));
+  const recentEmotions = [...recentEmotionRows, ...fallbackEmotions].filter(({ createdAt }) => createdAt >= trendStart);
+  const trend = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(trendStart);
+    date.setDate(trendStart.getDate() + index);
+    const key = toDateKey(date);
+    const dayRows = recentEmotions.filter(({ createdAt }) => toDateKey(createdAt) === key);
+    return {
+      date: key,
+      score: dayRows.length ? Math.round((dayRows.reduce((sum, row) => sum + row.emotionScore, 0) / dayRows.length) / 10 * 10) / 10 : null,
+      count: dayRows.length,
+    };
+  });
+
+  const distributionCounts = new Map<string, number>();
+  recentEmotions.forEach(({ emotionType }) => distributionCounts.set(emotionType, (distributionCounts.get(emotionType) || 0) + 1));
+  const emotionDistribution = Array.from(distributionCounts.entries())
+    .sort(([, a], [, b]) => b - a)
+    .map(([type, count]) => ({ type, count, percentage: Math.round((count / Math.max(recentEmotions.length, 1)) * 100) }));
+  const scoredLetters = userLetters.filter(({ emotionScore }) => emotionScore !== null);
+  const averageMood = scoredLetters.length
+    ? Math.round((scoredLetters.reduce((sum, row) => sum + (row.emotionScore || 0), 0) / scoredLetters.length) / 10 * 10) / 10
+    : null;
+  const weeklyLetters = userLetters.filter(({ createdAt }) => createdAt >= currentWeekStart).length;
+  const previousWeeklyLetters = userLetters.filter(({ createdAt }) => createdAt >= previousWeekStart && createdAt < currentWeekStart).length;
+  const weeklyChangePercent = previousWeeklyLetters ? Math.round(((weeklyLetters - previousWeeklyLetters) / previousWeeklyLetters) * 100) : weeklyLetters > 0 ? 100 : 0;
+  const joinedAt = userRows[0]?.createdAt;
+  const daysSinceJoined = joinedAt ? Math.max(1, Math.floor((now.getTime() - joinedAt.getTime()) / 86400000) + 1) : 0;
+
+  return {
+    totalLetters: userLetters.length,
+    averageMood,
+    pendingReplies: userLetters.filter(({ reply }) => !reply).length,
+    lastActive: userRows[0]?.lastSignedIn?.toISOString() || null,
+    daysSinceJoined,
+    moodType: recentEmotions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.emotionType || null,
+    trend,
+    emotionDistribution,
+    weeklyLetters,
+    previousWeeklyLetters,
+    weeklyChangePercent,
+    // The schema has no duration/session field, so do not fabricate this value.
+    emotionalHours: null,
+  };
+}
