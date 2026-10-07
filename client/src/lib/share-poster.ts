@@ -1,3 +1,5 @@
+import QRCode from "qrcode";
+
 export interface LetterPosterOptions {
   content: string;
   shareUrl: string;
@@ -17,19 +19,29 @@ const posterBackgrounds: Record<
   节日灯火: { top: "#203f60", bottom: "#a84f66", accent: "#ffd66e" },
 };
 
-const posterCopy: Record<string, { eyebrow: string; footer: string }> = {
-  zh: { eyebrow: "一封写给深夜的信", footer: "深夜信箱 · 让心事被温柔接住" },
+const posterCopy: Record<
+  string,
+  { eyebrow: string; footer: string; qrHint: string }
+> = {
+  zh: {
+    eyebrow: "一封写给深夜的信",
+    footer: "深夜信箱 · 让心事被温柔接住",
+    qrHint: "扫码打开信件",
+  },
   en: {
     eyebrow: "A letter for the night",
     footer: "Midnight Mailbox · A softer place for your heart",
+    qrHint: "Scan to open",
   },
   ja: {
     eyebrow: "夜に宛てた手紙",
     footer: "Midnight Mailbox · 心をやさしく受け止める場所",
+    qrHint: "スキャンして開く",
   },
   ko: {
     eyebrow: "밤에 보내는 편지",
     footer: "Midnight Mailbox · 마음을 다정하게 안아주는 곳",
+    qrHint: "스캔하여 열기",
   },
 };
 
@@ -66,25 +78,20 @@ function wrapText(
         lines.push(line);
         line = character;
         if (lines.length >= maxLines) break;
-      } else {
-        line = candidate;
-      }
+      } else line = candidate;
     }
     if (lines.length >= maxLines) break;
     if (line || paragraph === "") lines.push(line);
     if (lines.length >= maxLines) break;
   }
-
-  if (lines.length > maxLines) lines.length = maxLines;
   const originalHasMore = text.length > lines.join("\n").length;
   if (originalHasMore && lines.length) {
     const last = lines.length - 1;
     while (
       context.measureText(`${lines[last]}…`).width > maxWidth &&
       lines[last].length > 1
-    ) {
+    )
       lines[last] = lines[last].slice(0, -1);
-    }
     lines[last] += "…";
   }
   return lines;
@@ -95,16 +102,24 @@ function drawStars(context: CanvasRenderingContext2D, color: string) {
   for (let i = 0; i < 42; i += 1) {
     const x = (i * 173) % 1080;
     const y = 70 + ((i * 97) % 1180);
-    const radius = i % 5 === 0 ? 2.4 : 1.1;
     context.globalAlpha = i % 4 === 0 ? 0.85 : 0.42;
     context.beginPath();
-    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.arc(x, y, i % 5 === 0 ? 2.4 : 1.1, 0, Math.PI * 2);
     context.fill();
   }
   context.globalAlpha = 1;
 }
 
-export async function downloadLetterPoster(options: LetterPosterOptions) {
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Unable to load QR code"));
+    image.src = src;
+  });
+}
+
+export async function createLetterPoster(options: LetterPosterOptions) {
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = 1350;
@@ -120,7 +135,6 @@ export async function downloadLetterPoster(options: LetterPosterOptions) {
   gradient.addColorStop(1, palette.bottom);
   context.fillStyle = gradient;
   context.fillRect(0, 0, 1080, 1350);
-
   drawStars(context, palette.accent);
 
   context.fillStyle = "rgba(255,255,255,0.13)";
@@ -134,20 +148,9 @@ export async function downloadLetterPoster(options: LetterPosterOptions) {
   context.font =
     '600 30px "Noto Sans SC", "PingFang SC", system-ui, sans-serif';
   context.fillText(copy.eyebrow, 128, 164);
-
   context.fillStyle = "rgba(255,255,255,0.82)";
   context.font = "500 22px system-ui, sans-serif";
   context.fillText("MIDNIGHT MAILBOX", 128, 215);
-
-  context.fillStyle = "rgba(255,255,255,0.96)";
-  context.font = '500 40px "Noto Serif SC", "Songti SC", serif';
-  const lines = wrapText(context, options.content.trim() || "", 780, 16);
-  const lineHeight = 62;
-  const contentTop = 350;
-  lines.forEach((line, index) =>
-    context.fillText(line, 128, contentTop + index * lineHeight)
-  );
-
   context.strokeStyle = palette.accent;
   context.globalAlpha = 0.75;
   context.lineWidth = 3;
@@ -157,24 +160,56 @@ export async function downloadLetterPoster(options: LetterPosterOptions) {
   context.stroke();
   context.globalAlpha = 1;
 
+  context.fillStyle = "rgba(255,255,255,0.96)";
+  context.font = '500 40px "Noto Serif SC", "Songti SC", serif';
+  wrapText(context, options.content.trim() || "", 780, 16).forEach(
+    (line, index) => context.fillText(line, 128, 350 + index * 62)
+  );
+
+  const qrDataUrl = await QRCode.toDataURL(options.shareUrl, {
+    width: 180,
+    margin: 1,
+    errorCorrectionLevel: "M",
+    color: { dark: "#171a43", light: "#ffffff" },
+  });
+  const qrImage = await loadImage(qrDataUrl);
+  context.fillStyle = "#ffffff";
+  roundedRect(context, 814, 1012, 150, 190, 18);
+  context.fill();
+  context.drawImage(qrImage, 829, 1027, 120, 120);
+  context.fillStyle = "#171a43";
+  context.font = "600 15px system-ui, sans-serif";
+  context.textAlign = "center";
+  context.fillText(copy.qrHint, 889, 1174);
+  context.textAlign = "start";
+
   context.fillStyle = "rgba(255,255,255,0.72)";
   context.font = "400 22px system-ui, sans-serif";
   context.fillText(copy.footer, 128, 1168);
   context.fillStyle = "rgba(255,255,255,0.56)";
   context.font = "400 18px system-ui, sans-serif";
-  context.fillText(options.shareUrl, 128, 1210, 800);
+  context.fillText(options.shareUrl, 128, 1210, 650);
 
   const blob = await new Promise<Blob | null>(resolve =>
     canvas.toBlob(resolve, "image/png", 0.95)
   );
   if (!blob) throw new Error("Unable to create poster");
+  return blob;
+}
+
+export function downloadPosterBlob(blob: Blob, letterId: string) {
   const downloadUrl = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = downloadUrl;
-  anchor.download = `midnight-mailbox-${options.letterId}.png`;
+  anchor.download = `midnight-mailbox-${letterId}.png`;
   anchor.rel = "noopener";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+}
+
+export async function downloadLetterPoster(options: LetterPosterOptions) {
+  const blob = await createLetterPoster(options);
+  downloadPosterBlob(blob, options.letterId);
 }
