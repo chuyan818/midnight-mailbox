@@ -107,10 +107,10 @@ export default function Profile() {
         <div className="text-center text-white">
           <p className="mb-4">请先登录</p>
           <Button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/user-login")}
             className="bg-[#FFD580] text-[#0B0F2F]"
           >
-            返回首页
+            返回登录页
           </Button>
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function Profile() {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/");
+      navigate("/user-login");
     } catch (error: any) {
       toast.error("登出失败");
     }
