@@ -130,10 +130,10 @@ export function registerEmailAuthRoutes(app: Express) {
     try {
       const user = await authenticateGoogleCallback(code);
       await establishSession(req, res, user);
-      // Google sign-in from /user-login must land in the public frontend.
-      // Do not let a stale or externally supplied returnPath route users into
-      // the administrator area after authentication.
-      res.redirect(302, "/");
+      // Google sign-in from /user-login should land in the user's personal
+      // center, never in the administrator area or only on the homepage.
+      // Do not let a stale or externally supplied returnPath override this.
+      res.redirect(302, "/profile");
     } catch (error) {
       console.error("[Auth] Google callback failed", error);
       res.redirect(302, "/user-login?error=oauth_failed");
