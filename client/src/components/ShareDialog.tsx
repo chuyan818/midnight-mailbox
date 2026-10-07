@@ -106,9 +106,25 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
 
   const openShareUrl = (url: string) =>
     window.open(url, "_blank", "noopener,noreferrer");
+  const copyText = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copiedWithFallback = document.execCommand("copy");
+    textarea.remove();
+    if (!copiedWithFallback) throw new Error("Copy command was rejected");
+  };
   const copyToClipboard = async (showToast = true) => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await copyText(shareUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
       if (showToast) toast.success(copy.copiedClipboard);
