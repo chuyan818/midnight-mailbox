@@ -211,6 +211,9 @@ export default function Register() {
   };
 
   const passwordStrength = getPasswordStrength(password);
+  const handleGoogleRegister = () => {
+    window.location.assign('/api/auth/google/start?returnPath=/profile');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
@@ -224,6 +227,24 @@ export default function Register() {
 
         {/* 表单 */}
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 space-y-4">
+          {/* Google OAuth 注册/登录 */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleGoogleRegister}
+            disabled={isSubmitting || isSuccess}
+            className="w-full border-white/30 bg-white text-slate-700 hover:bg-slate-100"
+            aria-label={copy.google}
+          >
+            <Chrome className="mr-2 h-4 w-4 text-[#4285F4]" />
+            {copy.google}
+          </Button>
+          <div className="flex items-center gap-3 py-1 text-xs text-gray-400" aria-hidden="true">
+            <span className="h-px flex-1 bg-white/15" />
+            <span>{copy.or}</span>
+            <span className="h-px flex-1 bg-white/15" />
+          </div>
+
           {/* 邮箱地址 */}
           <div>
             <label className="flex items-center text-white text-sm mb-2">
