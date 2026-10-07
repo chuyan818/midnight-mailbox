@@ -1,7 +1,7 @@
 /**
  * 混合LLM集成模块
- * 主方案：Manus LLM（可用时）
- * 备用方案：阿里云百炼通义千问（OpenAI 兼容接口）
+ * 主方案：阿里云百炼通义千问（按任务分层路由）
+ * 备用方案：Manus LLM / OpenAI 兼容接口
  */
 
 import { invokeLLM } from "./_core/llm";
@@ -10,14 +10,25 @@ import {
   analyzeEmotion as openaiAnalyzeEmotion,
   checkContentSafety as openaiCheckSafety,
   detectLanguage as openaiDetectLanguage,
+  hasQwenConfig,
 } from "./openai";
 
 /**
  * 检测是否配置了可用的兼容模型密钥
  */
 function hasValidOpenAIKey(): boolean {
-  const key = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY || process.env.OPENAI_API_KEY;
+  const key =
+    process.env.QWEN_API_KEY ||
+    process.env.DASHSCOPE_API_KEY ||
+    process.env.OPENAI_API_KEY;
   return !!(key && key.length > 20);
+}
+
+function allowExternalModelCalls(): boolean {
+  return (
+    process.env.NODE_ENV !== "test" ||
+    process.env.RUN_EXTERNAL_AI_TESTS === "true"
+  );
 }
 
 /**
@@ -26,25 +37,27 @@ function hasValidOpenAIKey(): boolean {
 export async function detectLanguage(text: string): Promise<string> {
   try {
     // 首先使用确定性的脚本启发式方法。日文常混有汉字，因此必须先判断假名。
-    if (/[ぁ-ん]|[ァ-ヴー]/.test(text)) return 'ja';
-    if (/[가-힣]/.test(text)) return 'ko';
-    if (/[\u4e00-\u9fff]/.test(text)) return 'zh';
-    if (/^[\x00-\x7F]+$/.test(text)) return 'en';
-    
+    if (/[ぁ-ん]|[ァ-ヴー]/.test(text)) return "ja";
+    if (/[가-힣]/.test(text)) return "ko";
+    if (/[\u4e00-\u9fff]/.test(text)) return "zh";
+    if (/^[\x00-\x7F]+$/.test(text)) return "en";
+
     // 如果有有效的OpenAI Key，尝试使用OpenAI
     if (hasValidOpenAIKey()) {
       try {
         return await openaiDetectLanguage(text);
       } catch (error) {
-        console.warn("OpenAI language detection failed, falling back to heuristics");
+        console.warn(
+          "OpenAI language detection failed, falling back to heuristics"
+        );
       }
     }
-    
+
     // 默认返回英文
-    return 'en';
+    return "en";
   } catch (error) {
     console.error("Language detection error:", error);
-    return 'zh'; // 默认中文
+    return "zh"; // 默认中文
   }
 }
 
@@ -56,10 +69,29 @@ export async function analyzeEmotion(content: string): Promise<{
   emotionScore: number;
   keywords: string[];
 }> {
+  if (!allowExternalModelCalls()) {
+    return {
+      emotionType: "迷茫",
+      emotionScore: 50,
+      keywords: ["倾诉", "思考", "感受"],
+    };
+  }
   try {
     const language = await detectLanguage(content);
 
-    // 首先尝试使用Manus LLM（主方案）
+    // 已配置百炼时，优先走千问 Flash 情绪分析；失败后再回退到 Manus/OpenAI。
+    if (hasQwenConfig()) {
+      try {
+        return await openaiAnalyzeEmotion(content, language);
+      } catch (error) {
+        console.warn(
+          "Qwen emotion analysis failed, falling back to Manus LLM:",
+          error
+        );
+      }
+    }
+
+    // 未配置或千问失败时尝试 Manus LLM
     try {
       const response = await invokeLLM({
         messages: [
@@ -72,7 +104,7 @@ export async function analyzeEmotion(content: string): Promise<{
 - emotionScore: 情绪强度评分（0-100）
 - keywords: 关键词数组（3-6个）
 
-用${language === 'zh' ? '中文' : language === 'en' ? '英文' : language === 'ja' ? '日文' : '韩文'}返回结果。`,
+用${language === "zh" ? "中文" : language === "en" ? "英文" : language === "ja" ? "日文" : "韩文"}返回结果。`,
           },
           {
             role: "user",
@@ -100,14 +132,14 @@ export async function analyzeEmotion(content: string): Promise<{
 
       const content_text = response.choices[0]?.message.content;
       if (content_text) {
-        let textContent = '';
-        if (typeof content_text === 'string') {
+        let textContent = "";
+        if (typeof content_text === "string") {
           textContent = content_text;
         } else if (Array.isArray(content_text)) {
-          const textItem = content_text.find((c: any) => c.type === 'text');
-          textContent = (textItem as any)?.text || '';
+          const textItem = content_text.find((c: any) => c.type === "text");
+          textContent = (textItem as any)?.text || "";
         }
-        
+
         if (textContent) {
           const result = JSON.parse(textContent);
           return {
@@ -118,8 +150,11 @@ export async function analyzeEmotion(content: string): Promise<{
         }
       }
     } catch (error) {
-      console.warn("Manus LLM emotion analysis failed, trying OpenAI fallback:", error);
-      
+      console.warn(
+        "Manus LLM emotion analysis failed, trying OpenAI fallback:",
+        error
+      );
+
       // 如果Manus LLM失败且有有效的OpenAI Key，尝试OpenAI
       if (hasValidOpenAIKey()) {
         try {
@@ -149,11 +184,29 @@ export async function analyzeEmotion(content: string): Promise<{
 /**
  * 生成AI回信 - 混合方案
  */
-export async function generateAIReply(content: string, emotionType: string): Promise<string> {
+export async function generateAIReply(
+  content: string,
+  emotionType: string
+): Promise<string> {
+  if (!allowExternalModelCalls()) {
+    return "感谢你的倾诉。我听到了你心中的声音，那些感受都是真实而有效的。在这个深夜，我想告诉你，你不是一个人。无论现在有多困难，这一刻会过去，而你会变得更强。温暖拥抱你。";
+  }
   try {
     const language = await detectLanguage(content);
 
-    // 首先尝试使用Manus LLM（主方案）
+    // 已配置百炼时，优先使用 Plus/Max 分层生成回信。
+    if (hasQwenConfig()) {
+      try {
+        return await openaiGenerateReply(content, language, emotionType);
+      } catch (error) {
+        console.warn(
+          "Qwen reply generation failed, falling back to Manus LLM:",
+          error
+        );
+      }
+    }
+
+    // 未配置或千问失败时尝试 Manus LLM
     try {
       const systemPrompt = getSystemPrompt(language);
       const response = await invokeLLM({
@@ -171,21 +224,24 @@ export async function generateAIReply(content: string, emotionType: string): Pro
 
       const content_text = response.choices[0]?.message.content;
       if (content_text) {
-        let textContent = '';
-        if (typeof content_text === 'string') {
+        let textContent = "";
+        if (typeof content_text === "string") {
           textContent = content_text;
         } else if (Array.isArray(content_text)) {
-          const textItem = content_text.find((c: any) => c.type === 'text');
-          textContent = (textItem as any)?.text || '';
+          const textItem = content_text.find((c: any) => c.type === "text");
+          textContent = (textItem as any)?.text || "";
         }
-        
+
         if (textContent) {
           return textContent;
         }
       }
     } catch (error) {
-      console.warn("Manus LLM reply generation failed, trying OpenAI fallback:", error);
-      
+      console.warn(
+        "Manus LLM reply generation failed, trying OpenAI fallback:",
+        error
+      );
+
       // 如果Manus LLM失败且有有效的OpenAI Key，尝试OpenAI
       if (hasValidOpenAIKey()) {
         try {
@@ -211,8 +267,28 @@ export async function checkContentSafety(content: string): Promise<{
   safe: boolean;
   reason: string;
 }> {
+  if (!allowExternalModelCalls()) {
+    return { safe: true, reason: "内容安全" };
+  }
   try {
-    // 首先尝试使用Manus LLM（主方案）
+    // 安全审核优先使用千问 Plus，失败后再回退到 Manus/OpenAI。
+    if (hasQwenConfig()) {
+      try {
+        const result = await openaiCheckSafety(content);
+        return {
+          safe: result.isSafe,
+          reason:
+            result.issues.length > 0 ? result.issues.join("; ") : "内容安全",
+        };
+      } catch (error) {
+        console.warn(
+          "Qwen safety check failed, falling back to Manus LLM:",
+          error
+        );
+      }
+    }
+
+    // 未配置或千问失败时尝试 Manus LLM
     try {
       const response = await invokeLLM({
         messages: [
@@ -258,14 +334,14 @@ export async function checkContentSafety(content: string): Promise<{
 
       const content_text = response.choices[0]?.message.content;
       if (content_text) {
-        let textContent = '';
-        if (typeof content_text === 'string') {
+        let textContent = "";
+        if (typeof content_text === "string") {
           textContent = content_text;
         } else if (Array.isArray(content_text)) {
-          const textItem = content_text.find((c: any) => c.type === 'text');
-          textContent = (textItem as any)?.text || '';
+          const textItem = content_text.find((c: any) => c.type === "text");
+          textContent = (textItem as any)?.text || "";
         }
-        
+
         if (textContent) {
           const result = JSON.parse(textContent);
           return {
@@ -275,15 +351,19 @@ export async function checkContentSafety(content: string): Promise<{
         }
       }
     } catch (error) {
-      console.warn("Manus LLM safety check failed, trying OpenAI fallback:", error);
-      
+      console.warn(
+        "Manus LLM safety check failed, trying OpenAI fallback:",
+        error
+      );
+
       // 如果Manus LLM失败且有有效的OpenAI Key，尝试OpenAI
       if (hasValidOpenAIKey()) {
         try {
           const result = await openaiCheckSafety(content);
           return {
             safe: result.isSafe,
-            reason: result.issues.length > 0 ? result.issues.join("; ") : "内容安全",
+            reason:
+              result.issues.length > 0 ? result.issues.join("; ") : "内容安全",
           };
         } catch (openaiError) {
           console.warn("OpenAI safety check also failed:", openaiError);
@@ -310,7 +390,7 @@ export async function checkContentSafety(content: string): Promise<{
  */
 function getSystemPrompt(language: string): string {
   const prompts: Record<string, string> = {
-    'zh': `你是"夜航人"，一个温柔、安静、富有同理心的深夜倾听者。
+    zh: `你是"夜航人"，一个温柔、安静、富有同理心的深夜倾听者。
 
 你的角色定位：
 - 不是心理医生、导师或老师
@@ -344,7 +424,7 @@ function getSystemPrompt(language: string): string {
 
 现在，请阅读用户的来信，给出一封温暖的回信。`,
 
-    'en': `You are "Night Navigator", a gentle, quiet, and empathetic late-night listener.
+    en: `You are "Night Navigator", a gentle, quiet, and empathetic late-night listener.
 
 Your role:
 - Not a psychologist, mentor, or teacher
@@ -378,7 +458,7 @@ Use:
 
 Now, please read the user's letter and write a warm reply.`,
 
-    'ja': `あなたは「夜の航海者」です。優しく、静かで、共感力のある深夜のリスナーです。
+    ja: `あなたは「夜の航海者」です。優しく、静かで、共感力のある深夜のリスナーです。
 
 あなたの役割：
 - 心理医者、メンター、先生ではない
@@ -412,7 +492,7 @@ Now, please read the user's letter and write a warm reply.`,
 
 では、ユーザーの手紙を読んで、温かい返信を書いてください。`,
 
-    'ko': `당신은 "야간 항해자"입니다. 부드럽고 조용하며 공감 능력이 있는 심야 청취자입니다.
+    ko: `당신은 "야간 항해자"입니다. 부드럽고 조용하며 공감 능력이 있는 심야 청취자입니다.
 
 당신의 역할:
 - 심리학자, 멘토, 선생님이 아님
@@ -447,5 +527,5 @@ Now, please read the user's letter and write a warm reply.`,
 이제 사용자의 편지를 읽고 따뜻한 회신을 작성하세요.`,
   };
 
-  return prompts[language] || prompts['zh'];
+  return prompts[language] || prompts["zh"];
 }

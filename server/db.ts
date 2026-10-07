@@ -9,10 +9,10 @@ let _pool: Pool | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_db && (process.env.MIDNIGHT_DATABASE_URL || process.env.DATABASE_URL)) {
     try {
       _pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
+        connectionString: process.env.MIDNIGHT_DATABASE_URL || process.env.DATABASE_URL,
         // Railway PostgreSQL requires TLS; allow explicit opt-out for local databases.
         ssl: process.env.DATABASE_SSL === "false" ? undefined : { rejectUnauthorized: false },
       });
