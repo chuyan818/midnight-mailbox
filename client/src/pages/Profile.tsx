@@ -39,6 +39,7 @@ export default function Profile() {
   const [showAbout, setShowAbout] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [activeTrendIndex, setActiveTrendIndex] = useState<number | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("notificationsEnabled") !== "false");
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
@@ -216,6 +217,8 @@ export default function Profile() {
     if (!value) return "—";
     return new Date(value).toLocaleTimeString(language === "zh" ? "zh-CN" : language, { hour: "2-digit", minute: "2-digit" });
   };
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const activeTrend = activeTrendIndex === null ? null : stats?.trend?.[activeTrendIndex] ?? null;
   const emotionEmoji: Record<string, string> = { 快乐: "😊", 开心: "😊", 平静: "😐", 悲伤: "😢", 低落: "😢", 焦虑: "😰", 愤怒: "😠", 孤独: "🌙", 迷茫: "🌫️", 压力: "🫨", 思念: "💭" };
 
   const handleChangePassword = (event: FormEvent<HTMLFormElement>) => {
@@ -337,29 +340,41 @@ export default function Profile() {
             <h3 className="text-sm font-semibold mb-4">{extra.moodTrend}</h3>
 
             {/* 情绪趋势图 */}
-            <div className="mb-4">
-              <div className="flex items-end justify-between gap-1 h-20">
-                {(stats?.trend ?? []).map((item) => (
-                  <div
-                    key={item.date}
-                    className="flex-1 flex flex-col items-center gap-1"
-                  >
-                    <div
-                      className="w-full bg-gradient-to-t from-[#FFD580] to-[#FF9F43] rounded-t-sm transition-all hover:opacity-80"
-                      style={{
-                        height: `${((item.score ?? 0) / 10) * 100}%`,
-                        minHeight: "2px",
-                      }}
+            <div className="mb-4" aria-label={language === "zh" ? "最近七天情绪趋势" : "Seven-day emotion trend"}>
+              {profileStatsQuery.isLoading ? (
+                <div className="flex h-20 items-center justify-center text-xs text-white/45">{language === "zh" ? "正在加载趋势…" : "Loading trend…"}</div>
+              ) : (
+              <div className="flex h-20 items-end justify-between gap-1">
+                {(stats?.trend ?? []).map((item, index) => (
+                  <div key={item.date} className="flex flex-1 flex-col items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTrendIndex(index)}
+                      onMouseEnter={() => setActiveTrendIndex(index)}
+                      onFocus={() => setActiveTrendIndex(index)}
+                      className={`w-full rounded-t-sm bg-gradient-to-t from-[#FFD580] to-[#FF9F43] transition-all hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-[#FFD580] ${activeTrendIndex === index ? "opacity-100 ring-2 ring-[#FFF4D6]" : "opacity-80"}`}
+                      style={{ height: `${((item.score ?? 0) / 10) * 100}%`, minHeight: "2px" }}
+                      aria-label={`${item.date}: ${item.score == null ? "暂无情绪分析" : `${item.score}/10`}`}
+                      title={`${item.date} · ${item.score == null ? "暂无情绪分析" : `${item.score}/10`}`}
                     />
-                    <span className="text-xs text-white/50">{item.date === new Date().toISOString().slice(0, 10) ? extra.today : `${Number(item.date.slice(5, 7))}/${Number(item.date.slice(8, 10))}`}</span>
+                    <span className="text-xs text-white/50">{item.date === todayKey ? extra.today : `${Number(item.date.slice(5, 7))}/${Number(item.date.slice(8, 10))}`}</span>
                   </div>
                 ))}
               </div>
+              )}
+              {activeTrend ? (
+                <div className="mt-3 flex items-center justify-between rounded-lg border border-[#FFD580]/20 bg-[#FFD580]/10 px-3 py-2 text-xs" aria-live="polite">
+                  <span className="text-white/70">{activeTrend.date}</span>
+                  <span className="font-semibold text-[#FFD580]">{activeTrend.score == null ? "暂无情绪分析" : `${activeTrend.score}/10 · ${activeTrend.count} 条`}</span>
+                </div>
+              ) : null}
             </div>
 
             {/* 情绪分布 */}
             <div className="space-y-2">
-                {(stats?.emotionDistribution ?? []).slice(0, 3).map((mood) => (
+                {(stats?.emotionDistribution ?? []).length === 0 ? (
+                  <p className="text-xs text-white/45">{language === "zh" ? "最近 7 天暂无情绪分析数据" : language === "ja" ? "最近7日間の感情データはありません" : language === "ko" ? "최근 7일 감정 데이터가 없어요" : "No emotion analysis in the last 7 days"}</p>
+                ) : (stats?.emotionDistribution ?? []).slice(0, 3).map((mood) => (
                   <div key={mood.type} className="flex items-center gap-2">
                   <span className="text-sm">{emotionEmoji[mood.type] || "💭"}</span>
                   <span className="text-xs text-white/70 w-12">{mood.type}</span>
