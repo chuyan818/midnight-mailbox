@@ -444,6 +444,8 @@ export const socialCompleteRouter = router({
           content: z.string().trim().min(1).max(5000),
           openDate: z.date(),
           autoReply: z.string().max(2000).optional(),
+          category: z.string().max(32).optional(),
+          mood: z.string().max(32).optional(),
         })
       )
       .mutation(async ({ ctx, input }: any) => {
@@ -458,6 +460,8 @@ export const socialCompleteRouter = router({
               content: input.content,
               openDate: input.openDate,
               autoReply: input.autoReply || null,
+              category: input.category || null,
+              mood: input.mood || null,
               status: "pending",
             })
             .returning({ id: timeCapsules.id });

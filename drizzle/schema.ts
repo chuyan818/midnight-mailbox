@@ -1,16 +1,71 @@
-import { boolean, date, integer, jsonb, numeric, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  date,
+  integer,
+  jsonb,
+  numeric,
+  pgEnum,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["user", "admin"] as const);
-export const membershipTypeEnum = pgEnum("membership_type", ["free", "monthly", "yearly"] as const);
-export const reminderTypeEnum = pgEnum("reminder_type", ["expiry_7days", "expiry_3days", "expiry_today"] as const);
-export const timeCapsuleStatusEnum = pgEnum("time_capsule_status", ["pending", "opened"] as const);
-export const reportTargetTypeEnum = pgEnum("report_target_type", ["letter", "user", "comment"] as const);
-export const reportStatusEnum = pgEnum("report_status", ["pending", "reviewing", "resolved", "dismissed"] as const);
-export const adminRoleEnum = pgEnum("admin_role", ["admin", "moderator", "analyst"] as const);
-export const systemConfigTypeEnum = pgEnum("system_config_type", ["string", "number", "boolean", "json"] as const);
-export const supportCategoryEnum = pgEnum("support_category", ["technical", "feedback", "billing", "other"] as const);
-export const supportPriorityEnum = pgEnum("support_priority", ["high", "medium", "low"] as const);
-export const supportStatusEnum = pgEnum("support_status", ["open", "in_progress", "resolved", "closed"] as const);
+export const membershipTypeEnum = pgEnum("membership_type", [
+  "free",
+  "monthly",
+  "yearly",
+] as const);
+export const reminderTypeEnum = pgEnum("reminder_type", [
+  "expiry_7days",
+  "expiry_3days",
+  "expiry_today",
+] as const);
+export const timeCapsuleStatusEnum = pgEnum("time_capsule_status", [
+  "pending",
+  "opened",
+] as const);
+export const reportTargetTypeEnum = pgEnum("report_target_type", [
+  "letter",
+  "user",
+  "comment",
+] as const);
+export const reportStatusEnum = pgEnum("report_status", [
+  "pending",
+  "reviewing",
+  "resolved",
+  "dismissed",
+] as const);
+export const adminRoleEnum = pgEnum("admin_role", [
+  "admin",
+  "moderator",
+  "analyst",
+] as const);
+export const systemConfigTypeEnum = pgEnum("system_config_type", [
+  "string",
+  "number",
+  "boolean",
+  "json",
+] as const);
+export const supportCategoryEnum = pgEnum("support_category", [
+  "technical",
+  "feedback",
+  "billing",
+  "other",
+] as const);
+export const supportPriorityEnum = pgEnum("support_priority", [
+  "high",
+  "medium",
+  "low",
+] as const);
+export const supportStatusEnum = pgEnum("support_status", [
+  "open",
+  "in_progress",
+  "resolved",
+  "closed",
+] as const);
 
 /**
  * Core user table backing auth flow.
@@ -32,7 +87,10 @@ export const users = pgTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: userRoleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
@@ -51,7 +109,8 @@ export const emailVerificationCodes = pgTable("email_verification_codes", {
 });
 
 export type EmailVerificationCode = typeof emailVerificationCodes.$inferSelect;
-export type InsertEmailVerificationCode = typeof emailVerificationCodes.$inferInsert;
+export type InsertEmailVerificationCode =
+  typeof emailVerificationCodes.$inferInsert;
 
 /** Login audit trail used for rate limiting, anomaly detection and user activity history. */
 export const loginEvents = pgTable("login_events", {
@@ -85,7 +144,10 @@ export const letters = pgTable("letters", {
   replyGeneratedAt: timestamp("replyGeneratedAt"),
   safetyFlag: boolean("safetyFlag").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export type Letter = typeof letters.$inferSelect;
@@ -112,37 +174,49 @@ export type InsertEmotion = typeof emotions.$inferInsert;
 export const memberships = pgTable("memberships", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull().unique(),
-  membershipType: membershipTypeEnum("membershipType").default("free").notNull(),
+  membershipType: membershipTypeEnum("membershipType")
+    .default("free")
+    .notNull(),
   membershipExpiry: timestamp("membershipExpiry"),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
   paypalSubscriptionId: varchar("paypalSubscriptionId", { length: 255 }),
-  paymentStatus: varchar("paymentStatus", { length: 32 }).default("none").notNull(),
+  paymentStatus: varchar("paymentStatus", { length: 32 })
+    .default("none")
+    .notNull(),
   autoRenew: boolean("autoRenew").default(true).notNull(),
   cancelledAt: timestamp("cancelledAt"),
   dailyLetterCount: integer("dailyLetterCount").default(0).notNull(),
   lastLetterDate: date("lastLetterDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export type Membership = typeof memberships.$inferSelect;
 export type InsertMembership = typeof memberships.$inferInsert;
 
 /** Prevents duplicate expiry notifications for the same membership window. */
-export const membershipExpiryReminders = pgTable("membership_expiry_reminders", {
-  id: serial("id").primaryKey(),
-  userId: integer("userId").notNull(),
-  membershipId: integer("membershipId").notNull(),
-  reminderType: reminderTypeEnum("reminderType").notNull(),
-  expiryDate: timestamp("expiryDate").notNull(),
-  sentAt: timestamp("sentAt"),
-  readAt: timestamp("readAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const membershipExpiryReminders = pgTable(
+  "membership_expiry_reminders",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("userId").notNull(),
+    membershipId: integer("membershipId").notNull(),
+    reminderType: reminderTypeEnum("reminderType").notNull(),
+    expiryDate: timestamp("expiryDate").notNull(),
+    sentAt: timestamp("sentAt"),
+    readAt: timestamp("readAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  }
+);
 
-export type MembershipExpiryReminder = typeof membershipExpiryReminders.$inferSelect;
-export type InsertMembershipExpiryReminder = typeof membershipExpiryReminders.$inferInsert;
+export type MembershipExpiryReminder =
+  typeof membershipExpiryReminders.$inferSelect;
+export type InsertMembershipExpiryReminder =
+  typeof membershipExpiryReminders.$inferInsert;
 
 /**
  * Subscription records table - stores all subscription transactions
@@ -155,13 +229,20 @@ export const subscriptionRecords = pgTable("subscription_records", {
   currency: varchar("currency", { length: 3 }).default("CNY").notNull(),
   provider: varchar("provider", { length: 32 }).default("stripe").notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
-  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }).unique(),
-  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }).unique(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", {
+    length: 255,
+  }).unique(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", {
+    length: 255,
+  }).unique(),
   paypalSubscriptionId: varchar("paypalSubscriptionId", { length: 255 }),
   paypalTransactionId: varchar("paypalTransactionId", { length: 255 }).unique(),
   status: varchar("status", { length: 50 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export type SubscriptionRecord = typeof subscriptionRecords.$inferSelect;
@@ -221,6 +302,8 @@ export const timeCapsules = pgTable("time_capsules", {
   openDate: timestamp("openDate").notNull(),
   status: timeCapsuleStatusEnum("status").default("pending").notNull(),
   autoReply: text("autoReply"),
+  category: varchar("category", { length: 32 }),
+  mood: varchar("mood", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   openedAt: timestamp("openedAt"),
 });
@@ -260,7 +343,10 @@ export const reports = pgTable("reports", {
   handledAt: timestamp("handledAt"),
   resolution: text("resolution"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export type Report = typeof reports.$inferSelect;
@@ -280,7 +366,9 @@ export const dailyStats = pgTable("daily_stats", {
   totalStars: integer("totalStars").default(0).notNull(),
   newStars: integer("newStars").default(0).notNull(),
   vipCount: integer("vipCount").default(0).notNull(),
-  revenue: numeric("revenue", { precision: 12, scale: 2 }).default("0").notNull(),
+  revenue: numeric("revenue", { precision: 12, scale: 2 })
+    .default("0")
+    .notNull(),
   reportCount: integer("reportCount").default(0).notNull(),
   bannedUsers: integer("bannedUsers").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -300,7 +388,10 @@ export const adminUsers = pgTable("admin_users", {
   lastLoginAt: timestamp("lastLoginAt"),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export type AdminUser = typeof adminUsers.$inferSelect;
@@ -316,7 +407,10 @@ export const systemConfigs = pgTable("system_configs", {
   type: systemConfigTypeEnum("type").default("string").notNull(),
   description: text("description"),
   updatedBy: integer("updatedBy"),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export type SystemConfig = typeof systemConfigs.$inferSelect;
@@ -350,7 +444,10 @@ export const letterTemplates = pgTable("letter_templates", {
   backgroundType: varchar("backgroundType", { length: 50 }).notNull(),
   emotionTags: jsonb("emotionTags"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export type LetterTemplate = typeof letterTemplates.$inferSelect;
@@ -372,7 +469,10 @@ export const supportTickets = pgTable("support_tickets", {
   firstResponseAt: timestamp("firstResponseAt"),
   resolvedAt: timestamp("resolvedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 export type SupportTicket = typeof supportTickets.$inferSelect;

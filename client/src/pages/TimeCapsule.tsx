@@ -32,9 +32,40 @@ interface TimeCapsuleItem {
   createdAt: Date;
   status: "pending" | "opened";
   autoReply?: string | null;
+  category?: string | null;
+  mood?: string | null;
 }
 type StatusFilter = "all" | "pending" | "opened";
 type SortOrder = "soonest" | "latest";
+const capsuleCategories = [
+  "成长",
+  "关系",
+  "工作学习",
+  "梦想",
+  "自我照顾",
+  "旅行",
+  "其他",
+];
+const capsuleMoods = [
+  "平静",
+  "期待",
+  "开心",
+  "难过",
+  "焦虑",
+  "感恩",
+  "疲惫",
+  "勇敢",
+];
+const moodEmoji: Record<string, string> = {
+  平静: "🌿",
+  期待: "✨",
+  开心: "😊",
+  难过: "🌧️",
+  焦虑: "🌊",
+  感恩: "🤍",
+  疲惫: "🌙",
+  勇敢: "🕯️",
+};
 const DAY_MS = 24 * 60 * 60 * 1000;
 const datePresets = [
   { label: "7天后", days: 7 },
@@ -83,10 +114,13 @@ export default function TimeCapsule() {
   const [showForm, setShowForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("soonest");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [formData, setFormData] = useState({
     content: "",
     openDate: "",
     autoReply: "",
+    category: "",
+    mood: "",
   });
   const [dateError, setDateError] = useState("");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -110,6 +144,8 @@ export default function TimeCapsule() {
         createdAt: new Date(capsule.createdAt),
         status: capsule.status as "pending" | "opened",
         autoReply: capsule.autoReply,
+        category: capsule.category,
+        mood: capsule.mood,
       })),
     [listQuery.data]
   );
@@ -118,13 +154,15 @@ export default function TimeCapsule() {
     () =>
       capsules
         .filter(
-          capsule => statusFilter === "all" || capsule.status === statusFilter
+          capsule =>
+            (statusFilter === "all" || capsule.status === statusFilter) &&
+            (categoryFilter === "all" || capsule.category === categoryFilter)
         )
         .sort((a, b) => {
           const difference = a.openDate.getTime() - b.openDate.getTime();
           return sortOrder === "soonest" ? difference : -difference;
         }),
-    [capsules, sortOrder, statusFilter]
+    [capsules, categoryFilter, sortOrder, statusFilter]
   );
 
   if (!isAuthenticated)
@@ -167,9 +205,17 @@ export default function TimeCapsule() {
         content: formData.content.trim(),
         openDate: new Date(`${formData.openDate}T23:59:59`),
         autoReply: formData.autoReply.trim() || undefined,
+        category: formData.category || undefined,
+        mood: formData.mood || undefined,
       });
       toast.success("时间胶囊已保存");
-      setFormData({ content: "", openDate: "", autoReply: "" });
+      setFormData({
+        content: "",
+        openDate: "",
+        autoReply: "",
+        category: "",
+        mood: "",
+      });
       setDateError("");
       setShowForm(false);
       await listQuery.refetch();
@@ -257,6 +303,54 @@ export default function TimeCapsule() {
                   className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-[#FFD580] focus:outline-none"
                   rows={6}
                 />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="capsule-category"
+                    className="mb-2 block text-sm font-medium text-gray-300"
+                  >
+                    分类标签（可选）
+                  </label>
+                  <select
+                    id="capsule-category"
+                    value={formData.category}
+                    onChange={e =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0B0F2F]/70 px-4 text-white focus:border-[#FFD580] focus:outline-none focus:ring-2 focus:ring-[#FFD580]/30"
+                  >
+                    <option value="">选择这封信属于什么</option>
+                    {capsuleCategories.map(category => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="capsule-mood"
+                    className="mb-2 block text-sm font-medium text-gray-300"
+                  >
+                    写信时的心情（可选）
+                  </label>
+                  <select
+                    id="capsule-mood"
+                    value={formData.mood}
+                    onChange={e =>
+                      setFormData({ ...formData, mood: e.target.value })
+                    }
+                    className="min-h-12 w-full rounded-xl border border-white/10 bg-[#0B0F2F]/70 px-4 text-white focus:border-[#FFD580] focus:outline-none focus:ring-2 focus:ring-[#FFD580]/30"
+                  >
+                    <option value="">选择此刻的心情</option>
+                    {capsuleMoods.map(mood => (
+                      <option key={mood} value={mood}>
+                        {moodEmoji[mood]} {mood}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="rounded-2xl border border-[#FFD580]/20 bg-[#FFD580]/5 p-4 sm:p-5">
                 <div className="mb-3 flex items-start gap-3">
@@ -437,6 +531,19 @@ export default function TimeCapsule() {
               <option value="opened">已打开</option>
             </select>
             <select
+              aria-label="按分类筛选"
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              className="min-h-10 rounded-xl border border-white/15 bg-[#0B0F2F] px-3 text-sm text-gray-200 focus:border-[#FFD580] focus:outline-none"
+            >
+              <option value="all">所有分类</option>
+              {capsuleCategories.map(category => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <select
               aria-label="排序方式"
               value={sortOrder}
               onChange={e => setSortOrder(e.target.value as SortOrder)}
@@ -520,6 +627,20 @@ export default function TimeCapsule() {
                     <p className="line-clamp-3 flex-1 whitespace-pre-wrap break-words text-gray-300">
                       {capsule.content}
                     </p>
+                    {(capsule.category || capsule.mood) && (
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        {capsule.category && (
+                          <span className="rounded-full border border-[#FFD580]/25 bg-[#FFD580]/10 px-2 py-1 text-[11px] text-[#FFE2A3]">
+                            #{capsule.category}
+                          </span>
+                        )}
+                        {capsule.mood && (
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-300">
+                            {moodEmoji[capsule.mood] || ""} {capsule.mood}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {capsule.status === "opened" && (
                       <span className="shrink-0 rounded-full bg-green-400/15 px-2.5 py-1 text-xs text-green-300">
                         已打开
