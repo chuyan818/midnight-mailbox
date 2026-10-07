@@ -293,7 +293,7 @@ export default function Profile() {
                 <MembershipBadge tier={badgeTier} size="small" />
               </div>
               <p className="text-xs text-white/60 mb-2">{extra.days.replace("{days}", String(stats?.daysSinceJoined ?? 0))}</p>
-              <p className="text-xs text-white/70">{stats?.moodType ? `今晚的你，状态：${stats.moodType}` : extra.mood} <span>🌙</span></p>
+              <p className="text-xs text-white/70">{stats?.moodType ? `今晚的你，状态：${stats.moodType}` : "—"} <span>🌙</span></p>
             </div>
 
             {/* 引用语 */}
