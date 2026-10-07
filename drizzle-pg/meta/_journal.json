@@ -15,6 +15,13 @@
       "when": 1791152829612,
       "tag": "0001_spicy_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791368504119,
+      "tag": "0002_time_capsule_metadata",
+      "breakpoints": true
     }
   ]
 }

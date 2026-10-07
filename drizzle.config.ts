@@ -1,21 +1,20 @@
 import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.MIDNIGHT_DATABASE_URL || process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error("DATABASE_URL is required to run drizzle commands");
+  throw new Error("MIDNIGHT_DATABASE_URL or DATABASE_URL is required to run drizzle commands");
 }
 
-// Railway PostgreSQL requires TLS. drizzle-kit receives only the URL, unlike
-// server/db.ts which passes the Pool SSL option explicitly, so normalize the
-// URL here as well. Local PostgreSQL can opt out with DATABASE_SSL=false.
+// Railway PostgreSQL requires TLS, but its managed certificate chain is not
+// publicly verifiable from the migration container. Match server/db.ts, which
+// uses rejectUnauthorized: false, while still requiring an encrypted channel.
+// Local PostgreSQL can opt out with DATABASE_SSL=false.
 const migrationUrl = (() => {
   if (process.env.DATABASE_SSL === "false") return connectionString;
 
   const url = new URL(connectionString);
-  if (!url.searchParams.has("sslmode")) {
-    url.searchParams.set("sslmode", "require");
-  }
+  url.searchParams.set("sslmode", "no-verify");
   return url.toString();
 })();
 

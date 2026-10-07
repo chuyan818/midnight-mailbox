@@ -1,1 +1,31 @@
-{"routes":[{"path":"/","title":"深夜信箱首页"},{"path":"/login","title":"登录"},{"path":"/user-login","title":"用户登录"},{"path":"/register","title":"注册"},{"path":"/privacy-policy","title":"隐私政策"},{"path":"/terms-of-service","title":"服务条款"},{"path":"/forgot-password","title":"找回密码"},{"path":"/security-settings","title":"安全设置"},{"path":"/premium-support","title":"高级客服"},{"path":"/payment-result","title":"支付结果"},{"path":"/write","title":"写信"},{"path":"/letter/:id","title":"信件详情"},{"path":"/mailbox","title":"我的信箱"},{"path":"/report","title":"情绪报告"},{"path":"/profile","title":"个人中心"},{"path":"/public-mailbox","title":"公共信箱"},{"path":"/daily-quote","title":"每日一句"},{"path":"/time-capsule","title":"时间胶囊"},{"path":"/emotion-planet","title":"情绪星球"},{"path":"/admin","title":"管理后台"},{"path":"/admin/users","title":"用户管理"},{"path":"/admin/letters","title":"信件管理"},{"path":"/admin/reports","title":"举报管理"},{"path":"/admin/emotions","title":"情绪管理"},{"path":"/admin/members","title":"会员管理"},{"path":"/admin/settings","title":"系统设置"},{"path":"/admin/support","title":"客服管理"},{"path":"/404","title":"页面未找到"}]}
+{
+  "routes": [
+    { "path": "/", "title": "深夜信箱" },
+    { "path": "/login", "title": "管理员登录" },
+    { "path": "/user-login", "title": "用户登录" },
+    { "path": "/register", "title": "注册" },
+    { "path": "/privacy-policy", "title": "隐私政策" },
+    { "path": "/terms-of-service", "title": "服务条款" },
+    { "path": "/forgot-password", "title": "找回密码" },
+    { "path": "/security-settings", "title": "安全设置" },
+    { "path": "/premium-support", "title": "高级客服" },
+    { "path": "/payment-result", "title": "支付结果" },
+    { "path": "/write", "title": "写信" },
+    { "path": "/letter/:id", "title": "信件详情" },
+    { "path": "/mailbox", "title": "信箱" },
+    { "path": "/report", "title": "情绪报告" },
+    { "path": "/profile", "title": "个人资料" },
+    { "path": "/public-mailbox", "title": "公共信箱" },
+    { "path": "/daily-quote", "title": "每日一句" },
+    { "path": "/time-capsule", "title": "时间胶囊" },
+    { "path": "/emotion-planet", "title": "情绪星球" },
+    { "path": "/admin", "title": "管理后台" },
+    { "path": "/admin/users", "title": "用户管理" },
+    { "path": "/admin/letters", "title": "信件管理" },
+    { "path": "/admin/reports", "title": "举报管理" },
+    { "path": "/admin/emotions", "title": "情绪数据" },
+    { "path": "/admin/members", "title": "会员管理" },
+    { "path": "/admin/settings", "title": "系统设置" },
+    { "path": "/admin/support", "title": "客服管理" }
+  ]
+}

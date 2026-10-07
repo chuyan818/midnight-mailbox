@@ -24,6 +24,14 @@ function isSecureRequest(req: Request) {
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const hostHeader = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : forwardedHost || req.headers.host;
+  const hostname = (hostHeader || req.hostname || "").split(",")[0].split(":")[0].trim();
+  // An absent host is not treated as local: Railway may omit it after proxying
+  // the public HTTPS request through an internal hop.
+  const isLocalHost = LOCAL_HOSTS.has(hostname) || isIpAddress(hostname);
   // const hostname = req.hostname;
   // const shouldSetDomain =
   //   hostname &&
@@ -43,6 +51,10 @@ export function getSessionCookieOptions(
     httpOnly: true,
     path: "/",
     sameSite: "none",
-    secure: isSecureRequest(req),
+    // Public Railway/HTTPS traffic can reach Express through an internal
+    // HTTP hop, so req.protocol alone is not reliable for cookie security.
+    // Keep local HTTP development usable, but always mark production-domain
+    // session cookies Secure so browsers accept SameSite=None cookies.
+    secure: !isLocalHost || isSecureRequest(req),
   };
 }

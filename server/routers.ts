@@ -20,6 +20,7 @@ import {
   canUserWriteLetter,
   incrementDailyLetterCount,
   getUserEmotionsTrend,
+  getUserProfileStats,
   createSubscriptionRecord,
   getDb,
   createLetterTemplate,
@@ -149,6 +150,7 @@ export const appRouter = router({
       };
     }),
     loginHistory: protectedProcedure.query(({ ctx }) => getRecentLoginEvents(ctx.user.id)),
+    profileStats: protectedProcedure.query(({ ctx }) => getUserProfileStats(ctx.user.id)),
   }),
 
   emotion: router({

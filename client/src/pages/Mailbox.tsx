@@ -2,9 +2,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { pageTranslations } from "@/lib/page-translations";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -15,13 +15,38 @@ export default function Mailbox() {
   const { language } = useLanguage();
   const copy = pageTranslations[language].mailbox;
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "replied" | "pending">("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
-  const { data: letters, isLoading, refetch } = trpc.letter.list.useQuery(
+  const { data: letters, isLoading, isError, refetch, isFetching } = trpc.letter.list.useQuery(
     { limit: 50, offset: 0 },
     { enabled: isAuthenticated }
   );
 
   const deleteMutation = trpc.letter.delete.useMutation();
+  useEffect(() => {
+    if (deleteId === null) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDeleteId(null);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [deleteId]);
+  const locale = { zh: "zh-CN", en: "en-US", ja: "ja-JP", ko: "ko-KR" }[language];
+  const visibleLetters = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase(locale);
+    return [...(letters ?? [])]
+      .filter((letter) => {
+        const matchesSearch = !query || String(letter.content).toLocaleLowerCase(locale).includes(query) || letter.emotionType?.toLocaleLowerCase(locale).includes(query);
+        const matchesStatus = statusFilter === "all" || (statusFilter === "replied" ? Boolean(letter.reply) : !letter.reply);
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        const difference = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return sortOrder === "newest" ? -difference : difference;
+      });
+  }, [letters, locale, search, sortOrder, statusFilter]);
 
   if (!isAuthenticated) {
     return (
@@ -96,9 +121,40 @@ export default function Mailbox() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:flex-row md:items-center">
+          <label className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={language === "zh" ? "搜索信件内容或情绪" : language === "ja" ? "手紙や感情を検索" : language === "ko" ? "편지와 감정 검색" : "Search letters or emotions"}
+              className="h-10 w-full rounded-lg border border-white/10 bg-[#0B0F2F]/60 pl-10 pr-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-[#FFD580]/70 focus:ring-2 focus:ring-[#FFD580]/20"
+              aria-label={language === "zh" ? "搜索信件" : "Search letters"}
+            />
+          </label>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="h-10 rounded-lg border border-white/10 bg-[#0B0F2F] px-3 text-sm text-white outline-none focus:border-[#FFD580]/70" aria-label={language === "zh" ? "筛选信件状态" : "Filter letter status"}>
+            <option value="all">{language === "zh" ? "全部信件" : language === "ja" ? "すべて" : language === "ko" ? "전체" : "All letters"}</option>
+            <option value="replied">{language === "zh" ? "已收到回信" : language === "ja" ? "返信あり" : language === "ko" ? "답장 있음" : "Reply received"}</option>
+            <option value="pending">{language === "zh" ? "等待回信" : language === "ja" ? "返信待ち" : language === "ko" ? "답장 대기" : "Waiting for reply"}</option>
+          </select>
+          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)} className="h-10 rounded-lg border border-white/10 bg-[#0B0F2F] px-3 text-sm text-white outline-none focus:border-[#FFD580]/70" aria-label={language === "zh" ? "排序信件" : "Sort letters"}>
+            <option value="newest">{language === "zh" ? "最新优先" : language === "ja" ? "新しい順" : language === "ko" ? "최신순" : "Newest first"}</option>
+            <option value="oldest">{language === "zh" ? "最早优先" : language === "ja" ? "古い順" : language === "ko" ? "오래된순" : "Oldest first"}</option>
+          </select>
+          <Button type="button" variant="outline" onClick={() => refetch()} disabled={isFetching} className="h-10 shrink-0 border-white/15 text-white hover:bg-white/10" aria-label={language === "zh" ? "刷新信件列表" : "Refresh letters"}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            {language === "zh" ? "刷新" : language === "ja" ? "更新" : language === "ko" ? "새로고침" : "Refresh"}
+          </Button>
+        </div>
+
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-[#FFD580]" />
+          </div>
+        ) : isError ? (
+          <div className="rounded-xl border border-red-300/20 bg-red-500/10 px-6 py-12 text-center text-red-100">
+            <p className="mb-4">{language === "zh" ? "信件加载失败，请重试。" : language === "ja" ? "手紙を読み込めませんでした。" : language === "ko" ? "편지를 불러오지 못했어요." : "Could not load your letters."}</p>
+            <Button type="button" onClick={() => refetch()} className="bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400">{language === "zh" ? "重新加载" : "Try again"}</Button>
           </div>
         ) : !letters || letters.length === 0 ? (
           <div className="text-center py-12 space-y-4">
@@ -110,12 +166,22 @@ export default function Mailbox() {
               {copy.start}
             </Button>
           </div>
+        ) : visibleLetters.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-white/5 px-6 py-12 text-center text-white/60">
+            <p>{language === "zh" ? "没有符合筛选条件的信件。" : language === "ja" ? "条件に一致する手紙はありません。" : language === "ko" ? "조건에 맞는 편지가 없어요." : "No letters match your filters."}</p>
+            <Button type="button" variant="ghost" onClick={() => { setSearch(""); setStatusFilter("all"); }} className="mt-3 text-[#FFD580] hover:bg-[#FFD580]/10">{language === "zh" ? "清除筛选" : "Clear filters"}</Button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {letters.map((letter: any) => (
+          <div className="space-y-3" aria-live="polite">
+            <p className="text-xs text-white/45">{language === "zh" ? `显示 ${visibleLetters.length} / ${letters.length} 封信件` : `${visibleLetters.length} of ${letters.length} letters`}</p>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {visibleLetters.map((letter: any) => (
               <div
                 key={letter.id}
-                className="p-6 rounded-lg bg-white/5 border border-white/10 hover:border-[#FFD580]/30 transition-colors cursor-pointer group"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); navigate(`/letter/${letter.id}`); } }}
+                className="group cursor-pointer rounded-lg border border-white/10 bg-white/5 p-6 transition-colors hover:border-[#FFD580]/30 focus:outline-none focus:ring-2 focus:ring-[#FFD580]/70"
                 onClick={() => navigate(`/letter/${letter.id}`)}
               >
                 {/* Header */}
@@ -128,10 +194,10 @@ export default function Mailbox() {
                     </span>
                     <div>
                       <p className="text-xs text-gray-400">
-                        {new Date(letter.createdAt).toLocaleDateString("zh-CN")}
+                        {new Date(letter.createdAt).toLocaleDateString(locale)}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {new Date(letter.createdAt).toLocaleTimeString("zh-CN")}
+                        {new Date(letter.createdAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                   </div>
@@ -140,7 +206,8 @@ export default function Mailbox() {
                       e.stopPropagation();
                       setDeleteId(letter.id);
                     }}
-                    className="text-gray-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                    aria-label={language === "zh" ? "删除信件" : "Delete letter"}
+                    className="rounded p-1 text-gray-400 opacity-0 transition-colors hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 group-hover:opacity-100"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -203,15 +270,16 @@ export default function Mailbox() {
                 )}
               </div>
             ))}
+            </div>
           </div>
         )}
       </div>
 
       {/* Delete Confirmation Dialog */}
       {deleteId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#1C1F4A] border border-white/10 rounded-lg p-6 max-w-sm mx-4 space-y-4">
-            <h3 className="text-lg font-semibold text-white">{copy.confirm}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDeleteId(null); }}>
+          <div className="space-y-4 rounded-lg border border-white/10 bg-[#1C1F4A] p-6 max-w-sm" role="dialog" aria-modal="true" aria-labelledby="delete-letter-title">
+            <h3 id="delete-letter-title" className="text-lg font-semibold text-white">{copy.confirm}</h3>
             <p className="text-gray-400">
               {copy.cannotRecover}
             </p>

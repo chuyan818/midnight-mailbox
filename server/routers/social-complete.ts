@@ -3,20 +3,20 @@
  * 包含公共信箱、点赞、每日一句、时间胶囊、情绪星球
  */
 
-import { router, publicProcedure, protectedProcedure } from '../_core/trpc';
-import { TRPCError } from '@trpc/server';
-import { z } from 'zod';
-import { getDb } from '../db';
-import { 
-  publicLetters, 
-  stars, 
-  dailyQuotes, 
-  timeCapsules, 
+import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import { getDb } from "../db";
+import {
+  publicLetters,
+  stars,
+  dailyQuotes,
+  timeCapsules,
   letters,
   emotionStars,
-  emotions
-} from '../../drizzle/schema';
-import { eq, desc, and, gte, lte } from 'drizzle-orm';
+  emotions,
+} from "../../drizzle/schema";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
 
 export const socialCompleteRouter = router({
   /**
@@ -28,20 +28,20 @@ export const socialCompleteRouter = router({
         z.object({
           limit: z.number().int().positive().default(20),
           offset: z.number().int().nonnegative().default(0),
-          sortBy: z.enum(['recent', 'popular']).default('recent'),
+          sortBy: z.enum(["recent", "popular"]).default("recent"),
         })
       )
       .query(async ({ input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           // 排序
           const results = await db
             .select()
             .from(publicLetters)
             .orderBy(
-              input.sortBy === 'popular'
+              input.sortBy === "popular"
                 ? desc(publicLetters.starCount)
                 : desc(publicLetters.createdAt)
             )
@@ -53,10 +53,10 @@ export const socialCompleteRouter = router({
             total: results.length,
           };
         } catch (error) {
-          console.error('获取公开信件列表失败:', error);
+          console.error("获取公开信件列表失败:", error);
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '获取公开信件列表失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "获取公开信件列表失败",
           });
         }
       }),
@@ -74,7 +74,7 @@ export const socialCompleteRouter = router({
       .mutation(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           // 检查信件是否存在且属于当前用户
           const letter = await db
@@ -90,8 +90,8 @@ export const socialCompleteRouter = router({
 
           if (!letter.length) {
             throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: '信件不存在',
+              code: "NOT_FOUND",
+              message: "信件不存在",
             });
           }
 
@@ -104,8 +104,8 @@ export const socialCompleteRouter = router({
 
           if (existing.length) {
             throw new TRPCError({
-              code: 'CONFLICT',
-              message: '该信件已发布到公共信箱',
+              code: "CONFLICT",
+              message: "该信件已发布到公共信箱",
             });
           }
 
@@ -123,13 +123,13 @@ export const socialCompleteRouter = router({
             id: (result as any).insertId || 0,
           };
         } catch (error: any) {
-          console.error('发布失败:', error);
-          if (error.code === 'CONFLICT' || error.code === 'NOT_FOUND') {
+          console.error("发布失败:", error);
+          if (error.code === "CONFLICT" || error.code === "NOT_FOUND") {
             throw error;
           }
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '发布失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "发布失败",
           });
         }
       }),
@@ -142,7 +142,7 @@ export const socialCompleteRouter = router({
       .mutation(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           // 检查公开信件是否属于当前用户
           const publicLetter = await db
@@ -153,15 +153,15 @@ export const socialCompleteRouter = router({
 
           if (!publicLetter.length) {
             throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: '公开信件不存在',
+              code: "NOT_FOUND",
+              message: "公开信件不存在",
             });
           }
 
           if (publicLetter[0].userId !== ctx.user.id) {
             throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: '无权撤销此发布',
+              code: "FORBIDDEN",
+              message: "无权撤销此发布",
             });
           }
 
@@ -170,13 +170,13 @@ export const socialCompleteRouter = router({
 
           return { success: true };
         } catch (error: any) {
-          console.error('撤销发布失败:', error);
-          if (error.code === 'NOT_FOUND' || error.code === 'FORBIDDEN') {
+          console.error("撤销发布失败:", error);
+          if (error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
             throw error;
           }
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '撤销发布失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "撤销发布失败",
           });
         }
       }),
@@ -194,7 +194,7 @@ export const socialCompleteRouter = router({
       .mutation(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           // 检查公开信件是否存在
           const publicLetter = await db
@@ -205,8 +205,8 @@ export const socialCompleteRouter = router({
 
           if (!publicLetter.length) {
             throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: '公开信件不存在',
+              code: "NOT_FOUND",
+              message: "公开信件不存在",
             });
           }
 
@@ -224,8 +224,8 @@ export const socialCompleteRouter = router({
 
           if (existing.length) {
             throw new TRPCError({
-              code: 'CONFLICT',
-              message: '已点赞过此信件',
+              code: "CONFLICT",
+              message: "已点赞过此信件",
             });
           }
 
@@ -245,13 +245,13 @@ export const socialCompleteRouter = router({
 
           return { success: true };
         } catch (error: any) {
-          console.error('点赞失败:', error);
-          if (error.code === 'CONFLICT' || error.code === 'NOT_FOUND') {
+          console.error("点赞失败:", error);
+          if (error.code === "CONFLICT" || error.code === "NOT_FOUND") {
             throw error;
           }
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '点赞失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "点赞失败",
           });
         }
       }),
@@ -264,7 +264,7 @@ export const socialCompleteRouter = router({
       .mutation(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           // 检查点赞是否存在
           const star = await db
@@ -280,8 +280,8 @@ export const socialCompleteRouter = router({
 
           if (!star.length) {
             throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: '未点赞此信件',
+              code: "NOT_FOUND",
+              message: "未点赞此信件",
             });
           }
 
@@ -313,13 +313,13 @@ export const socialCompleteRouter = router({
 
           return { success: true };
         } catch (error: any) {
-          console.error('取消点赞失败:', error);
-          if (error.code === 'NOT_FOUND') {
+          console.error("取消点赞失败:", error);
+          if (error.code === "NOT_FOUND") {
             throw error;
           }
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '取消点赞失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "取消点赞失败",
           });
         }
       }),
@@ -332,7 +332,7 @@ export const socialCompleteRouter = router({
       .query(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           const star = await db
             .select()
@@ -347,10 +347,10 @@ export const socialCompleteRouter = router({
 
           return { starred: star.length > 0 };
         } catch (error) {
-          console.error('检查点赞状态失败:', error);
+          console.error("检查点赞状态失败:", error);
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '检查点赞状态失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "检查点赞状态失败",
           });
         }
       }),
@@ -363,41 +363,40 @@ export const socialCompleteRouter = router({
     /**
      * 获取今日金句
      */
-    today: publicProcedure
-      .query(async () => {
-        try {
-          const db = await getDb();
-          if (!db) throw new Error('Database not available');
+    today: publicProcedure.query(async () => {
+      try {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
 
-          const today = new Date().toISOString().split('T')[0];
-          // 转换日期格式
-          const todayDate = new Date(today);
-          const quote = await db
-            .select()
-            .from(dailyQuotes)
-            .where(eq(dailyQuotes.date, todayDate as any))
-            .limit(1);
+        const today = new Date().toISOString().split("T")[0];
+        // 转换日期格式
+        const todayDate = new Date(today);
+        const quote = await db
+          .select()
+          .from(dailyQuotes)
+          .where(eq(dailyQuotes.date, todayDate as any))
+          .limit(1);
 
-          if (quote.length) {
-            return quote[0];
-          }
-
-          // 如果没有今日金句，返回最新的
-          const latest = await db
-            .select()
-            .from(dailyQuotes)
-            .orderBy(desc(dailyQuotes.createdAt))
-            .limit(1);
-
-          return latest[0] || { content: '', author: '' };
-        } catch (error) {
-          console.error('获取今日金句失败:', error);
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '获取今日金句失败',
-          });
+        if (quote.length) {
+          return quote[0];
         }
-      }),
+
+        // 如果没有今日金句，返回最新的
+        const latest = await db
+          .select()
+          .from(dailyQuotes)
+          .orderBy(desc(dailyQuotes.createdAt))
+          .limit(1);
+
+        return latest[0] || { content: "", author: "" };
+      } catch (error) {
+        console.error("获取今日金句失败:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "获取今日金句失败",
+        });
+      }
+    }),
 
     /**
      * 获取金句列表
@@ -412,7 +411,7 @@ export const socialCompleteRouter = router({
       .query(async ({ input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           const results = await db
             .select()
@@ -423,10 +422,10 @@ export const socialCompleteRouter = router({
 
           return { data: results, total: results.length };
         } catch (error) {
-          console.error('获取金句列表失败:', error);
+          console.error("获取金句列表失败:", error);
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '获取金句列表失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "获取金句列表失败",
           });
         }
       }),
@@ -442,31 +441,40 @@ export const socialCompleteRouter = router({
     create: protectedProcedure
       .input(
         z.object({
-          content: z.string().min(1).max(5000),
+          content: z.string().trim().min(1).max(5000),
           openDate: z.date(),
+          autoReply: z.string().max(2000).optional(),
+          category: z.string().max(32).optional(),
+          mood: z.string().max(32).optional(),
         })
       )
       .mutation(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
-          const result = await db.insert(timeCapsules).values({
-            userId: ctx.user.id,
-            content: input.content,
-            openDate: input.openDate,
-            status: 'pending',
-          });
+          const [created] = await db
+            .insert(timeCapsules)
+            .values({
+              userId: ctx.user.id,
+              content: input.content,
+              openDate: input.openDate,
+              autoReply: input.autoReply || null,
+              category: input.category || null,
+              mood: input.mood || null,
+              status: "pending",
+            })
+            .returning({ id: timeCapsules.id });
 
           return {
             success: true,
-            id: (result as any).insertId || 0,
+            id: created?.id || 0,
           };
         } catch (error) {
-          console.error('创建时间胶囊失败:', error);
+          console.error("创建时间胶囊失败:", error);
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '创建时间胶囊失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "创建时间胶囊失败",
           });
         }
       }),
@@ -477,17 +485,17 @@ export const socialCompleteRouter = router({
     list: protectedProcedure
       .input(
         z.object({
-          status: z.enum(['pending', 'opened', 'all']).default('all'),
+          status: z.enum(["pending", "opened", "all"]).default("all"),
         })
       )
       .query(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           let conditions = [eq(timeCapsules.userId, ctx.user.id)];
 
-          if (input.status !== 'all') {
+          if (input.status !== "all") {
             conditions.push(eq(timeCapsules.status, input.status as any));
           }
 
@@ -500,10 +508,10 @@ export const socialCompleteRouter = router({
 
           return { data: results };
         } catch (error) {
-          console.error('获取时间胶囊列表失败:', error);
+          console.error("获取时间胶囊列表失败:", error);
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '获取时间胶囊列表失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "获取时间胶囊列表失败",
           });
         }
       }),
@@ -516,7 +524,7 @@ export const socialCompleteRouter = router({
       .mutation(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           // 检查时间胶囊是否存在且属于当前用户
           const capsule = await db
@@ -532,8 +540,8 @@ export const socialCompleteRouter = router({
 
           if (!capsule.length) {
             throw new TRPCError({
-              code: 'NOT_FOUND',
-              message: '时间胶囊不存在',
+              code: "NOT_FOUND",
+              message: "时间胶囊不存在",
             });
           }
 
@@ -541,8 +549,8 @@ export const socialCompleteRouter = router({
           const openDate = new Date(capsule[0].openDate);
           if (new Date() < openDate) {
             throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: '时间未到，还不能打开',
+              code: "BAD_REQUEST",
+              message: "时间未到，还不能打开",
             });
           }
 
@@ -550,7 +558,7 @@ export const socialCompleteRouter = router({
           await db
             .update(timeCapsules)
             .set({
-              status: 'opened',
+              status: "opened",
               openedAt: new Date(),
             })
             .where(eq(timeCapsules.id, input.id));
@@ -560,13 +568,48 @@ export const socialCompleteRouter = router({
             content: capsule[0].content,
           };
         } catch (error: any) {
-          console.error('打开时间胶囊失败:', error);
-          if (error.code === 'NOT_FOUND' || error.code === 'BAD_REQUEST') {
+          console.error("打开时间胶囊失败:", error);
+          if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
             throw error;
           }
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '打开时间胶囊失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "打开时间胶囊失败",
+          });
+        }
+      }),
+
+    /**
+     * 删除属于当前用户的时间胶囊
+     */
+    delete: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }: any) => {
+        try {
+          const db = await getDb();
+          if (!db) throw new Error("Database not available");
+
+          const result = await db
+            .delete(timeCapsules)
+            .where(
+              and(
+                eq(timeCapsules.id, input.id),
+                eq(timeCapsules.userId, ctx.user.id)
+              )
+            );
+          if (!result.rowCount) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "时间胶囊不存在",
+            });
+          }
+          return { success: true };
+        } catch (error: any) {
+          console.error("删除时间胶囊失败:", error);
+          if (error.code === "NOT_FOUND") throw error;
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "删除时间胶囊失败",
           });
         }
       }),
@@ -579,38 +622,37 @@ export const socialCompleteRouter = router({
     /**
      * 获取用户的情绪数据
      */
-    stats: protectedProcedure
-      .query(async ({ ctx }: any) => {
-        try {
-          const db = await getDb();
-          if (!db) throw new Error('Database not available');
+    stats: protectedProcedure.query(async ({ ctx }: any) => {
+      try {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
 
-          // 获取用户的所有情绪记录
-          const userEmotions = await db
-            .select()
-            .from(emotions)
-            .innerJoin(letters, eq(emotions.letterId, letters.id))
-            .where(eq(letters.userId, ctx.user.id));
+        // 获取用户的所有情绪记录
+        const userEmotions = await db
+          .select()
+          .from(emotions)
+          .innerJoin(letters, eq(emotions.letterId, letters.id))
+          .where(eq(letters.userId, ctx.user.id));
 
-          // 统计各情绪类型的数量
-          const emotionStats: Record<string, number> = {};
-          userEmotions.forEach((record) => {
-            const emotionType = record.emotions.emotionType;
-            emotionStats[emotionType] = (emotionStats[emotionType] || 0) + 1;
-          });
+        // 统计各情绪类型的数量
+        const emotionStats: Record<string, number> = {};
+        userEmotions.forEach(record => {
+          const emotionType = record.emotions.emotionType;
+          emotionStats[emotionType] = (emotionStats[emotionType] || 0) + 1;
+        });
 
-          return {
-            total: userEmotions.length,
-            stats: emotionStats,
-          };
-        } catch (error) {
-          console.error('获取情绪数据失败:', error);
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '获取情绪数据失败',
-          });
-        }
-      }),
+        return {
+          total: userEmotions.length,
+          stats: emotionStats,
+        };
+      } catch (error) {
+        console.error("获取情绪数据失败:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "获取情绪数据失败",
+        });
+      }
+    }),
 
     /**
      * 获取情绪趋势
@@ -624,7 +666,7 @@ export const socialCompleteRouter = router({
       .query(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
-          if (!db) throw new Error('Database not available');
+          if (!db) throw new Error("Database not available");
 
           const startDate = new Date();
           startDate.setDate(startDate.getDate() - input.days);
@@ -643,10 +685,8 @@ export const socialCompleteRouter = router({
 
           // 按日期统计
           const trendData: Record<string, Record<string, number>> = {};
-          userEmotions.forEach((record) => {
-            const date = record.letters.createdAt
-              .toISOString()
-              .split('T')[0];
+          userEmotions.forEach(record => {
+            const date = record.letters.createdAt.toISOString().split("T")[0];
             const emotionType = record.emotions.emotionType;
 
             if (!trendData[date]) {
@@ -658,10 +698,10 @@ export const socialCompleteRouter = router({
 
           return { trend: trendData };
         } catch (error) {
-          console.error('获取情绪趋势失败:', error);
+          console.error("获取情绪趋势失败:", error);
           throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: '获取情绪趋势失败',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "获取情绪趋势失败",
           });
         }
       }),

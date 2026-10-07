@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,11 @@ import { ShareDialog } from "@/components/ShareDialog";
 import { SaveTemplateDialog } from "@/components/SaveTemplateDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { getThemeConfig } from "@/config/themes";
-import { BACKGROUND_TO_THEME, THEME_TO_BACKGROUND, BackgroundType } from "@/lib/write-theme-mapping";
+import {
+  BACKGROUND_TO_THEME,
+  THEME_TO_BACKGROUND,
+  BackgroundType,
+} from "@/lib/write-theme-mapping";
 import { THEME_ELEMENT_LIMITS } from "@/lib/theme-performance";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { pageTranslations } from "@/lib/page-translations";
@@ -283,11 +287,17 @@ export default function Write() {
   const [, navigate] = useLocation();
   const { language } = useLanguage();
   const copy = pageTranslations[language].write;
-  const [selectedBackground, setSelectedBackground] = useState<BackgroundType>(() => {
-    if (typeof window === "undefined") return "星空漫漫";
-    const savedTheme = window.localStorage.getItem("midnight-mailbox-selected-theme") as keyof typeof THEME_TO_BACKGROUND | null;
-    return savedTheme && savedTheme in THEME_TO_BACKGROUND ? THEME_TO_BACKGROUND[savedTheme] : "星空漫漫";
-  });
+  const [selectedBackground, setSelectedBackground] = useState<BackgroundType>(
+    () => {
+      if (typeof window === "undefined") return "星空漫漫";
+      const savedTheme = window.localStorage.getItem(
+        "midnight-mailbox-selected-theme"
+      ) as keyof typeof THEME_TO_BACKGROUND | null;
+      return savedTheme && savedTheme in THEME_TO_BACKGROUND
+        ? THEME_TO_BACKGROUND[savedTheme]
+        : "星空漫漫";
+    }
+  );
   const [content, setContent] = useState("");
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(false);
@@ -296,17 +306,26 @@ export default function Write() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [lastLetterId, setLastLetterId] = useState<string>("");
-  const localizedBackgrounds = BACKGROUNDS.map((background) => ({
+  const localizedBackgrounds = BACKGROUNDS.map(background => ({
     ...background,
-    label: copy.themes[
-      ({ "星空漫漫": "starry", "牛皮纸": "kraft", "樱花来信": "cherry", "秋日落信": "autumn", "节日灯火": "festive" } as const)[background.type]
-    ],
+    label:
+      copy.themes[
+        (
+          {
+            星空漫漫: "starry",
+            牛皮纸: "kraft",
+            樱花来信: "cherry",
+            秋日落信: "autumn",
+            节日灯火: "festive",
+          } as const
+        )[background.type]
+      ],
   }));
 
   const toggleEmotion = (emotion: string) => {
-    setSelectedEmotions((prev) =>
+    setSelectedEmotions(prev =>
       prev.includes(emotion)
-        ? prev.filter((e) => e !== emotion)
+        ? prev.filter(e => e !== emotion)
         : [...prev, emotion]
     );
   };
@@ -315,7 +334,9 @@ export default function Write() {
 
   // 当选中背景改变时，更新动画
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const prefersReducedMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
     if (prefersReducedMotion) clearBackground();
 
     // 即使用户关闭动态效果，也保留静态主题元素；全局 CSS 会禁用其动画。
@@ -343,12 +364,17 @@ export default function Write() {
       window.localStorage.removeItem("midnight-mailbox-selected-theme");
       return;
     }
-    window.localStorage.setItem("midnight-mailbox-selected-theme", BACKGROUND_TO_THEME[selectedBackground]);
+    window.localStorage.setItem(
+      "midnight-mailbox-selected-theme",
+      BACKGROUND_TO_THEME[selectedBackground]
+    );
   }, [selectedBackground]);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("sharePreview") === "1") {
-      setContent((value) => value || "分享预览");
+    if (
+      new URLSearchParams(window.location.search).get("sharePreview") === "1"
+    ) {
+      setContent(value => value || "分享预览");
       setLastLetterId("share-preview");
       setShowShareDialog(true);
     }
@@ -358,7 +384,9 @@ export default function Write() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">{copy.loginTitle}</h1>
+          <h1 className="text-3xl font-bold text-white mb-4">
+            {copy.loginTitle}
+          </h1>
           <p className="text-gray-400">{copy.loginDesc}</p>
         </div>
       </div>
@@ -413,12 +441,26 @@ export default function Write() {
     }
   };
 
-  const selectedBg = BACKGROUNDS.find((b) => b.type === selectedBackground);
+  const selectedBg = BACKGROUNDS.find(b => b.type === selectedBackground);
   const selectedTheme = BACKGROUND_TO_THEME[selectedBackground];
   const themeConfig = getThemeConfig(selectedTheme);
+  const editorPlaceholderColors: Record<typeof selectedTheme, string> = {
+    "starry-night": "rgba(232, 232, 240, 0.68)",
+    "vintage-kraft": "rgba(61, 40, 23, 0.62)",
+    "cherry-blossom": "rgba(136, 14, 79, 0.58)",
+    "autumn-leaves": "rgba(120, 53, 15, 0.68)",
+    "festive-lights": "rgba(120, 53, 15, 0.68)",
+  };
+  const editorStyle = {
+    color: themeConfig.textColor,
+    caretColor: themeConfig.accentColor,
+    "--write-placeholder-color": editorPlaceholderColors[selectedTheme],
+  } as CSSProperties;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] theme-${selectedTheme}`}>
+    <div
+      className={`min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] theme-${selectedTheme}`}
+    >
       {/* 发送动画 */}
       <LetterSendingAnimation
         isVisible={showSendingAnimation}
@@ -468,25 +510,34 @@ export default function Write() {
             <div
               className={`${selectedBg?.bg} theme-${selectedTheme} rounded-lg p-8 min-h-[500px] flex flex-col justify-between relative overflow-hidden`}
               style={{
-                background: themeConfig.backgroundGradient ?? themeConfig.backgroundColor,
+                background:
+                  themeConfig.backgroundGradient ?? themeConfig.backgroundColor,
                 color: themeConfig.textColor,
               }}
             >
               {/* Background animations */}
-              <div id="bgLayer" className="sky-background absolute inset-0 pointer-events-none"></div>
+              <div
+                id="bgLayer"
+                className="sky-background absolute inset-0 pointer-events-none"
+              ></div>
 
               {/* Letter content */}
               <div className="relative z-10">
                 <textarea
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={e => setContent(e.target.value)}
                   placeholder={copy.placeholder}
-                  className="w-full h-80 bg-transparent text-white placeholder-gray-400 resize-none focus:outline-none text-lg leading-relaxed"
+                  aria-label={copy.placeholder}
+                  style={editorStyle}
+                  className="w-full h-80 resize-none rounded-xl border border-black/10 bg-white/10 px-4 py-3 text-lg leading-relaxed placeholder-[color:var(--write-placeholder-color)] shadow-inner outline-none transition focus:border-black/25 focus:bg-white/15 focus:ring-2 focus:ring-black/10"
                 />
               </div>
 
               {/* Letter footer */}
-              <div className="relative z-10 text-right text-gray-300 text-sm">
+              <div
+                className="relative z-10 text-right text-sm"
+                style={{ color: themeConfig.textColor, opacity: 0.68 }}
+              >
                 {new Date().toLocaleDateString("zh-CN")}
               </div>
             </div>
@@ -499,7 +550,9 @@ export default function Write() {
               <h3 className="text-white font-semibold mb-4">{copy.theme}</h3>
               <ThemeSelector
                 selectedTheme={selectedTheme}
-                onThemeChange={(themeId) => setSelectedBackground(THEME_TO_BACKGROUND[themeId])}
+                onThemeChange={themeId =>
+                  setSelectedBackground(THEME_TO_BACKGROUND[themeId])
+                }
                 onReset={() => {
                   setSelectedBackground("星空漫漫");
                 }}
@@ -510,7 +563,7 @@ export default function Write() {
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h3 className="text-white font-semibold mb-4">{copy.paper}</h3>
               <div className="space-y-2">
-                {localizedBackgrounds.map((bg) => (
+                {localizedBackgrounds.map(bg => (
                   <button
                     key={bg.type}
                     onClick={() => setSelectedBackground(bg.type)}
@@ -530,7 +583,7 @@ export default function Write() {
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h3 className="text-white font-semibold mb-4">{copy.emotion}</h3>
               <div className="grid grid-cols-4 gap-2">
-                {EMOTION_TAGS.map((tag) => (
+                {EMOTION_TAGS.map(tag => (
                   <button
                     key={tag.label}
                     onClick={() => toggleEmotion(tag.label)}
@@ -542,7 +595,9 @@ export default function Write() {
                     title={copy.emotionTags[tag.label]}
                   >
                     {tag.emoji}
-                    <span className="sr-only">{copy.emotionTags[tag.label]}</span>
+                    <span className="sr-only">
+                      {copy.emotionTags[tag.label]}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -555,7 +610,7 @@ export default function Write() {
                 <input
                   type="checkbox"
                   checked={isPublic}
-                  onChange={(e) => setIsPublic(e.target.checked)}
+                  onChange={e => setIsPublic(e.target.checked)}
                   className="w-4 h-4"
                 />
                 <span className="text-gray-300 flex items-center gap-2">
