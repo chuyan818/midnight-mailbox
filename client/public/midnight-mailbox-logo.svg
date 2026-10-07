@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">深夜信箱</title>
+  <desc id="desc">A crescent moon, an envelope, and a warm star.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111a45"/>
+      <stop offset="1" stop-color="#34245f"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#sky)"/>
+  <path d="M154 46c-35 10-55 47-45 81 10 35 47 55 81 45-14 19-38 30-63 25-42-8-70-49-62-91 8-42 49-70 89-60Z" fill="#f8d78a"/>
+  <path d="m58 132 70-46 70 46v57H58v-57Z" fill="#fff7df" opacity=".96"/>
+  <path d="m58 132 70 48 70-48" fill="none" stroke="#51406f" stroke-width="8" stroke-linejoin="round"/>
+  <path d="m58 189 48-43m84 43-48-43" fill="none" stroke="#51406f" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="204" cy="63" r="8" fill="#f8d78a"/>
+  <circle cx="42" cy="78" r="4" fill="#fff7df" opacity=".8"/>
+</svg>
