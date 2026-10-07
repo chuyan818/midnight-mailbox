@@ -229,7 +229,7 @@ export async function getRecentLoginEvents(userId: number, limit = 12) {
     .limit(limit);
   return events.map((event) => ({
     ...event,
-    ipAddress: event.ipAddress.includes(".") ? event.ipAddress.replace(/\.\d+$/, ".***") : event.ipAddress,
+    ipAddress: event.ipAddress.includes(".") ? event.ipAddress.replace(/\.\d+$/, ".[hidden]") : event.ipAddress,
   }));
 }
 
