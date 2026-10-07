@@ -24,6 +24,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 interface TimeCapsuleItem {
   id: number;
@@ -164,6 +174,32 @@ export default function TimeCapsule() {
         }),
     [capsules, categoryFilter, sortOrder, statusFilter]
   );
+
+  const analytics = useMemo(() => {
+    const categoryCounts = new Map<string, number>();
+    const moodCounts = new Map<string, number>();
+    capsules.forEach(capsule => {
+      if (capsule.category)
+        categoryCounts.set(
+          capsule.category,
+          (categoryCounts.get(capsule.category) ?? 0) + 1
+        );
+      if (capsule.mood)
+        moodCounts.set(capsule.mood, (moodCounts.get(capsule.mood) ?? 0) + 1);
+    });
+    return {
+      total: capsules.length,
+      opened: capsules.filter(capsule => capsule.status === "opened").length,
+      categorized: capsules.filter(capsule => capsule.category).length,
+      withMood: capsules.filter(capsule => capsule.mood).length,
+      categories: Array.from(categoryCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+      moods: Array.from(moodCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+    };
+  }, [capsules]);
 
   if (!isAuthenticated)
     return (
@@ -512,6 +548,167 @@ export default function TimeCapsule() {
               </div>
             </div>
           </Card>
+        )}
+
+        {capsules.length > 0 && (
+          <section
+            aria-labelledby="capsule-analytics-title"
+            className="mb-6 space-y-4"
+          >
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <h2
+                  id="capsule-analytics-title"
+                  className="text-xl font-semibold"
+                >
+                  你的情绪与主题轨迹
+                </h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  从你写给未来的信里，看见最近在意的事。
+                </p>
+              </div>
+              <span className="hidden text-xs text-gray-500 sm:block">
+                基于全部时间胶囊
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                ["全部胶囊", analytics.total, "封"],
+                ["已打开", analytics.opened, "封"],
+                ["已分类", analytics.categorized, "封"],
+                ["有心情记录", analytics.withMood, "封"],
+              ].map(([label, value, unit]) => (
+                <Card
+                  key={String(label)}
+                  className="border-white/10 bg-white/5 p-4"
+                >
+                  <p className="text-xs text-gray-400">{label}</p>
+                  <p className="mt-1 text-2xl font-semibold text-[#FFD580]">
+                    {value}
+                    <span className="ml-1 text-xs font-normal text-gray-500">
+                      {unit}
+                    </span>
+                  </p>
+                </Card>
+              ))}
+            </div>
+            {analytics.categories.length > 0 || analytics.moods.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <Card className="border-white/10 bg-white/5 p-4 sm:p-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-medium text-gray-200">分类分布</h3>
+                    <span className="text-xs text-gray-500">按封数</span>
+                  </div>
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={analytics.categories}
+                        layout="vertical"
+                        margin={{ top: 4, right: 12, left: 8, bottom: 4 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.08)"
+                          horizontal={false}
+                        />
+                        <XAxis
+                          type="number"
+                          allowDecimals={false}
+                          stroke="#8b93ad"
+                          tick={{ fontSize: 11 }}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          width={62}
+                          stroke="#8b93ad"
+                          tick={{ fontSize: 11 }}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "rgba(255,213,128,0.08)" }}
+                          contentStyle={{
+                            background: "#111638",
+                            border: "1px solid rgba(255,213,128,0.25)",
+                            borderRadius: 12,
+                            color: "#fff",
+                          }}
+                          formatter={(value: number) => [`${value} 封`, "数量"]}
+                        />
+                        <Bar
+                          dataKey="count"
+                          fill="#FFD580"
+                          radius={[0, 5, 5, 0]}
+                          maxBarSize={22}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+                <Card className="border-white/10 bg-white/5 p-4 sm:p-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-medium text-gray-200">心情分布</h3>
+                    <span className="text-xs text-gray-500">已记录的心情</span>
+                  </div>
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={analytics.moods}
+                        margin={{ top: 4, right: 8, left: -16, bottom: 4 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.08)"
+                          vertical={false}
+                        />
+                        <XAxis
+                          dataKey="name"
+                          stroke="#8b93ad"
+                          tick={{ fontSize: 11 }}
+                          interval={0}
+                          angle={-25}
+                          textAnchor="end"
+                          height={52}
+                        />
+                        <YAxis
+                          allowDecimals={false}
+                          stroke="#8b93ad"
+                          tick={{ fontSize: 11 }}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "rgba(255,213,128,0.08)" }}
+                          contentStyle={{
+                            background: "#111638",
+                            border: "1px solid rgba(255,213,128,0.25)",
+                            borderRadius: 12,
+                            color: "#fff",
+                          }}
+                          formatter={(value: number) => [`${value} 封`, "数量"]}
+                        />
+                        <Bar
+                          dataKey="count"
+                          radius={[5, 5, 0, 0]}
+                          maxBarSize={28}
+                        >
+                          {analytics.moods.map(item => (
+                            <Cell
+                              key={item.name}
+                              fill={
+                                moodEmoji[item.name] ? "#A7D8C9" : "#FFD580"
+                              }
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              </div>
+            ) : (
+              <Card className="border-dashed border-[#FFD580]/25 bg-[#FFD580]/5 p-5 text-sm text-gray-400">
+                为胶囊添加分类或心情后，这里会逐渐形成你的专属情绪画像。
+              </Card>
+            )}
+          </section>
         )}
 
         <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between">
