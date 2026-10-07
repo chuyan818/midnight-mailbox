@@ -18,6 +18,12 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface TimeCapsuleItem {
   id: number;
@@ -83,7 +89,9 @@ export default function TimeCapsule() {
     autoReply: "",
   });
   const [dateError, setDateError] = useState("");
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const minOpenDate = addDays(1);
+  const minOpenDateObject = new Date(`${minOpenDate}T12:00:00`);
 
   const listQuery = trpc.social.timeCapsule.list.useQuery(
     { status: "all" },
@@ -143,6 +151,11 @@ export default function TimeCapsule() {
     setDateError(
       value && value < minOpenDate ? "请至少选择明天，给这封信留一点时间" : ""
     );
+  };
+  const handleCalendarSelect = (date?: Date) => {
+    if (!date) return;
+    handleOpenDateChange(toDateInputValue(date));
+    setDatePickerOpen(false);
   };
   const handleCreateCapsule = async () => {
     if (!formData.content.trim() || !formData.openDate || dateError) {
@@ -278,18 +291,60 @@ export default function TimeCapsule() {
                     );
                   })}
                 </div>
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#FFD580]" />
-                  <input
-                    id="capsule-open-date"
-                    type="date"
-                    min={minOpenDate}
-                    value={formData.openDate}
-                    onChange={e => handleOpenDateChange(e.target.value)}
-                    aria-describedby="capsule-date-help capsule-date-error"
-                    className="w-full rounded-xl border border-white/15 bg-[#0B0F2F]/70 px-4 py-3 pl-11 pr-12 text-white [color-scheme:dark] focus:border-[#FFD580] focus:outline-none focus:ring-2 focus:ring-[#FFD580]/30"
-                  />
-                </div>
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      id="capsule-open-date"
+                      type="button"
+                      aria-label="选择时间胶囊打开日期"
+                      aria-describedby="capsule-date-help capsule-date-error"
+                      className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-white/15 bg-[#0B0F2F]/70 px-4 text-left transition hover:border-[#FFD580]/70 focus:border-[#FFD580] focus:outline-none focus:ring-2 focus:ring-[#FFD580]/30"
+                    >
+                      <span className="flex items-center gap-3">
+                        <CalendarDays className="h-5 w-5 shrink-0 text-[#FFD580]" />
+                        <span
+                          className={
+                            formData.openDate ? "text-white" : "text-gray-500"
+                          }
+                        >
+                          {formData.openDate
+                            ? formatDate(
+                                new Date(`${formData.openDate}T12:00:00`)
+                              )
+                            : "点击选择打开日期"}
+                        </span>
+                      </span>
+                      <span className="text-xs text-[#FFD580]">打开日历</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className="w-auto border-[#FFD580]/20 bg-[#111638] p-2 text-white shadow-2xl"
+                  >
+                    <div className="mb-1 px-2 pt-1 text-xs text-gray-400">
+                      至少从明天开始选择
+                    </div>
+                    <Calendar
+                      mode="single"
+                      selected={
+                        formData.openDate
+                          ? new Date(`${formData.openDate}T12:00:00`)
+                          : undefined
+                      }
+                      onSelect={handleCalendarSelect}
+                      disabled={{ before: minOpenDateObject }}
+                      defaultMonth={
+                        formData.openDate
+                          ? new Date(`${formData.openDate}T12:00:00`)
+                          : minOpenDateObject
+                      }
+                      captionLayout="dropdown"
+                      fromDate={minOpenDateObject}
+                      initialFocus
+                      className="[--cell-size:2.5rem] bg-transparent text-white"
+                    />
+                  </PopoverContent>
+                </Popover>
                 {formData.openDate ? (
                   <div
                     id="capsule-date-help"
