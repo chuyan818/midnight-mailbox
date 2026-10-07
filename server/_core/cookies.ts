@@ -29,7 +29,9 @@ export function getSessionCookieOptions(
     ? forwardedHost[0]
     : forwardedHost || req.headers.host;
   const hostname = (hostHeader || req.hostname || "").split(",")[0].split(":")[0].trim();
-  const isLocalHost = !hostname || LOCAL_HOSTS.has(hostname) || isIpAddress(hostname);
+  // An absent host is not treated as local: Railway may omit it after proxying
+  // the public HTTPS request through an internal hop.
+  const isLocalHost = LOCAL_HOSTS.has(hostname) || isIpAddress(hostname);
   // const hostname = req.hostname;
   // const shouldSetDomain =
   //   hostname &&
