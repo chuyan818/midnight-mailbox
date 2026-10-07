@@ -24,7 +24,12 @@ function isSecureRequest(req: Request) {
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  const hostname = req.hostname ?? req.headers.host?.split(":")[0] ?? "";
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const hostHeader = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : forwardedHost || req.headers.host;
+  const hostname = (hostHeader || req.hostname || "").split(",")[0].split(":")[0].trim();
+  const isLocalHost = !hostname || LOCAL_HOSTS.has(hostname) || isIpAddress(hostname);
   // const hostname = req.hostname;
   // const shouldSetDomain =
   //   hostname &&
@@ -48,6 +53,6 @@ export function getSessionCookieOptions(
     // HTTP hop, so req.protocol alone is not reliable for cookie security.
     // Keep local HTTP development usable, but always mark production-domain
     // session cookies Secure so browsers accept SameSite=None cookies.
-    secure: (!LOCAL_HOSTS.has(hostname) && !isIpAddress(hostname)) || isSecureRequest(req),
+    secure: !isLocalHost || isSecureRequest(req),
   };
 }
