@@ -122,16 +122,21 @@ export function registerEmailAuthRoutes(app: Express) {
     const state = typeof req.query.state === "string" ? req.query.state : "";
     const stateData = verifyGoogleState(state);
     if (!code || !stateData) {
-      res.redirect(302, "/login?error=oauth_state_invalid");
+      // This route belongs to the public user-login flow. Never send users
+      // to /login, which is the separate administrator login page.
+      res.redirect(302, "/user-login?error=oauth_state_invalid");
       return;
     }
     try {
       const user = await authenticateGoogleCallback(code);
       await establishSession(req, res, user);
-      res.redirect(302, stateData.returnPath);
+      // Google sign-in from /user-login must land in the public frontend.
+      // Do not let a stale or externally supplied returnPath route users into
+      // the administrator area after authentication.
+      res.redirect(302, "/");
     } catch (error) {
       console.error("[Auth] Google callback failed", error);
-      res.redirect(302, "/login?error=oauth_failed");
+      res.redirect(302, "/user-login?error=oauth_failed");
     }
   });
 }
