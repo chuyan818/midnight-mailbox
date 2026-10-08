@@ -48,24 +48,34 @@ function makeCode() {
   return crypto.randomInt(100000, 1000000).toString();
 }
 
+function smtpEnv(name: string) {
+  const value = process.env[name];
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function createMailer() {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT ?? 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASSWORD;
+  const host = smtpEnv("SMTP_HOST");
+  const port = Number(smtpEnv("SMTP_PORT") || 587);
+  const user = smtpEnv("SMTP_USER") || smtpEnv("SMTP_USERNAME") || smtpEnv("SMTP_FROM");
+  const pass = smtpEnv("SMTP_PASSWORD");
   if (!host || !user || !pass) return null;
   return nodemailer.createTransport({
     host,
     port,
-    secure: process.env.SMTP_SECURE === "true" || port === 465,
+    secure: smtpEnv("SMTP_SECURE").toLowerCase() === "true" || port === 465,
     auth: { user, pass },
   });
 }
 
 export async function sendVerificationEmail(email: string, code: string) {
-  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const from = smtpEnv("SMTP_FROM") || smtpEnv("SMTP_USER");
   const mailer = createMailer();
   if (!mailer || !from) {
+    const missing = ["SMTP_HOST", "SMTP_USER/SMTP_FROM", "SMTP_PASSWORD"].filter((name) => {
+      if (name === "SMTP_USER/SMTP_FROM") return !smtpEnv("SMTP_USER") && !smtpEnv("SMTP_USERNAME") && !smtpEnv("SMTP_FROM");
+      return !smtpEnv(name);
+    });
+    console.error(`[Auth] SMTP configuration missing: ${missing.join(", ") || "unknown"}`);
     if (process.env.NODE_ENV !== "production") {
       console.warn(`[Auth] SMTP is not configured; verification code for ${email}: ${code}`);
       return { delivered: false, developmentCode: code };
