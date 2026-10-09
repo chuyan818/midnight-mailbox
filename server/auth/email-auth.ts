@@ -53,6 +53,36 @@ function smtpEnv(name: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function sendViaGoogleMailScript(email: string, code: string) {
+  const url = smtpEnv("GOOGLE_MAIL_SCRIPT_URL");
+  const secret = smtpEnv("GOOGLE_MAIL_SCRIPT_SECRET");
+  if (!url || !secret) return false;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        secret,
+        to: email,
+        subject: "深夜信箱｜邮箱验证码",
+        text: `您的深夜信箱验证码是 ${code}，10 分钟内有效。如非本人操作，请忽略此邮件。`,
+        html: `<div style="font-family:Arial,sans-serif;line-height:1.7"><h2>深夜信箱</h2><p>您的邮箱验证码是：</p><p style="font-size:32px;letter-spacing:8px;font-weight:700">${code}</p><p>验证码 10 分钟内有效。如非本人操作，请忽略此邮件。</p></div>`,
+      }),
+      signal: controller.signal,
+    });
+    const result = await response.json().catch(() => ({})) as { success?: boolean; error?: string };
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || `Google Mail Script HTTP ${response.status}`);
+    }
+    return true;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function createMailer() {
   const host = smtpEnv("SMTP_HOST");
   const port = Number(smtpEnv("SMTP_PORT") || 587);
@@ -72,6 +102,17 @@ function createMailer() {
 
 export async function sendVerificationEmail(email: string, code: string) {
   const from = smtpEnv("SMTP_FROM") || smtpEnv("SMTP_USER");
+  if (smtpEnv("GOOGLE_MAIL_SCRIPT_URL") && smtpEnv("GOOGLE_MAIL_SCRIPT_SECRET")) {
+    try {
+      await sendViaGoogleMailScript(email, code);
+      return { delivered: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[Auth] Google Mail Script send failed: ${message.slice(0, 240)}`);
+      throw new Error("验证码邮件发送失败，请稍后重试");
+    }
+  }
+
   const mailer = createMailer();
   if (!mailer || !from) {
     const missing = ["SMTP_HOST", "SMTP_USER/SMTP_FROM", "SMTP_PASSWORD"].filter((name) => {
