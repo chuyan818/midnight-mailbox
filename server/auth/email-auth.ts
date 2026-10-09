@@ -64,6 +64,9 @@ function createMailer() {
     port,
     secure: smtpEnv("SMTP_SECURE").toLowerCase() === "true" || port === 465,
     auth: { user, pass },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
   });
 }
 
@@ -83,13 +86,19 @@ export async function sendVerificationEmail(email: string, code: string) {
     throw new Error("Email delivery is not configured");
   }
 
-  await mailer.sendMail({
-    from,
-    to: email,
-    subject: "深夜信箱｜邮箱验证码",
-    text: `您的深夜信箱验证码是 ${code}，10 分钟内有效。如非本人操作，请忽略此邮件。`,
-    html: `<div style="font-family:Arial,sans-serif;line-height:1.7"><h2>深夜信箱</h2><p>您的邮箱验证码是：</p><p style="font-size:32px;letter-spacing:8px;font-weight:700">${code}</p><p>验证码 10 分钟内有效。如非本人操作，请忽略此邮件。</p></div>`,
-  });
+  try {
+    await mailer.sendMail({
+      from,
+      to: email,
+      subject: "深夜信箱｜邮箱验证码",
+      text: `您的深夜信箱验证码是 ${code}，10 分钟内有效。如非本人操作，请忽略此邮件。`,
+      html: `<div style="font-family:Arial,sans-serif;line-height:1.7"><h2>深夜信箱</h2><p>您的邮箱验证码是：</p><p style="font-size:32px;letter-spacing:8px;font-weight:700">${code}</p><p>验证码 10 分钟内有效。如非本人操作，请忽略此邮件。</p></div>`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[Auth] SMTP send failed: ${message.slice(0, 240)}`);
+    throw new Error("验证码邮件发送失败，请稍后重试");
+  }
   return { delivered: true };
 }
 
