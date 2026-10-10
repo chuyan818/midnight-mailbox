@@ -30,6 +30,12 @@ export default function Register() {
   const [, navigate] = useLocation();
   const { language } = useLanguage();
   const copy = pageTranslations[language].auth;
+  const validVerificationCodeText = {
+    zh: '验证码格式正确',
+    en: 'Verification code format is valid',
+    ja: '認証コードの形式は正しいです',
+    ko: '인증 코드 형식이 올바릅니다',
+  }[language];
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
@@ -305,7 +311,7 @@ export default function Register() {
             {verificationCode && verificationCode.length === 6 && /^\d{6}$/.test(verificationCode) && (
               <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
                 <Check className="w-3 h-3" />
-                {copy.codeInvalid}
+                {validVerificationCodeText}
               </p>
             )}
             {dailyCodeCount > 0 && (
