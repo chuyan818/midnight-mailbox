@@ -4,14 +4,14 @@ import { Card } from "@/components/ui/card";
 import { Share2, Copy, Check } from "lucide-react";
 import { useLocation } from "wouter";
 import { ShareDialog } from "@/components/ShareDialog";
+import { trpc } from "@/lib/trpc";
 
 interface Quote {
   id: number;
-  content: string;
-  emotion: string;
-  letterCount: number;
-  shareCount: number;
-  date: string;
+  quote: string;
+  emotionTags?: unknown;
+  date: string | Date;
+  publicLetter?: { starCount?: number; emotionTags?: unknown } | null;
 }
 
 const emotionColors: Record<string, { bg: string; text: string; light: string }> = {
@@ -26,20 +26,18 @@ export default function DailyQuote() {
   const [, navigate] = useLocation();
   const [copied, setCopied] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [quote] = useState<Quote>({
-    id: 1,
-    content: "有时候，我们需要的不是答案，而是有人愿意听我们说话。",
-    emotion: "孤独",
-    letterCount: 342,
-    shareCount: 1205,
-    date: "2026-03-29",
-  });
+  const quoteQuery = trpc.social.dailyQuote.today.useQuery();
+  const historyQuery = trpc.social.dailyQuote.list.useQuery({ limit: 5, offset: 0 });
+  const quote = quoteQuery.data as Quote | undefined;
+  const content = quote?.quote || "";
+  const emotionValue = Array.isArray(quote?.emotionTags) ? String(quote?.emotionTags[0] || "陪伴") : "陪伴";
+  const relatedCount = historyQuery.data?.total || 0;
 
-  const quoteUrl = `${window.location.origin}/daily-quote?quote=${quote.id}`;
-  const colors = emotionColors[quote.emotion] || emotionColors.孤独;
+  const quoteUrl = `${window.location.origin}/daily-quote?quote=${quote?.id || "today"}`;
+  const colors = emotionColors[emotionValue] || emotionColors.孤独;
 
   const handleCopy = async () => {
-    const text = `“${quote.content}”\n\n来自深夜信箱 - 今日最孤独的句子`;
+    const text = `“${content}”\n\n来自深夜信箱 - 一个温暖的深夜陪伴`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -49,13 +47,15 @@ export default function DailyQuote() {
     }
   };
 
+  if (quoteQuery.isLoading) return <div className="min-h-screen bg-[#0B0F2F] p-8 text-center text-white">正在为今晚点亮一句话……</div>;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0B0F2F] via-[#1C1F4A] to-[#0B0F2F] text-white">
       <div className="sticky top-0 z-20 border-b border-white/10 bg-[#0B0F2F]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 md:px-6">
           <div>
             <h1 className="text-2xl font-bold md:text-3xl">今日一句</h1>
-            <p className="mt-1 text-sm text-gray-400">最孤独的句子，最温暖的陪伴</p>
+            <p className="mt-1 text-sm text-gray-400">从真实来信里，留下一句温柔的话</p>
           </div>
           <Button
             variant="outline"
@@ -78,7 +78,7 @@ export default function DailyQuote() {
             <div className="space-y-6">
               <div className="text-5xl text-gray-600 opacity-40">“</div>
               <p className="text-3xl font-light leading-relaxed text-white md:text-4xl">
-                {quote.content}
+                {content || "今晚暂时还没有新的句子，写下心事后再回来看看。"}
               </p>
               <div className="text-right text-5xl text-gray-600 opacity-40">”</div>
             </div>
@@ -90,25 +90,23 @@ export default function DailyQuote() {
                 className="rounded-full px-4 py-2 font-medium text-white"
                 style={{ backgroundColor: colors.bg }}
               >
-                {quote.emotion}
+                {emotionValue}
               </span>
-              <span className="text-gray-400">
-                来自 {quote.letterCount} 封信件中的最孤独的句子
-              </span>
+                <span className="text-gray-400">来自真实来信的温柔摘句</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
               <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                <div className="text-2xl font-bold text-[#FFD580]">{quote.letterCount}</div>
-                <div className="mt-1 text-xs text-gray-400">相关信件</div>
+                <div className="text-2xl font-bold text-[#FFD580]">{relatedCount}</div>
+                <div className="mt-1 text-xs text-gray-400">往日句子</div>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                <div className="text-2xl font-bold text-[#FFD580]">{quote.shareCount}</div>
-                <div className="mt-1 text-xs text-gray-400">次分享</div>
+                <div className="text-2xl font-bold text-[#FFD580]">{quote?.publicLetter?.starCount || 0}</div>
+                <div className="mt-1 text-xs text-gray-400">共鸣星星</div>
               </div>
               <div className="col-span-2 rounded-lg border border-white/10 bg-white/5 p-4 md:col-span-1">
                 <div className="text-2xl font-bold text-[#FFD580]">
-                  {new Date(quote.date).toLocaleDateString("zh-CN", {
+                  {new Date(quote?.date || Date.now()).toLocaleDateString("zh-CN", {
                     month: "numeric",
                     day: "numeric",
                   })}
@@ -147,28 +145,23 @@ export default function DailyQuote() {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">往日一句</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {[
-              { date: "昨天", content: "我们都在黑暗中摸索，但至少我们不是一个人。", emotion: "希望" },
-              { date: "前天", content: "有时候放下，不是因为不爱，而是因为爱得太深。", emotion: "遗憾" },
-              { date: "3天前", content: "压力会过去，但我们会留下。", emotion: "压力" },
-              { date: "4天前", content: "你不必完美，你只需要真实。", emotion: "孤独" },
-            ].map(item => (
+            {(historyQuery.data?.data || []).filter((item: any) => item.id !== quote?.id).map((item: any) => (
               <Card
                 key={item.date}
                 className="border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-colors hover:border-[#FFD580]/30"
               >
                 <div className="space-y-3">
-                  <p className="text-gray-300 italic">“{item.content}”</p>
+                  <p className="text-gray-300 italic">“{item.quote}”</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">{item.date}</span>
+                    <span className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString("zh-CN")}</span>
                     <span
                       className="rounded px-2 py-1 text-xs font-medium"
                       style={{
-                        backgroundColor: `${emotionColors[item.emotion]?.bg || "#FFD580"}20`,
-                        color: emotionColors[item.emotion]?.bg || "#FFD580",
+                        backgroundColor: `${emotionColors[Array.isArray(item.emotionTags) ? item.emotionTags[0] : ""]?.bg || "#FFD580"}20`,
+                        color: emotionColors[Array.isArray(item.emotionTags) ? item.emotionTags[0] : ""]?.bg || "#FFD580",
                       }}
                     >
-                      {item.emotion}
+                      {Array.isArray(item.emotionTags) ? item.emotionTags[0] || "陪伴" : "陪伴"}
                     </span>
                   </div>
                 </div>
@@ -181,11 +174,11 @@ export default function DailyQuote() {
       <ShareDialog
         isOpen={showShareDialog}
         onClose={() => setShowShareDialog(false)}
-        letterId={`quote-${quote.id}`}
-        content={quote.content}
+        letterId={`quote-${quote?.id || "today"}`}
+        content={content}
         backgroundType="星空漫漫"
         shareUrl={quoteUrl}
-        shareText={`我在深夜信箱读到一句温柔的话：“${quote.content}”`}
+        shareText={`我在深夜信箱读到一句温柔的话：“${content}”`}
       />
     </div>
   );

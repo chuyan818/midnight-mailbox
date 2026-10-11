@@ -2,6 +2,7 @@ import { eq, desc, sql, and } from "drizzle-orm";
 import { getDb } from "./db";
 import { publicLetters, stars, dailyQuotes, letters, publicModerationRequests } from "../drizzle/schema";
 import { evaluatePublication } from "./safety/publication";
+import { generateDailyQuote } from "./llm-hybrid";
 
 /**
  * 获取公共信箱列表
@@ -212,13 +213,12 @@ export async function selectDailyQuote() {
   if (topLetter.length === 0) return null;
 
   const publicLetter = topLetter[0];
-  // 提取第一句话作为今日一句
-  const content = publicLetter.excerpt;
-  const firstSentence = content.split(/[。！？\n]/)[0] || content.substring(0, 100);
+  // 只把已审核、已脱敏的公开摘录交给生成器，避免原始正文进入公开内容。
+  const generatedQuote = await generateDailyQuote(publicLetter.excerpt);
 
   const result = await db.insert(dailyQuotes).values({
     letterId: publicLetter.letterId,
-    quote: firstSentence,
+    quote: generatedQuote,
     emotionTags: publicLetter.emotionTags,
     date: today,
   });

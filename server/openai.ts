@@ -9,7 +9,7 @@ import OpenAI from "openai";
 import { getMidnightMailboxReplyPrompt } from "./prompts/midnight-mailbox";
 import { detectDeterministicRisk, mergeRiskSignals, type RiskCategory, type RiskLevel } from "./safety/risk";
 
-export type QwenTask = "reply" | "analysis" | "safety" | "language" | "deep";
+export type QwenTask = "reply" | "quote" | "analysis" | "safety" | "language" | "deep";
 
 const qwenApiKey = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY;
 const apiKey = qwenApiKey || process.env.OPENAI_API_KEY;
@@ -21,6 +21,7 @@ const defaultModel = process.env.QWEN_MODEL || "qwen3.7-plus";
 
 const MODEL_DEFAULTS: Record<QwenTask, string> = {
   reply: defaultModel,
+  quote: process.env.QWEN_MODEL_QUOTE || "qwen3.7-plus",
   analysis: process.env.QWEN_MODEL_ANALYSIS || "qwen3.8-flash",
   safety: process.env.QWEN_MODEL_SAFETY || "qwen3.7-plus",
   language: process.env.QWEN_MODEL_LANGUAGE || "qwen3.8-flash",
@@ -87,6 +88,36 @@ export async function generateAIReply(
   const reply = response.choices[0]?.message?.content?.trim() || "";
   if (!reply) throw new Error("Empty response from Qwen");
   return reply;
+}
+
+/** 从已审核、已脱敏的公开摘录中生成当天唯一的一句温暖文字。 */
+export async function generateDailyQuote(
+  publicExcerpt: string,
+  language = "zh"
+): Promise<string> {
+  const languageName = language === "en" ? "英文" : language === "ja" ? "日文" : language === "ko" ? "韩文" : "简体中文";
+  const response = await getClient().chat.completions.create({
+    model: selectQwenModel("quote", publicExcerpt),
+    messages: [
+      {
+        role: "system",
+        content: `你是“深夜信箱”的每日一句编辑。请只根据用户已经同意公开、并且已经脱敏的信件摘录，写出一句温暖、具体、有余韵的话。
+
+要求：
+- 用${languageName}输出，只输出一句 20–70 字的完整句子，不要标题、引号、标签、解释或署名；
+- 让句子能感受到这封信里的真实情绪或细节，但不要暴露姓名、地点、联系方式或可识别身份的信息；
+- 不要把原文机械改写成鸡汤，不要使用“你要坚强”“一切都会好起来”“相信自己”等空泛套话；
+- 语气安静、温柔、平等，像有人认真读过这份心事后留下的一盏小灯；
+- 不替用户下结论，不做诊断，不提供医疗建议。`,
+      },
+      { role: "user", content: `请为这段已脱敏公开摘录生成今日一句：\n\n${publicExcerpt}` },
+    ],
+    temperature: 0.88,
+    max_tokens: 140,
+  });
+  const quote = response.choices[0]?.message?.content?.trim().replace(/^[“\"「]|[”\"」]$/g, "") || "";
+  if (!quote) throw new Error("Empty daily quote response from Qwen");
+  return quote.slice(0, 500);
 }
 
 /** 分析信件情绪。 */

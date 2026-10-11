@@ -3,6 +3,7 @@ import {
   detectLanguage,
   analyzeEmotion,
   generateAIReply,
+  generateDailyQuote,
   checkContentSafety,
 } from "./llm-hybrid";
 
@@ -79,6 +80,12 @@ describe("Hybrid LLM Integration", () => {
       
       expect(typeof reply).toBe("string");
       expect(reply.length).toBeGreaterThan(0);
+    });
+
+    it("should generate a quote from the approved excerpt in deterministic test mode", async () => {
+      const quote = await generateDailyQuote("我把夜班后的最后一班车写进了信里，想让自己慢一点回家。");
+      expect(quote).toContain("夜班后的最后一班车");
+      expect(quote).not.toContain("作为一个人工智能");
     });
   });
 

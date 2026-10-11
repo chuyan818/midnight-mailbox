@@ -19,6 +19,7 @@ import {
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { evaluatePublication } from "../safety/publication";
+import { getTodayQuote, selectDailyQuote } from "../public-mailbox";
 
 export const socialCompleteRouter = router({
   /**
@@ -396,30 +397,10 @@ export const socialCompleteRouter = router({
      */
     today: publicProcedure.query(async () => {
       try {
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-
-        const today = new Date().toISOString().split("T")[0];
-        // 转换日期格式
-        const todayDate = new Date(today);
-        const quote = await db
-          .select()
-          .from(dailyQuotes)
-          .where(eq(dailyQuotes.date, todayDate as any))
-          .limit(1);
-
-        if (quote.length) {
-          return quote[0];
-        }
-
-        // 如果没有今日金句，返回最新的
-        const latest = await db
-          .select()
-          .from(dailyQuotes)
-          .orderBy(desc(dailyQuotes.createdAt))
-          .limit(1);
-
-        return latest[0] || { content: "", author: "" };
+        const current = await getTodayQuote();
+        if (current) return current;
+        await selectDailyQuote();
+        return (await getTodayQuote()) || { quote: "", emotionTags: [], publicLetter: null };
       } catch (error) {
         console.error("获取今日金句失败:", error);
         throw new TRPCError({

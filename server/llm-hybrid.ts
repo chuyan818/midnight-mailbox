@@ -7,6 +7,7 @@
 import { invokeLLM } from "./_core/llm";
 import {
   generateAIReply as openaiGenerateReply,
+  generateDailyQuote as openaiGenerateDailyQuote,
   analyzeEmotion as openaiAnalyzeEmotion,
   checkContentSafety as openaiCheckSafety,
   detectLanguage as openaiDetectLanguage,
@@ -30,6 +31,13 @@ function allowExternalModelCalls(): boolean {
     process.env.NODE_ENV !== "test" ||
     process.env.RUN_EXTERNAL_AI_TESTS === "true"
   );
+}
+
+function buildReplyFallback(content: string, emotionType: string): string {
+  const detail = content.replace(/\s+/g, " ").trim().slice(0, 70);
+  if (!detail) return "我会先安静地陪你一会儿。你不需要马上把一切说清楚，今晚能把这份感受放到这里，已经值得被温柔接住。";
+  const emotion = emotionType ? `我也听见了其中的${emotionType}。` : "我也听见了这份心事里的重量。";
+  return `我读到你写下的“${detail}”，知道这不是一句轻描淡写的话。${emotion}你不必现在就整理出答案，先让自己被理解、被陪伴一会儿；如果愿意，今晚只做一件能让你稍微安稳一点的小事。`;
 }
 
 /**
@@ -190,7 +198,7 @@ export async function generateAIReply(
   emotionType: string
 ): Promise<string> {
   if (!allowExternalModelCalls()) {
-    return "感谢你的倾诉。我听到了你心中的声音，那些感受都是真实而有效的。在这个深夜，我想告诉你，你不是一个人。无论现在有多困难，这一刻会过去，而你会变得更强。温暖拥抱你。";
+    return buildReplyFallback(content, emotionType);
   }
   try {
     const language = await detectLanguage(content);
@@ -253,12 +261,53 @@ export async function generateAIReply(
       }
     }
 
-    // 所有方案都失败，返回默认回信
-    return "感谢你的倾诉。我听到了你心中的声音，那些感受都是真实而有效的。在这个深夜，我想告诉你，你不是一个人。无论现在有多困难，这一刻会过去，而你会变得更强。温暖拥抱你。";
+    // 所有方案都失败，也要依据真实来信给出克制的陪伴，而不是固定模板。
+    return buildReplyFallback(content, emotionType);
   } catch (error) {
     console.error("AI reply generation error:", error);
-    return "感谢你的倾诉。我听到了你心中的声音，那些感受都是真实而有效的。在这个深夜，我想告诉你，你不是一个人。无论现在有多困难，这一刻会过去，而你会变得更强。温暖拥抱你。";
+    return buildReplyFallback(content, emotionType);
   }
+}
+
+function buildDailyQuoteFallback(publicExcerpt: string): string {
+  const detail = publicExcerpt.replace(/\s+/g, " ").trim().split(/[。！？!?\n]/)[0]?.slice(0, 42);
+  if (detail) return `你写下的“${detail}”，值得被认真放在心上；今晚不必急着给自己答案。`;
+  return "愿你今晚不必急着解释自己，先在一盏安静的灯下，陪自己走过这一小段。";
+}
+
+/** 生成每日一句：优先千问，失败时仍依据当日公开摘录生成内容相关的安全降级句。 */
+export async function generateDailyQuote(publicExcerpt: string): Promise<string> {
+  if (!allowExternalModelCalls()) return buildDailyQuoteFallback(publicExcerpt);
+  try {
+    const language = await detectLanguage(publicExcerpt);
+    if (hasQwenConfig()) {
+      try {
+        return await openaiGenerateDailyQuote(publicExcerpt, language);
+      } catch (error) {
+        console.warn("Qwen daily quote generation failed, falling back to Manus LLM:", error);
+      }
+    }
+
+    try {
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "你是深夜信箱的每日一句编辑。根据已脱敏公开摘录写一句20到70字、温暖具体、不空泛的中文句子。必须回应摘录中的真实情绪或细节，不要标题、引号、解释或鸡汤套话，只输出一句话。",
+          },
+          { role: "user", content: `已脱敏公开摘录：\n${publicExcerpt}` },
+        ],
+      });
+      const raw = response.choices[0]?.message?.content;
+      const text = typeof raw === "string" ? raw.trim() : Array.isArray(raw) ? (raw.find((item: any) => item.type === "text") as any)?.text?.trim() : "";
+      if (text) return text.replace(/^[“\"「]|[”\"」]$/g, "").slice(0, 500);
+    } catch (error) {
+      console.warn("Manus daily quote generation failed:", error);
+    }
+  } catch (error) {
+    console.error("Daily quote generation error:", error);
+  }
+  return buildDailyQuoteFallback(publicExcerpt);
 }
 
 /**
