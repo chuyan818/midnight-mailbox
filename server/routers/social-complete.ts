@@ -15,8 +15,10 @@ import {
   letters,
   emotionStars,
   emotions,
+  publicModerationRequests,
 } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
+import { evaluatePublication } from "../safety/publication";
 
 export const socialCompleteRouter = router({
   /**
@@ -40,6 +42,7 @@ export const socialCompleteRouter = router({
           const results = await db
             .select()
             .from(publicLetters)
+            .where(eq(publicLetters.moderationStatus, "approved"))
             .orderBy(
               input.sortBy === "popular"
                 ? desc(publicLetters.starCount)
@@ -109,22 +112,50 @@ export const socialCompleteRouter = router({
             });
           }
 
-          // 发布到公共信箱
+          const sourceLetter = letter[0];
+          const decision = evaluatePublication({
+            content: input.excerpt,
+            publicConsent: sourceLetter.publicConsent,
+            riskLevel: sourceLetter.riskLevel,
+            requiresHumanReview: sourceLetter.requiresHumanReview,
+          });
+
+          if (!decision.allowed) {
+            if (decision.requiresHumanReview) {
+              await db.insert(publicModerationRequests).values({
+                letterId: sourceLetter.id,
+                userId: ctx.user.id,
+                proposedExcerpt: input.excerpt,
+                redactedExcerpt: decision.redaction.redacted.slice(0, 500),
+                redactionFields: decision.redaction.fields,
+                reason: decision.reason,
+                status: "pending",
+              }).onConflictDoNothing({ target: publicModerationRequests.letterId });
+              return { success: true, status: "pending_review", id: 0 };
+            }
+            throw new TRPCError({ code: "FORBIDDEN", message: decision.reason });
+          }
+
+          // 只有明确同意、低风险且完成脱敏的内容才能直接公开。
           const result = await db.insert(publicLetters).values({
             letterId: input.letterId,
             userId: ctx.user.id,
-            excerpt: input.excerpt,
-            emotionTags: letter[0].emotionTags,
+            excerpt: decision.redaction.redacted.slice(0, 500),
+            moderationStatus: "approved",
+            redactionFields: decision.redaction.fields,
+            reviewedAt: new Date(),
+            emotionTags: sourceLetter.emotionTags,
             starCount: 0,
           });
 
           return {
             success: true,
             id: (result as any).insertId || 0,
+            status: "approved",
           };
         } catch (error: any) {
           console.error("发布失败:", error);
-          if (error.code === "CONFLICT" || error.code === "NOT_FOUND") {
+          if (error.code === "CONFLICT" || error.code === "NOT_FOUND" || error.code === "FORBIDDEN") {
             throw error;
           }
           throw new TRPCError({

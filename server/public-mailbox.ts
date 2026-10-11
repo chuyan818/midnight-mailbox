@@ -1,6 +1,7 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { getDb } from "./db";
-import { publicLetters, stars, dailyQuotes, letters } from "../drizzle/schema";
+import { publicLetters, stars, dailyQuotes, letters, publicModerationRequests } from "../drizzle/schema";
+import { evaluatePublication } from "./safety/publication";
 
 /**
  * 获取公共信箱列表
@@ -10,8 +11,8 @@ export async function getPublicMailbox(sortBy: "latest" | "mostShared" = "latest
   if (!db) throw new Error("Database not available");
 
   const query = sortBy === "latest"
-    ? db.select().from(publicLetters).orderBy(desc(publicLetters.createdAt)).limit(limit).offset(offset)
-    : db.select().from(publicLetters).orderBy(desc(publicLetters.starCount)).limit(limit).offset(offset);
+    ? db.select().from(publicLetters).where(eq(publicLetters.moderationStatus, "approved")).orderBy(desc(publicLetters.createdAt)).limit(limit).offset(offset)
+    : db.select().from(publicLetters).where(eq(publicLetters.moderationStatus, "approved")).orderBy(desc(publicLetters.starCount)).limit(limit).offset(offset);
 
   return await query;
 }
@@ -23,15 +24,13 @@ export async function getPublicLetter(publicLetterId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.select().from(publicLetters).where(eq(publicLetters.id, publicLetterId)).limit(1);
+  const result = await db.select().from(publicLetters).where(and(eq(publicLetters.id, publicLetterId), eq(publicLetters.moderationStatus, "approved"))).limit(1);
   if (result.length === 0) return null;
 
   const publicLetter = result[0];
-  const letterResult = await db.select().from(letters).where(eq(letters.id, publicLetter.letterId)).limit(1);
-  
   return {
     ...publicLetter,
-    content: letterResult[0]?.content || "",
+    content: publicLetter.excerpt,
   };
 }
 
@@ -47,11 +46,38 @@ export async function publishToPublicMailbox(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const source = await db.select().from(letters).where(eq(letters.id, letterId)).limit(1);
+  if (!source[0] || source[0].userId !== userId) throw new Error("Letter not found");
+  const decision = evaluatePublication({
+    content: excerpt,
+    publicConsent: source[0].publicConsent,
+    riskLevel: source[0].riskLevel,
+    requiresHumanReview: source[0].requiresHumanReview,
+  });
+  if (!decision.allowed) {
+    if (decision.requiresHumanReview) {
+      await db.insert(publicModerationRequests).values({
+        letterId,
+        userId,
+        proposedExcerpt: excerpt,
+        redactedExcerpt: decision.redaction.redacted.slice(0, 500),
+        redactionFields: decision.redaction.fields,
+        reason: decision.reason,
+        status: "pending",
+      }).onConflictDoNothing({ target: publicModerationRequests.letterId });
+      return { status: "pending_review" };
+    }
+    throw new Error(decision.reason);
+  }
+
   const result = await db.insert(publicLetters).values({
     letterId,
     userId,
-    excerpt,
-    emotionTags,
+    excerpt: decision.redaction.redacted.slice(0, 500),
+    moderationStatus: "approved",
+    redactionFields: decision.redaction.fields,
+    reviewedAt: new Date(),
+    emotionTags: emotionTags || source[0].emotionTags,
     starCount: 0,
   });
 
@@ -148,7 +174,7 @@ export async function getTodayQuote() {
   const letterResult = await db
     .select()
     .from(publicLetters)
-    .where(eq(publicLetters.letterId, quote.letterId))
+    .where(and(eq(publicLetters.letterId, quote.letterId), eq(publicLetters.moderationStatus, "approved")))
     .limit(1);
 
   return {
@@ -179,22 +205,15 @@ export async function selectDailyQuote() {
   const topLetter = await db
     .select()
     .from(publicLetters)
+    .where(eq(publicLetters.moderationStatus, "approved"))
     .orderBy(desc(publicLetters.starCount))
     .limit(1);
 
   if (topLetter.length === 0) return null;
 
   const publicLetter = topLetter[0];
-  const letterResult = await db
-    .select()
-    .from(letters)
-    .where(eq(letters.id, publicLetter.letterId))
-    .limit(1);
-
-  if (letterResult.length === 0) return null;
-
   // 提取第一句话作为今日一句
-  const content = letterResult[0].content;
+  const content = publicLetter.excerpt;
   const firstSentence = content.split(/[。！？\n]/)[0] || content.substring(0, 100);
 
   const result = await db.insert(dailyQuotes).values({
@@ -220,7 +239,7 @@ export async function getNightLetters() {
   const result = await db
     .select()
     .from(publicLetters)
-    .where(sql`${publicLetters.createdAt} > ${sevenDaysAgo}`)
+    .where(and(sql`${publicLetters.createdAt} > ${sevenDaysAgo}`, eq(publicLetters.moderationStatus, "approved")))
     .orderBy(desc(publicLetters.starCount))
     .limit(3);
 

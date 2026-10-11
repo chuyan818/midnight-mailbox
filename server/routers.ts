@@ -38,7 +38,8 @@ import {
   checkContentSafety,
   detectLanguage,
 } from "./llm-hybrid";
-import { users } from "../drizzle/schema";
+import { crisisCases, users } from "../drizzle/schema";
+import { detectDeterministicRisk } from "./safety/risk";
 import { getOnlineCount, heartbeat } from "./presence";
 import { changeEmailPassword, getRecentLoginEvents } from "./auth/email-auth";
 
@@ -191,6 +192,7 @@ export const appRouter = router({
       .input(z.object({
         content: z.string().min(1).max(5000),
         backgroundType: z.enum(BACKGROUND_TYPES).optional(),
+        publicConsent: z.boolean().default(false),
       }))
       .mutation(async ({ ctx, input }) => {
         // Check if user can write letter
@@ -200,16 +202,22 @@ export const appRouter = router({
         }
 
         // Check content safety
+        const deterministicRisk = detectDeterministicRisk(input.content);
         const safetyCheck = await checkContentSafety(input.content);
-        if (!safetyCheck.safe) {
-          // Still allow but flag it
-          console.warn(`Safety flag for user ${ctx.user.id}: ${safetyCheck.reason}`);
-        }
+        const riskLevel = safetyCheck.riskLevel || deterministicRisk.riskLevel;
+        const requiresHumanReview = safetyCheck.requiresHumanReview || deterministicRisk.requiresHumanReview;
+        const crisisDetectedAt = riskLevel === "high" ? new Date() : undefined;
 
         // Create letter
         const result = await createLetter(ctx.user.id, {
           content: input.content,
           backgroundType: input.backgroundType,
+          publicConsent: input.publicConsent && riskLevel === "low" && !requiresHumanReview,
+          safetyFlag: !safetyCheck.safe,
+          riskLevel,
+          riskCategory: safetyCheck.riskCategory || deterministicRisk.riskCategory,
+          requiresHumanReview,
+          crisisDetectedAt,
         });
 
         // Increment daily letter count
@@ -217,6 +225,24 @@ export const appRouter = router({
 
         // Get the created letter ID
         const letterId = (result as any).insertId;
+
+        if (riskLevel === "high" || requiresHumanReview) {
+          try {
+            const db = await getDb();
+            if (db) {
+              await db.insert(crisisCases).values({
+                letterId,
+                userId: ctx.user.id,
+                priority: riskLevel === "high" ? "highest" : "high",
+                riskLevel,
+                riskCategory: safetyCheck.riskCategory || deterministicRisk.riskCategory,
+                status: "pending",
+              }).onConflictDoNothing({ target: crisisCases.letterId });
+            }
+          } catch (error) {
+            console.error("Failed to create crisis review case:", error);
+          }
+        }
 
         // Analyze emotion asynchronously
         analyzeEmotion(input.content)
@@ -255,6 +281,12 @@ export const appRouter = router({
         return {
           id: letterId,
           message: "Letter created successfully. AI is generating your reply...",
+          safety: {
+            riskLevel,
+            riskCategory: safetyCheck.riskCategory || deterministicRisk.riskCategory,
+            requiresHumanReview,
+            crisisIntervention: riskLevel === "high",
+          },
         };
       }),
 

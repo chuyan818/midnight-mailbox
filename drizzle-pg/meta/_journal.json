@@ -22,6 +22,13 @@
       "when": 1791368504119,
       "tag": "0002_time_capsule_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791676089427,
+      "tag": "0003_next_colossus",
+      "breakpoints": true
     }
   ]
 }

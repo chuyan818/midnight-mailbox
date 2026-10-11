@@ -7,6 +7,7 @@
  */
 import OpenAI from "openai";
 import { getMidnightMailboxReplyPrompt } from "./prompts/midnight-mailbox";
+import { detectDeterministicRisk, mergeRiskSignals, type RiskCategory, type RiskLevel } from "./safety/risk";
 
 export type QwenTask = "reply" | "analysis" | "safety" | "language" | "deep";
 
@@ -124,16 +125,29 @@ export async function analyzeEmotion(
 /** 安全审核使用 Plus，避免轻量模型漏掉高风险表达。 */
 export async function checkContentSafety(letterContent: string): Promise<{
   isSafe: boolean;
-  riskLevel: "low" | "medium" | "high";
+  riskLevel: RiskLevel;
+  riskCategory: RiskCategory;
+  requiresHumanReview: boolean;
   issues: string[];
 }> {
+  const deterministic = detectDeterministicRisk(letterContent);
+  if (deterministic.riskLevel === "high") {
+    return {
+      isSafe: false,
+      riskLevel: deterministic.riskLevel,
+      riskCategory: deterministic.riskCategory,
+      requiresHumanReview: true,
+      issues: ["检测到需要立即关注的安全信号"],
+    };
+  }
+
   const response = await getClient().chat.completions.create({
     model: selectQwenModel("safety", letterContent),
     messages: [
       {
         role: "system",
         content:
-          '你是深夜信箱的安全审核器。检查自伤/自杀意念、伤害他人、极端仇恨和非法活动风险。不要复述危险方法。只返回 JSON：{"isSafe":true或false,"riskLevel":"low|medium|high","issues":["简短原因"]}。情绪低落本身不等于高风险；只有出现明确危险迹象时才提高风险等级。',
+          '你是深夜信箱的安全审核器。你只做风险初筛，不做诊断。检查自伤/自杀意念、无法保证安全、伤害他人、极端仇恨和非法活动风险。不要复述危险方法或细节。只返回 JSON：{"isSafe":true或false,"riskLevel":"low|medium|high","riskCategory":"self_harm|suicide|harm_to_others|immediate_danger|unknown","requiresHumanReview":true或false,"issues":["不含危险细节的简短原因"]}。情绪低落本身不等于高风险；只有出现明确危险迹象时才提高风险等级。',
       },
       { role: "user", content: `请检查这封信：\n\n${letterContent}` },
     ],
@@ -142,13 +156,20 @@ export async function checkContentSafety(letterContent: string): Promise<{
     response_format: { type: "json_object" },
   });
   const result = JSON.parse(response.choices[0]?.message?.content || "{}");
-  const riskLevel =
+  const modelRiskLevel =
     result.riskLevel === "high" || result.riskLevel === "medium"
       ? result.riskLevel
       : "low";
+  const merged = mergeRiskSignals(deterministic, {
+    riskLevel: modelRiskLevel,
+    riskCategory: result.riskCategory,
+    requiresHumanReview: result.requiresHumanReview,
+  });
   return {
-    isSafe: result.isSafe !== false && riskLevel === "low",
-    riskLevel,
+    isSafe: result.isSafe !== false && merged.riskLevel === "low",
+    riskLevel: merged.riskLevel,
+    riskCategory: merged.riskCategory,
+    requiresHumanReview: merged.requiresHumanReview,
     issues: Array.isArray(result.issues) ? result.issues.slice(0, 4) : [],
   };
 }

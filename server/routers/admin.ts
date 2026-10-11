@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { adminProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { users, letters, reports, operationLogs, subscriptionRecords } from "../../drizzle/schema";
-import { eq, gte } from "drizzle-orm";
+import { users, letters, reports, operationLogs, subscriptionRecords, crisisCases, publicModerationRequests, publicLetters } from "../../drizzle/schema";
+import { eq, gte, desc } from "drizzle-orm";
 
 /**
  * Admin router - all procedures require admin role
@@ -385,6 +385,62 @@ export const adminRouter = router({
       throw error;
     }
   }),
+
+  /** High-priority safety queue; raw letter content is only available to authorized admins. */
+  getCrisisQueue: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    return await db.select({
+      id: crisisCases.id,
+      letterId: crisisCases.letterId,
+      userId: crisisCases.userId,
+      priority: crisisCases.priority,
+      riskLevel: crisisCases.riskLevel,
+      riskCategory: crisisCases.riskCategory,
+      status: crisisCases.status,
+      createdAt: crisisCases.createdAt,
+      reviewedAt: crisisCases.reviewedAt,
+    }).from(crisisCases).orderBy(desc(crisisCases.createdAt));
+  }),
+
+  resolveCrisisCase: adminProcedure
+    .input(z.object({ caseId: z.number(), status: z.enum(["reviewing", "resolved", "dismissed"]) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      await db.update(crisisCases).set({ status: input.status, reviewedBy: ctx.user.id, reviewedAt: new Date() }).where(eq(crisisCases.id, input.caseId));
+      await db.insert(operationLogs).values({ adminId: ctx.user.id, action: "resolve_crisis_case", targetType: "crisis_case", targetId: input.caseId, details: { status: input.status } });
+      return { success: true };
+    }),
+
+  getPublicModerationQueue: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    return await db.select().from(publicModerationRequests).where(eq(publicModerationRequests.status, "pending")).orderBy(desc(publicModerationRequests.createdAt));
+  }),
+
+  reviewPublicModeration: adminProcedure
+    .input(z.object({ requestId: z.number(), status: z.enum(["approved", "rejected"]), approvedExcerpt: z.string().max(500).optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const request = await db.select().from(publicModerationRequests).where(eq(publicModerationRequests.id, input.requestId)).limit(1);
+      if (!request[0]) throw new Error("Moderation request not found");
+      await db.update(publicModerationRequests).set({ status: input.status, reviewedBy: ctx.user.id, reviewedAt: new Date() }).where(eq(publicModerationRequests.id, input.requestId));
+      if (input.status === "approved") {
+        await db.insert(publicLetters).values({
+          letterId: request[0].letterId,
+          userId: request[0].userId,
+          excerpt: (input.approvedExcerpt || request[0].redactedExcerpt).slice(0, 500),
+          moderationStatus: "approved",
+          redactionFields: request[0].redactionFields,
+          reviewedBy: ctx.user.id,
+          reviewedAt: new Date(),
+          starCount: 0,
+        }).onConflictDoNothing({ target: publicLetters.letterId });
+      }
+      return { success: true };
+    }),
 
   /**
    * System Configuration - Update config

@@ -141,6 +141,12 @@ export async function getUserById(id: number) {
 export async function createLetter(userId: number, letterData: {
   content: string;
   backgroundType?: string;
+  publicConsent?: boolean;
+  safetyFlag?: boolean;
+  riskLevel?: string;
+  riskCategory?: string;
+  requiresHumanReview?: boolean;
+  crisisDetectedAt?: Date;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -150,6 +156,12 @@ export async function createLetter(userId: number, letterData: {
     userId,
     content: letterData.content,
     backgroundType: letterData.backgroundType,
+    publicConsent: letterData.publicConsent ?? false,
+    safetyFlag: letterData.safetyFlag ?? false,
+    riskLevel: letterData.riskLevel ?? "low",
+    riskCategory: letterData.riskCategory,
+    requiresHumanReview: letterData.requiresHumanReview ?? false,
+    crisisDetectedAt: letterData.crisisDetectedAt,
   });
   
   // 查询最新创建的信件以获取ID

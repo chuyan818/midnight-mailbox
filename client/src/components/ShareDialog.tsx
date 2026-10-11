@@ -172,7 +172,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   const localized = labels[language] || labels.zh;
   const shareUrl =
     customShareUrl ?? `${window.location.origin}/letter/${letterId}`;
-  const shareText = customShareText ?? copy.text;
+  const shareText = `${customShareText ?? copy.text}\n\n深夜信箱｜一个温暖的深夜陪伴\n${window.location.origin}`;
   const isWechatBrowser =
     typeof navigator !== "undefined" &&
     /MicroMessenger/i.test(navigator.userAgent);

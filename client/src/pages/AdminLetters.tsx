@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Trash2, Eye } from "lucide-react";
+import { Trash2, Eye, AlertTriangle, ShieldCheck } from "lucide-react";
 
 export function AdminLetters() {
   const [page, setPage] = useState(1);
@@ -17,6 +17,10 @@ export function AdminLetters() {
   });
 
   const deleteMutation = trpc.admin.deleteLetter.useMutation();
+  const { data: crisisQueue } = trpc.admin.getCrisisQueue.useQuery();
+  const { data: moderationQueue } = trpc.admin.getPublicModerationQueue.useQuery();
+  const resolveCrisisMutation = trpc.admin.resolveCrisisCase.useMutation();
+  const reviewModerationMutation = trpc.admin.reviewPublicModeration.useMutation();
 
   const handleDeleteLetter = async (letterId: number) => {
     if (!confirm("确定要删除这封信件吗？")) return;
@@ -38,6 +42,22 @@ export function AdminLetters() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">信件管理</h1>
           <p className="text-gray-600 mt-2">查看和管理所有信件</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="border-red-200 bg-red-50 p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-semibold text-red-900"><AlertTriangle className="h-5 w-5" />危机优先队列</h2>
+              <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-800">{crisisQueue?.filter(item => item.status === "pending").length || 0} 待处理</span>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-red-800/75">仅显示必要的风险元数据；查看原文前请确认你有人工审核权限。</p>
+            <div className="mt-4 space-y-2">{crisisQueue?.filter(item => item.status === "pending").slice(0, 3).map(item => <div key={item.id} className="flex items-center justify-between rounded-lg border border-red-200 bg-white/70 p-3 text-sm"><span>信件 #{item.letterId} · {item.riskCategory || "需复核"}</span><Button size="sm" variant="destructive" onClick={() => resolveCrisisMutation.mutate({ caseId: item.id, status: "reviewing" })}>接手</Button></div>)}</div>
+          </Card>
+          <Card className="border-amber-200 bg-amber-50 p-5">
+            <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-semibold text-amber-900"><ShieldCheck className="h-5 w-5" />公共内容审核</h2><span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">{moderationQueue?.length || 0} 待审核</span></div>
+            <p className="mt-2 text-sm leading-6 text-amber-900/70">自动脱敏不确定的内容不会进入公共信箱，审核通过后才会公开。</p>
+            <div className="mt-4 space-y-2">{moderationQueue?.slice(0, 3).map(item => <div key={item.id} className="flex items-center justify-between rounded-lg border border-amber-200 bg-white/70 p-3 text-sm"><span>信件 #{item.letterId} · {item.reason || "隐私复核"}</span><Button size="sm" onClick={() => reviewModerationMutation.mutate({ requestId: item.id, status: "approved" })}>批准脱敏稿</Button></div>)}</div>
+          </Card>
         </div>
 
         {/* Filter */}

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Send, ArrowLeft, Sparkles, Globe, Lock } from "lucide-react";
 import { LetterSendingAnimation } from "@/components/LetterSendingAnimation";
 import { ShareDialog } from "@/components/ShareDialog";
+import { CrisisSupportCard } from "@/components/CrisisSupportCard";
 import { SaveTemplateDialog } from "@/components/SaveTemplateDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { getThemeConfig } from "@/config/themes";
@@ -306,6 +307,7 @@ export default function Write() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [lastLetterId, setLastLetterId] = useState<string>("");
+  const [crisisDetected, setCrisisDetected] = useState(false);
   const localizedBackgrounds = BACKGROUNDS.map(background => ({
     ...background,
     label:
@@ -405,9 +407,11 @@ export default function Write() {
       const result = await createLetterMutation.mutateAsync({
         content,
         backgroundType: selectedBackground,
+        publicConsent: isPublic,
       });
 
       setLastLetterId(result.id);
+      setCrisisDetected(Boolean(result.safety?.crisisIntervention));
       // 动画完成后显示分享和模板保存选项
     } catch (error: any) {
       setShowSendingAnimation(false);
@@ -419,8 +423,7 @@ export default function Write() {
 
   const handleAnimationComplete = () => {
     setShowSendingAnimation(false);
-    // 显示分享对话框
-    setShowShareDialog(true);
+    if (!crisisDetected) setShowShareDialog(true);
   };
 
   const handleShareDialogClose = () => {
@@ -474,6 +477,12 @@ export default function Write() {
         letterId={lastLetterId}
         content={content}
       />
+
+      {crisisDetected && (
+        <div className="mx-auto max-w-3xl px-4 pt-6">
+          <CrisisSupportCard />
+        </div>
+      )}
 
       {/* 模板保存对话框 */}
       <SaveTemplateDialog

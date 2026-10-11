@@ -12,6 +12,7 @@ import {
   detectLanguage as openaiDetectLanguage,
   hasQwenConfig,
 } from "./openai";
+import { detectDeterministicRisk, mergeRiskSignals, type RiskCategory, type RiskLevel } from "./safety/risk";
 
 /**
  * 检测是否配置了可用的兼容模型密钥
@@ -266,9 +267,22 @@ export async function generateAIReply(
 export async function checkContentSafety(content: string): Promise<{
   safe: boolean;
   reason: string;
+  riskLevel: RiskLevel;
+  riskCategory: RiskCategory;
+  requiresHumanReview: boolean;
 }> {
+  const deterministic = detectDeterministicRisk(content);
+  const deterministicResult = {
+    safe: deterministic.riskLevel === "low",
+    reason: deterministic.riskLevel === "low" ? "内容安全" : "检测到需要进一步关注的安全信号",
+    riskLevel: deterministic.riskLevel,
+    riskCategory: deterministic.riskCategory,
+    requiresHumanReview: deterministic.requiresHumanReview,
+  };
+
+  if (deterministic.riskLevel === "high") return deterministicResult;
   if (!allowExternalModelCalls()) {
-    return { safe: true, reason: "内容安全" };
+    return deterministicResult;
   }
   try {
     // 安全审核优先使用千问 Plus，失败后再回退到 Manus/OpenAI。
@@ -279,6 +293,9 @@ export async function checkContentSafety(content: string): Promise<{
           safe: result.isSafe,
           reason:
             result.issues.length > 0 ? result.issues.join("; ") : "内容安全",
+          riskLevel: result.riskLevel,
+          riskCategory: result.riskCategory,
+          requiresHumanReview: result.requiresHumanReview,
         };
       } catch (error) {
         console.warn(
@@ -323,9 +340,14 @@ export async function checkContentSafety(content: string): Promise<{
               properties: {
                 safe: { type: "boolean" },
                 riskLevel: { type: "string", enum: ["low", "medium", "high"] },
+                riskCategory: {
+                  type: "string",
+                  enum: ["self_harm", "suicide", "harm_to_others", "immediate_danger", "unknown"],
+                },
+                requiresHumanReview: { type: "boolean" },
                 reason: { type: "string" },
               },
-              required: ["safe", "riskLevel", "reason"],
+              required: ["safe", "riskLevel", "riskCategory", "requiresHumanReview", "reason"],
               additionalProperties: false,
             },
           },
@@ -344,9 +366,20 @@ export async function checkContentSafety(content: string): Promise<{
 
         if (textContent) {
           const result = JSON.parse(textContent);
+          const merged = mergeRiskSignals(deterministic, {
+            riskLevel:
+              result.riskLevel === "high" || result.riskLevel === "medium"
+                ? result.riskLevel
+                : "low",
+            riskCategory: result.riskCategory,
+            requiresHumanReview: result.requiresHumanReview,
+          });
           return {
-            safe: result.safe !== false,
+            safe: result.safe !== false && merged.riskLevel === "low",
             reason: result.reason || "内容安全",
+            riskLevel: merged.riskLevel,
+            riskCategory: merged.riskCategory,
+            requiresHumanReview: merged.requiresHumanReview,
           };
         }
       }
@@ -364,6 +397,9 @@ export async function checkContentSafety(content: string): Promise<{
             safe: result.isSafe,
             reason:
               result.issues.length > 0 ? result.issues.join("; ") : "内容安全",
+            riskLevel: result.riskLevel,
+            riskCategory: result.riskCategory,
+            requiresHumanReview: result.requiresHumanReview,
           };
         } catch (openaiError) {
           console.warn("OpenAI safety check also failed:", openaiError);
@@ -371,17 +407,11 @@ export async function checkContentSafety(content: string): Promise<{
       }
     }
 
-    // 所有方案都失败，默认认为安全
-    return {
-      safe: true,
-      reason: "内容安全",
-    };
+    // 所有方案都失败时，仍保留确定性规则结果。
+    return deterministicResult;
   } catch (error) {
     console.error("Safety check error:", error);
-    return {
-      safe: true,
-      reason: "内容安全",
-    };
+    return deterministicResult;
   }
 }
 

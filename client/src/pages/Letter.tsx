@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Copy, Share2, Loader2, Heart } from "lucide-react";
 import { toast } from "sonner";
 import { ShareDialog } from "@/components/ShareDialog";
+import { CrisisSupportCard } from "@/components/CrisisSupportCard";
 
 /**
  * Typewriter effect component
@@ -126,6 +127,10 @@ export default function Letter() {
   }
 
   const handleShare = () => {
+    if (letter.riskLevel === "high" || letter.requiresHumanReview) {
+      toast.info("这封信正在接受安全审核，暂不支持公开分享");
+      return;
+    }
     setShowShareDialog(true);
   };
 
@@ -201,6 +206,10 @@ export default function Letter() {
                 : "加载中..."}
             </div>
           </div>
+
+          {(letter.riskLevel === "high" || letter.requiresHumanReview) && (
+            <CrisisSupportCard riskCategory={letter.riskCategory} />
+          )}
 
           {/* Emotion Analysis */}
           {letter?.emotionScore !== null &&

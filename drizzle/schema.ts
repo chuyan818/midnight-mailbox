@@ -137,12 +137,17 @@ export const letters = pgTable("letters", {
   backgroundType: varchar("backgroundType", { length: 50 }),
   emotionTags: jsonb("emotionTags"),
   isPublic: boolean("isPublic").default(false).notNull(),
+  publicConsent: boolean("publicConsent").default(false).notNull(),
   emotionScore: integer("emotionScore"),
   emotionType: varchar("emotionType", { length: 50 }),
   keywords: jsonb("keywords"),
   reply: text("reply"),
   replyGeneratedAt: timestamp("replyGeneratedAt"),
   safetyFlag: boolean("safetyFlag").default(false).notNull(),
+  riskLevel: varchar("riskLevel", { length: 16 }).default("low").notNull(),
+  riskCategory: varchar("riskCategory", { length: 32 }),
+  requiresHumanReview: boolean("requiresHumanReview").default(false).notNull(),
+  crisisDetectedAt: timestamp("crisisDetectedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -256,6 +261,10 @@ export const publicLetters = pgTable("public_letters", {
   letterId: integer("letterId").notNull().unique(),
   userId: integer("userId").notNull(),
   excerpt: varchar("excerpt", { length: 500 }).notNull(),
+  moderationStatus: varchar("moderationStatus", { length: 16 }).default("approved").notNull(),
+  redactionFields: jsonb("redactionFields"),
+  reviewedAt: timestamp("reviewedAt"),
+  reviewedBy: integer("reviewedBy"),
   emotionTags: jsonb("emotionTags"),
   starCount: integer("starCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -263,6 +272,41 @@ export const publicLetters = pgTable("public_letters", {
 
 export type PublicLetter = typeof publicLetters.$inferSelect;
 export type InsertPublicLetter = typeof publicLetters.$inferInsert;
+
+/** Public publishing requests waiting for PII/safety review. */
+export const publicModerationRequests = pgTable("public_moderation_requests", {
+  id: serial("id").primaryKey(),
+  letterId: integer("letterId").notNull().unique(),
+  userId: integer("userId").notNull(),
+  proposedExcerpt: varchar("proposedExcerpt", { length: 500 }).notNull(),
+  redactedExcerpt: varchar("redactedExcerpt", { length: 500 }).notNull(),
+  redactionFields: jsonb("redactionFields"),
+  reason: varchar("reason", { length: 500 }),
+  status: varchar("status", { length: 16 }).default("pending").notNull(),
+  reviewedBy: integer("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PublicModerationRequest = typeof publicModerationRequests.$inferSelect;
+export type InsertPublicModerationRequest = typeof publicModerationRequests.$inferInsert;
+
+/** Human-review queue for high-risk letters. The raw letter remains private. */
+export const crisisCases = pgTable("crisis_cases", {
+  id: serial("id").primaryKey(),
+  letterId: integer("letterId").notNull().unique(),
+  userId: integer("userId").notNull(),
+  priority: varchar("priority", { length: 16 }).default("highest").notNull(),
+  riskLevel: varchar("riskLevel", { length: 16 }).default("high").notNull(),
+  riskCategory: varchar("riskCategory", { length: 32 }),
+  status: varchar("status", { length: 16 }).default("pending").notNull(),
+  reviewedBy: integer("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CrisisCase = typeof crisisCases.$inferSelect;
+export type InsertCrisisCase = typeof crisisCases.$inferInsert;
 
 /**
  * Stars table - stores user interactions (shared feelings)

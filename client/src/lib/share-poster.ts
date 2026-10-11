@@ -25,7 +25,7 @@ const posterCopy: Record<
 > = {
   zh: {
     eyebrow: "一封写给深夜的信",
-    footer: "深夜信箱 · 让心事被温柔接住",
+    footer: "深夜信箱 · 一个温暖的深夜陪伴",
     qrHint: "扫码打开信件",
   },
   en: {
