@@ -17,8 +17,7 @@ import {
   isPaidMembershipActive,
   getUserSubscriptionRecords,
   upsertMembership,
-  canUserWriteLetter,
-  incrementDailyLetterCount,
+  reserveLetterQuota,
   getUserEmotionsTrend,
   getUserProfileStats,
   createSubscriptionRecord,
@@ -195,18 +194,20 @@ export const appRouter = router({
         publicConsent: z.boolean().default(false),
       }))
       .mutation(async ({ ctx, input }) => {
-        // Check if user can write letter
-        const canWrite = await canUserWriteLetter(ctx.user.id);
-        if (!canWrite) {
-          throw new Error("You have reached the daily letter limit. Upgrade to premium for unlimited letters.");
-        }
-
         // Check content safety
         const deterministicRisk = detectDeterministicRisk(input.content);
         const safetyCheck = await checkContentSafety(input.content);
         const riskLevel = safetyCheck.riskLevel || deterministicRisk.riskLevel;
         const requiresHumanReview = safetyCheck.requiresHumanReview || deterministicRisk.requiresHumanReview;
         const crisisDetectedAt = riskLevel === "high" ? new Date() : undefined;
+
+        // Reserve the quota atomically immediately before persistence. A
+        // separate read-then-increment pair is vulnerable to concurrent
+        // requests bypassing the free-tier limit.
+        const quotaReserved = await reserveLetterQuota(ctx.user.id);
+        if (!quotaReserved) {
+          throw new Error("You have reached the daily letter limit. Upgrade to premium for unlimited letters.");
+        }
 
         // Create letter
         const result = await createLetter(ctx.user.id, {
@@ -219,9 +220,6 @@ export const appRouter = router({
           requiresHumanReview,
           crisisDetectedAt,
         });
-
-        // Increment daily letter count
-        await incrementDailyLetterCount(ctx.user.id);
 
         // Get the created letter ID
         const letterId = (result as any).insertId;

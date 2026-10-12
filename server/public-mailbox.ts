@@ -3,6 +3,7 @@ import { getDb } from "./db";
 import { publicLetters, stars, dailyQuotes, letters, publicModerationRequests } from "../drizzle/schema";
 import { evaluatePublication } from "./safety/publication";
 import { generateDailyQuote } from "./llm-hybrid";
+import { withDistributedLock } from "./_core/redis-lock";
 
 /**
  * 获取公共信箱列表
@@ -89,54 +90,40 @@ export async function publishToPublicMailbox(
  * 点亮星星（共鸣互动）
  */
 export async function toggleStar(userId: number, publicLetterId: number) {
+  return withDistributedLock(`star-toggle:${userId}:${publicLetterId}`, () =>
+    toggleStarUnlocked(userId, publicLetterId),
+  );
+}
+
+async function toggleStarUnlocked(userId: number, publicLetterId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // 检查是否已经点过
-  const existing = await db
-    .select()
-    .from(stars)
-    .where(sql`${stars.userId} = ${userId} AND ${stars.publicLetterId} = ${publicLetterId}`)
-    .limit(1);
+  // Delete first: when a row exists this is the toggle-off path. The
+  // conditional write is safe across processes and does not require a lock.
+  const removed = await db
+    .delete(stars)
+    .where(sql`${stars.userId} = ${userId} AND ${stars.publicLetterId} = ${publicLetterId}`);
 
-  if (existing.length > 0) {
-    // 取消点亮
-    await db
-      .delete(stars)
-      .where(sql`${stars.userId} = ${userId} AND ${stars.publicLetterId} = ${publicLetterId}`);
-    
-    // 更新公共信件的星星数
-    const starCount = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(stars)
-      .where(eq(stars.publicLetterId, publicLetterId));
-    
-    await db
-      .update(publicLetters)
-      .set({ starCount: starCount[0]?.count || 0 })
+  if ((removed.rowCount ?? 0) > 0) {
+    await db.update(publicLetters)
+      .set({ starCount: sql`GREATEST(${publicLetters.starCount} - 1, 0)` })
       .where(eq(publicLetters.id, publicLetterId));
-
     return { starred: false };
-  } else {
-    // 点亮
-    await db.insert(stars).values({
-      userId,
-      publicLetterId,
-    });
-
-    // 更新公共信件的星星数
-    const starCount = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(stars)
-      .where(eq(stars.publicLetterId, publicLetterId));
-    
-    await db
-      .update(publicLetters)
-      .set({ starCount: starCount[0]?.count || 0 })
-      .where(eq(publicLetters.id, publicLetterId));
-
-    return { starred: true };
   }
+
+  const inserted = await db.insert(stars).values({
+    userId,
+    publicLetterId,
+  }).onConflictDoNothing({ target: [stars.userId, stars.publicLetterId] });
+
+  if ((inserted.rowCount ?? 0) > 0) {
+    await db.update(publicLetters)
+      .set({ starCount: sql`${publicLetters.starCount} + 1` })
+      .where(eq(publicLetters.id, publicLetterId));
+  }
+
+  return { starred: true };
 }
 
 /**
@@ -188,6 +175,14 @@ export async function getTodayQuote() {
  * 自动选择并设置今日一句
  */
 export async function selectDailyQuote() {
+  const today = new Date().toISOString().split("T")[0];
+  return withDistributedLock(`daily-quote:${today}`, selectDailyQuoteUnlocked, {
+    ttlMs: 60_000,
+    waitMs: 5_000,
+  });
+}
+
+async function selectDailyQuoteUnlocked() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -221,7 +216,7 @@ export async function selectDailyQuote() {
     quote: generatedQuote,
     emotionTags: publicLetter.emotionTags,
     date: today,
-  });
+  }).onConflictDoNothing({ target: dailyQuotes.date });
 
   return result;
 }

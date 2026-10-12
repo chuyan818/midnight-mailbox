@@ -17,7 +17,7 @@ import {
   emotions,
   publicModerationRequests,
 } from "../../drizzle/schema";
-import { eq, desc, and, gte, lte } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { evaluatePublication } from "../safety/publication";
 import { getTodayQuote, selectDailyQuote } from "../public-mailbox";
 
@@ -242,36 +242,26 @@ export const socialCompleteRouter = router({
             });
           }
 
-          // 检查是否已点赞
-          const existing = await db
-            .select()
-            .from(stars)
-            .where(
-              and(
-                eq(stars.publicLetterId, input.publicLetterId),
-                eq(stars.userId, ctx.user.id)
-              )
-            )
-            .limit(1);
+          // 依赖数据库唯一约束处理并发重复点赞，而不是先查再插入。
+          const inserted = await db.insert(stars).values({
+            userId: ctx.user.id,
+            publicLetterId: input.publicLetterId,
+          }).onConflictDoNothing({
+            target: [stars.userId, stars.publicLetterId],
+          });
 
-          if (existing.length) {
+          if (!inserted.rowCount) {
             throw new TRPCError({
               code: "CONFLICT",
               message: "已点赞过此信件",
             });
           }
 
-          // 添加点赞
-          await db.insert(stars).values({
-            userId: ctx.user.id,
-            publicLetterId: input.publicLetterId,
-          });
-
-          // 更新公开信件的星星数
+          // 原子递增，避免并发更新丢失。
           await db
             .update(publicLetters)
             .set({
-              starCount: (publicLetter[0].starCount || 0) + 1,
+              starCount: sql`${publicLetters.starCount} + 1`,
             })
             .where(eq(publicLetters.id, input.publicLetterId));
 
@@ -298,50 +288,24 @@ export const socialCompleteRouter = router({
           const db = await getDb();
           if (!db) throw new Error("Database not available");
 
-          // 检查点赞是否存在
-          const star = await db
-            .select()
-            .from(stars)
-            .where(
-              and(
-                eq(stars.publicLetterId, input.publicLetterId),
-                eq(stars.userId, ctx.user.id)
-              )
-            )
-            .limit(1);
+          const removed = await db.delete(stars).where(
+            and(
+              eq(stars.publicLetterId, input.publicLetterId),
+              eq(stars.userId, ctx.user.id),
+            ),
+          );
 
-          if (!star.length) {
+          if (!removed.rowCount) {
             throw new TRPCError({
               code: "NOT_FOUND",
               message: "未点赞此信件",
             });
           }
 
-          // 删除点赞
-          await db
-            .delete(stars)
-            .where(
-              and(
-                eq(stars.publicLetterId, input.publicLetterId),
-                eq(stars.userId, ctx.user.id)
-              )
-            );
-
-          // 更新公开信件的星星数
-          const publicLetter = await db
-            .select()
-            .from(publicLetters)
-            .where(eq(publicLetters.id, input.publicLetterId))
-            .limit(1);
-
-          if (publicLetter.length) {
-            await db
-              .update(publicLetters)
-              .set({
-                starCount: Math.max(0, (publicLetter[0].starCount || 1) - 1),
-              })
-              .where(eq(publicLetters.id, input.publicLetterId));
-          }
+          // 原子递减，避免并发删除/添加造成计数漂移。
+          await db.update(publicLetters).set({
+            starCount: sql`GREATEST(${publicLetters.starCount} - 1, 0)`,
+          }).where(eq(publicLetters.id, input.publicLetterId));
 
           return { success: true };
         } catch (error: any) {
@@ -566,14 +530,26 @@ export const socialCompleteRouter = router({
             });
           }
 
-          // 标记为已打开
-          await db
+          // 条件更新保证同一时间只有一个请求能完成开启。
+          const opened = await db
             .update(timeCapsules)
             .set({
               status: "opened",
               openedAt: new Date(),
             })
-            .where(eq(timeCapsules.id, input.id));
+            .where(and(
+              eq(timeCapsules.id, input.id),
+              eq(timeCapsules.userId, ctx.user.id),
+              eq(timeCapsules.status, "pending"),
+            ))
+            .returning({ id: timeCapsules.id });
+
+          if (!opened.length) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "时间胶囊已被打开",
+            });
+          }
 
           return {
             success: true,
@@ -581,7 +557,7 @@ export const socialCompleteRouter = router({
           };
         } catch (error: any) {
           console.error("打开时间胶囊失败:", error);
-          if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST") {
+          if (error.code === "NOT_FOUND" || error.code === "BAD_REQUEST" || error.code === "CONFLICT") {
             throw error;
           }
           throw new TRPCError({

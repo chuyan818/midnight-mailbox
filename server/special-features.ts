@@ -1,6 +1,7 @@
-import { eq, desc, lt } from "drizzle-orm";
+import { and, eq, desc, lt } from "drizzle-orm";
 import { getDb } from "./db";
 import { timeCapsules, emotionStars, letters } from "../drizzle/schema";
+import { withDistributedLock } from "./_core/redis-lock";
 
 /**
  * 创建时间胶囊
@@ -45,6 +46,13 @@ export async function getUserTimeCapsules(userId: number) {
  * 检查并打开已到期的时间胶囊
  */
 export async function checkAndOpenTimeCapsules() {
+  return withDistributedLock("time-capsules:open-expired", checkAndOpenTimeCapsulesUnlocked, {
+    ttlMs: 30_000,
+    waitMs: 5_000,
+  });
+}
+
+async function checkAndOpenTimeCapsulesUnlocked() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -53,8 +61,10 @@ export async function checkAndOpenTimeCapsules() {
     .select()
     .from(timeCapsules)
     .where(
-      eq(timeCapsules.status, "pending") &&
-      lt(timeCapsules.openDate, now)
+      and(
+        eq(timeCapsules.status, "pending"),
+        lt(timeCapsules.openDate, now),
+      )
     );
 
   for (const capsule of capsulesToOpen) {
@@ -64,7 +74,10 @@ export async function checkAndOpenTimeCapsules() {
         status: "opened",
         openedAt: now,
       })
-      .where(eq(timeCapsules.id, capsule.id));
+      .where(and(
+        eq(timeCapsules.id, capsule.id),
+        eq(timeCapsules.status, "pending"),
+      ));
   }
 
   return capsulesToOpen;

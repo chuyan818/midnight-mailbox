@@ -1,8 +1,9 @@
-import { eq, and, desc, gte } from "drizzle-orm";
+import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { InsertUser, users, letters, emotions, memberships, subscriptionRecords, InsertMembership, letterTemplates, InsertLetterTemplate, LetterTemplate } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { withDistributedLock } from './_core/redis-lock';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
@@ -151,8 +152,9 @@ export async function createLetter(userId: number, letterData: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // 插入信件
-  await db.insert(letters).values({
+  // 直接使用 INSERT ... RETURNING 获取主键，避免并发请求通过
+  // “查询当前用户最新信件”错误关联到另一封信。
+  const [createdLetter] = await db.insert(letters).values({
     userId,
     content: letterData.content,
     backgroundType: letterData.backgroundType,
@@ -162,22 +164,15 @@ export async function createLetter(userId: number, letterData: {
     riskCategory: letterData.riskCategory,
     requiresHumanReview: letterData.requiresHumanReview ?? false,
     crisisDetectedAt: letterData.crisisDetectedAt,
-  });
-  
-  // 查询最新创建的信件以获取ID
-  const createdLetters = await db.select()
-    .from(letters)
-    .where(eq(letters.userId, userId))
-    .orderBy(desc(letters.createdAt))
-    .limit(1);
-  
-  if (createdLetters.length === 0) {
+  }).returning({ id: letters.id });
+
+  if (!createdLetter) {
     throw new Error("Failed to create letter");
   }
-  
+
   return {
-    id: createdLetters[0].id,
-    insertId: createdLetters[0].id,
+    id: createdLetter.id,
+    insertId: createdLetter.id,
   };
 }
 
@@ -276,75 +271,59 @@ export function getEffectiveMembershipType(
  * Create or update user membership
  */
 export async function upsertMembership(userId: number, membershipData: Partial<InsertMembership>) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  const existing = await getUserMembership(userId);
-  
-  if (existing) {
-    await db.update(memberships)
-      .set({
-        ...membershipData,
-        updatedAt: new Date(),
-      })
-      .where(eq(memberships.userId, userId));
-  } else {
+  return withDistributedLock(`membership:${userId}`, async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
     await db.insert(memberships).values({
       userId,
-      membershipType: 'free',
+      membershipType: "free",
       ...membershipData,
+    }).onConflictDoUpdate({
+      target: memberships.userId,
+      set: {
+        ...membershipData,
+        updatedAt: new Date(),
+      },
     });
-  }
+  });
 }
 
 /**
- * Check if user can write letter (daily limit for free users)
+ * Atomically reserves the free-tier daily letter quota.
+ *
+ * A conditional UPDATE makes concurrent requests contend on the same database
+ * row. Only the request that successfully updates the row obtains the slot.
  */
-export async function canUserWriteLetter(userId: number): Promise<boolean> {
+export async function reserveLetterQuota(userId: number): Promise<boolean> {
   const db = await getDb();
   if (!db) return true;
-  
-  const membership = await getUserMembership(userId);
-  if (!membership) return true; // Default allow
-  
-  // Only a confirmed, non-expired paid membership has unlimited letters.
-  if (getEffectiveMembershipType(membership) === 'free') {
-    const today = new Date().toISOString().split('T')[0];
-    const lastLetterDate = membership.lastLetterDate;
-    
-    if (lastLetterDate === today && membership.dailyLetterCount >= 1) {
-      return false;
-    }
-  }
-  
-  return true;
-}
 
-/**
- * Increment user's daily letter count
- */
-export async function incrementDailyLetterCount(userId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  const today = new Date();
   const membership = await getUserMembership(userId);
-  
-  if (membership) {
-    const lastLetterDate = membership.lastLetterDate ? new Date(membership.lastLetterDate) : null;
-    const todayStr = today.toISOString().split('T')[0];
-    const lastLetterStr = lastLetterDate ? lastLetterDate.toISOString().split('T')[0] : null;
-    
-    const newCount = lastLetterStr === todayStr ? membership.dailyLetterCount + 1 : 1;
-    
-    await db.update(memberships)
-      .set({
-        dailyLetterCount: newCount,
-        lastLetterDate: today.toISOString().split("T")[0],
-        updatedAt: new Date(),
-      })
-      .where(eq(memberships.userId, userId));
+  // Every authenticated user should have a membership row. Fail closed if
+  // data is inconsistent instead of silently granting unlimited writes.
+  if (!membership) {
+    return false;
   }
+  if (getEffectiveMembershipType(membership) !== "free") {
+    return true;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const updated = await db
+    .update(memberships)
+    .set({
+      dailyLetterCount: sql<number>`CASE WHEN ${memberships.lastLetterDate} = ${today} THEN ${memberships.dailyLetterCount} + 1 ELSE 1 END`,
+      lastLetterDate: today,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(memberships.userId, userId),
+      sql`(${memberships.lastLetterDate} IS DISTINCT FROM ${today} OR ${memberships.dailyLetterCount} < 1)`,
+    ))
+    .returning({ userId: memberships.userId });
+
+  return updated.length > 0;
 }
 
 /**

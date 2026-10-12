@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { and, eq } from "drizzle-orm";
 import { memberships, subscriptionRecords } from "../drizzle/schema";
 import { getDb } from "./db";
+import { withDistributedLock } from "./_core/redis-lock";
 
 export type PayPalPaymentStatus = "none" | "pending" | "active" | "failed";
 
@@ -87,6 +88,12 @@ interface PayPalSubscriptionDetails {
 
 export async function registerPayPalSubscription(userId: number, subscriptionId: string, requestedPlanType: PayPalPlanType) {
   const normalizedId = subscriptionId.trim();
+  return withDistributedLock(`paypal:register:user:${userId}`, () =>
+    registerPayPalSubscriptionUnlocked(userId, normalizedId, requestedPlanType),
+  );
+}
+
+async function registerPayPalSubscriptionUnlocked(userId: number, normalizedId: string, requestedPlanType: PayPalPlanType) {
   if (!/^I-[A-Z0-9]+$/i.test(normalizedId)) {
     throw new Error("Invalid PayPal subscription ID");
   }
@@ -168,6 +175,13 @@ function getNextBillingDate(planType: PayPalPlanType, event: Record<string, any>
 async function updateMembershipFromPayPalEvent(event: Record<string, any>) {
   const subscriptionId = getSubscriptionId(event);
   if (!subscriptionId) return;
+  return withDistributedLock(`paypal:webhook:${subscriptionId}`, () =>
+    updateMembershipFromPayPalEventUnlocked(event, subscriptionId),
+    { ttlMs: 30_000, waitMs: 5_000 },
+  );
+}
+
+async function updateMembershipFromPayPalEventUnlocked(event: Record<string, any>, subscriptionId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const rows = await db.select().from(memberships).where(eq(memberships.paypalSubscriptionId, subscriptionId)).limit(1);
@@ -274,6 +288,10 @@ async function updateMembershipFromPayPalEvent(event: Record<string, any>) {
 }
 
 export async function cancelPayPalSubscription(userId: number) {
+  return withDistributedLock(`paypal:cancel:${userId}`, () => cancelPayPalSubscriptionUnlocked(userId));
+}
+
+async function cancelPayPalSubscriptionUnlocked(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const rows = await db.select().from(memberships).where(eq(memberships.userId, userId)).limit(1);

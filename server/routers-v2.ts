@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { letters, publicLetters } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import * as publicMailbox from "./public-mailbox";
 import * as specialFeatures from "./special-features";
 
@@ -87,7 +88,7 @@ export const v2Router = router({
     /**
      * 自动选择今日一句（后台任务）
      */
-    select: publicProcedure.mutation(async () => {
+    select: adminProcedure.mutation(async () => {
       return await publicMailbox.selectDailyQuote();
     }),
   }),
@@ -134,7 +135,7 @@ export const v2Router = router({
     /**
      * 检查并打开已到期的时间胶囊
      */
-    checkAndOpen: publicProcedure.mutation(async () => {
+    checkAndOpen: adminProcedure.mutation(async () => {
       return await specialFeatures.checkAndOpenTimeCapsules();
     }),
   }),
@@ -169,14 +170,22 @@ export const v2Router = router({
     /**
      * 创建情绪星球中的星星（内部API）
      */
-    create: publicProcedure
+    create: protectedProcedure
       .input(
         z.object({
           letterId: z.number(),
           emotionType: z.string(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        const ownedLetter = await db
+          .select({ id: letters.id })
+          .from(letters)
+          .where(and(eq(letters.id, input.letterId), eq(letters.userId, ctx.user.id)))
+          .limit(1);
+        if (!ownedLetter.length) throw new TRPCError({ code: "FORBIDDEN", message: "Unauthorized" });
         const color = specialFeatures.getEmotionColor(input.emotionType);
         const coords = specialFeatures.generateRandomCoordinates();
         return await specialFeatures.createEmotionStar(
@@ -208,28 +217,20 @@ export const v2Router = router({
         const db = await getDb();
         if (!db) throw new Error("Database not available");
 
-        const result = await db.insert(letters).values({
+        const [createdLetter] = await db.insert(letters).values({
           userId: ctx.user.id,
           content: input.content,
           backgroundType: input.backgroundType,
           emotionTags: input.emotionTags,
           isPublic: input.isPublic,
           safetyFlag: false,
-        });
+        }).returning({ id: letters.id });
 
         // 如果是公开信件，添加到公共信箱
         if (input.isPublic) {
           const excerpt = input.content.substring(0, 100);
-          // 获取刚创建的信件ID
-          const newLetters = await db
-            .select()
-            .from(letters)
-            .where(eq(letters.userId, ctx.user.id))
-            .orderBy(desc(letters.createdAt))
-            .limit(1);
-
-          if (newLetters.length > 0) {
-            const letterId = newLetters[0].id;
+          if (createdLetter) {
+            const letterId = createdLetter.id;
             await publicMailbox.publishToPublicMailbox(
               letterId,
               ctx.user.id,
@@ -251,7 +252,7 @@ export const v2Router = router({
           }
         }
 
-        return result;
+        return createdLetter;
       }),
 
     /**
@@ -276,11 +277,10 @@ export const v2Router = router({
         const result = await db
           .select()
           .from(letters)
-          .where(eq(letters.id, input.id))
+          .where(and(eq(letters.id, input.id), eq(letters.userId, ctx.user.id)))
           .limit(1);
 
         if (result.length === 0) throw new Error("Letter not found");
-        if (result[0].userId !== ctx.user.id) throw new Error("Unauthorized");
 
         return result[0];
       }),
@@ -297,13 +297,15 @@ export const v2Router = router({
         const result = await db
           .select()
           .from(letters)
-          .where(eq(letters.id, input.id))
+          .where(and(eq(letters.id, input.id), eq(letters.userId, ctx.user.id)))
           .limit(1);
 
         if (result.length === 0) throw new Error("Letter not found");
-        if (result[0].userId !== ctx.user.id) throw new Error("Unauthorized");
 
-        return await db.delete(letters).where(eq(letters.id, input.id));
+        return await db.delete(letters).where(and(
+          eq(letters.id, input.id),
+          eq(letters.userId, ctx.user.id),
+        ));
       }),
   }),
 });

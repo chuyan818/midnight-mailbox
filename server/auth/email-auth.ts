@@ -4,6 +4,7 @@ import nodemailer from "nodemailer";
 import { and, desc, eq, gte, isNull, or } from "drizzle-orm";
 import { emailVerificationCodes, loginEvents, users } from "../../drizzle/schema";
 import { getDb, getUserByEmail, getUserById, getUserByOpenId, upsertUser } from "../db";
+import { withDistributedLock } from "../_core/redis-lock";
 
 const scryptAsync = promisify(crypto.scrypt);
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -145,6 +146,10 @@ export async function sendVerificationEmail(email: string, code: string) {
 
 export async function issueEmailVerificationCode(emailInput: string) {
   const email = normalizeEmail(emailInput);
+  return withDistributedLock(`email-code-send:${email}`, () => issueEmailVerificationCodeUnlocked(email));
+}
+
+async function issueEmailVerificationCodeUnlocked(email: string) {
   if (!validateAuthEmail(email)) throw new Error("请输入有效的邮箱地址");
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -171,6 +176,10 @@ export async function issueEmailVerificationCode(emailInput: string) {
 
 export async function consumeEmailVerificationCode(emailInput: string, code: string) {
   const email = normalizeEmail(emailInput);
+  return withDistributedLock(`email-code-consume:${email}`, () => consumeEmailVerificationCodeUnlocked(email, code));
+}
+
+async function consumeEmailVerificationCodeUnlocked(email: string, code: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const [record] = await db.select().from(emailVerificationCodes).where(and(eq(emailVerificationCodes.email, email), isNull(emailVerificationCodes.consumedAt))).orderBy(desc(emailVerificationCodes.createdAt)).limit(1);
@@ -181,8 +190,15 @@ export async function consumeEmailVerificationCode(emailInput: string, code: str
     await db.update(emailVerificationCodes).set({ attempts: record.attempts + 1 }).where(eq(emailVerificationCodes.id, record.id));
     return false;
   }
-  await db.update(emailVerificationCodes).set({ consumedAt: new Date() }).where(eq(emailVerificationCodes.id, record.id));
-  return true;
+  const consumed = await db
+    .update(emailVerificationCodes)
+    .set({ consumedAt: new Date() })
+    .where(and(
+      eq(emailVerificationCodes.id, record.id),
+      isNull(emailVerificationCodes.consumedAt),
+    ))
+    .returning({ id: emailVerificationCodes.id });
+  return consumed.length > 0;
 }
 
 function emailOpenId(email: string) {

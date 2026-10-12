@@ -9,6 +9,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -316,7 +317,10 @@ export const stars = pgTable("stars", {
   userId: integer("userId").notNull(),
   publicLetterId: integer("publicLetterId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  userPublicLetterUnique: uniqueIndex("stars_user_public_letter_unique")
+    .on(table.userId, table.publicLetterId),
+}));
 
 export type Star = typeof stars.$inferSelect;
 export type InsertStar = typeof stars.$inferInsert;
