@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
@@ -6,13 +7,14 @@ import { sdk } from "../_core/sdk";
 import {
   authenticateEmailUser,
   checkLoginRateLimit,
+  hashPassword,
   issueEmailVerificationCode,
   recordLoginEvent,
   registerEmailUser,
   validateAuthEmail,
   validateAuthPassword,
 } from "./email-auth";
-import { getUserByEmail } from "../db";
+import { getUserByEmail, upsertUser } from "../db";
 import {
   authenticateGoogleCallback,
   getGoogleAuthorizationUrl,
@@ -116,6 +118,50 @@ export function registerEmailAuthRoutes(app: Express) {
     } catch (error) {
       console.error("[Auth] Email login failed", error);
       res.status(500).json({ success: false, error: "登录暂时不可用" });
+    }
+  });
+
+  // Temporary, disabled by default. Remove this route after provisioning the
+  // first admin account; it is never usable without an explicit server secret.
+  app.post("/api/internal/admin-bootstrap", async (req, res) => {
+    const configuredToken = process.env.ADMIN_BOOTSTRAP_TOKEN?.trim() ?? "";
+    const suppliedToken = req.get("x-admin-bootstrap-token") ?? "";
+    const tokenMatches = configuredToken.length >= 32 &&
+      suppliedToken.length === configuredToken.length &&
+      crypto.timingSafeEqual(Buffer.from(suppliedToken), Buffer.from(configuredToken));
+    if (!tokenMatches) {
+      res.status(404).json({ success: false, error: "Not found" });
+      return;
+    }
+
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!validateAuthEmail(email) || !validateAuthPassword(password)) {
+      res.status(400).json({ success: false, error: "邮箱或密码格式不正确" });
+      return;
+    }
+    try {
+      const existing = await getUserByEmail(email);
+      if (existing) {
+        res.status(409).json({ success: false, error: "该邮箱已存在，请改为提升现有账号权限" });
+        return;
+      }
+      const openId = `email:${crypto.createHash("sha256").update(email).digest("hex").slice(0, 32)}`;
+      await upsertUser({
+        openId,
+        email,
+        name: email.split("@")[0],
+        passwordHash: await hashPassword(password),
+        emailVerifiedAt: new Date(),
+        loginMethod: "email",
+        role: "admin",
+        lastSignedIn: new Date(),
+      });
+      const created = await getUserByEmail(email);
+      res.status(201).json({ success: true, userId: created?.id });
+    } catch (error) {
+      console.error("[Auth] Admin bootstrap failed", error);
+      res.status(500).json({ success: false, error: "管理员账号创建失败" });
     }
   });
 
