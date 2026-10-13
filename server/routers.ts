@@ -318,6 +318,12 @@ export const appRouter = router({
 
   membership: router({
     getInfo: protectedProcedure.query(async ({ ctx }) => {
+      const membership = await getUserMembership(ctx.user.id);
+      if (membership) return membership;
+      // Legacy/OAuth users may predate the membership row. Create the
+      // default tier lazily so every authenticated user has a bounded
+      // free membership instead of an undefined result.
+      await upsertMembership(ctx.user.id, { membershipType: "free" });
       return await getUserMembership(ctx.user.id);
     }),
 

@@ -44,7 +44,10 @@ export interface ReminderNotification {
  */
 export function shouldSendExpiryReminder(expiryDate: Date, reminderDays: number): boolean {
   const now = new Date();
-  const daysUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  // The caller can create the target date immediately before this function
+  // runs. Using floor would turn an exact N-day interval into N-1 days as
+  // soon as a few milliseconds elapse.
+  const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   
   return daysUntilExpiry === reminderDays;
 }
