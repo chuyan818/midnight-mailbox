@@ -36,6 +36,13 @@
       "when": 1791850000000,
       "tag": "0004_redis_race_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791859863075,
+      "tag": "0005_curvy_squadron_sinister",
+      "breakpoints": true
     }
   ]
 }

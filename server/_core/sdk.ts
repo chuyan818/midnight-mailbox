@@ -292,6 +292,10 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    if (user.bannedAt) {
+      throw ForbiddenError("Account is banned");
+    }
+
     await db.upsertUser({
       openId: user.openId,
       lastSignedIn: signedInAt,

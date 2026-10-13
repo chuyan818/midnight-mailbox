@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { users, letters, reports, operationLogs, subscriptionRecords, crisisCases, publicModerationRequests, publicLetters } from "../../drizzle/schema";
+import { users, letters, reports, operationLogs, subscriptionRecords, systemConfigs, crisisCases, publicModerationRequests, publicLetters } from "../../drizzle/schema";
 import { eq, gte, desc } from "drizzle-orm";
 
 /**
@@ -108,10 +108,16 @@ export const adminRouter = router({
       try {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
-        
+
+        if (input.userId === ctx.user.id && input.banned) {
+          throw new Error("不能封禁当前登录的管理员账号");
+        }
+
         await db
           .update(users)
           .set({
+            bannedAt: input.banned ? new Date() : null,
+            banReason: input.banned ? (input.reason?.trim() || "管理员封禁") : null,
             updatedAt: new Date(),
           })
           .where(eq(users.id, input.userId));
@@ -121,7 +127,7 @@ export const adminRouter = router({
           action: input.banned ? "ban_user" : "unban_user",
           targetType: "user",
           targetId: input.userId,
-          details: JSON.stringify({ reason: input.reason }),
+          details: { reason: input.reason?.trim() || null },
         });
 
         return { success: true, message: `User ${input.banned ? "banned" : "unbanned"} successfully` };
@@ -262,7 +268,10 @@ export const adminRouter = router({
         if (!db) throw new Error("Database not available");
         
         const offset = (input.page - 1) * input.pageSize;
-        const allOrders = await db.select().from(subscriptionRecords);
+        let allOrders = await db.select().from(subscriptionRecords);
+        if (input.status) {
+          allOrders = allOrders.filter((order) => order.status === input.status);
+        }
 
         const total = allOrders.length;
         const data = allOrders.slice(offset, offset + input.pageSize);
@@ -372,14 +381,17 @@ export const adminRouter = router({
    */
   getSystemConfigs: adminProcedure.query(async () => {
     try {
-      return {
-        configs: [
-          { key: "max_letter_length", value: "5000", type: "number", description: "Maximum letter length" },
-          { key: "daily_letter_limit", value: "10", type: "number", description: "Daily letter limit for free users" },
-          { key: "maintenance_mode", value: "false", type: "boolean", description: "Enable maintenance mode" },
-          { key: "ai_response_enabled", value: "true", type: "boolean", description: "Enable AI responses" },
-        ],
-      };
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const defaults = [
+        { key: "max_letter_length", value: "5000", type: "number" as const, description: "Maximum letter length" },
+        { key: "daily_letter_limit", value: "10", type: "number" as const, description: "Daily letter limit for free users" },
+        { key: "maintenance_mode", value: "false", type: "boolean" as const, description: "Enable maintenance mode" },
+        { key: "ai_response_enabled", value: "true", type: "boolean" as const, description: "Enable AI responses" },
+      ];
+      await db.insert(systemConfigs).values(defaults).onConflictDoNothing({ target: systemConfigs.key });
+      const configs = await db.select().from(systemConfigs).orderBy(systemConfigs.id);
+      return { configs };
     } catch (error) {
       console.error("Error fetching system configs:", error);
       throw error;
@@ -448,15 +460,26 @@ export const adminRouter = router({
   updateSystemConfig: adminProcedure
     .input(
       z.object({
-        key: z.string(),
-        value: z.string(),
+        key: z.enum(["max_letter_length", "daily_letter_limit", "maintenance_mode", "ai_response_enabled"]),
+        value: z.string().trim().min(1).max(100),
       })
     )
     .mutation(async ({ input, ctx }) => {
       try {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
-        
+        const config = await db.select().from(systemConfigs).where(eq(systemConfigs.key, input.key)).limit(1);
+        if (!config[0]) throw new Error("配置不存在");
+        if (config[0].type === "number" && (!/^\d+$/.test(input.value) || Number(input.value) < 0)) {
+          throw new Error("数值配置必须是非负整数");
+        }
+        if (config[0].type === "boolean" && !["true", "false"].includes(input.value)) {
+          throw new Error("布尔配置只能是 true 或 false");
+        }
+        await db.update(systemConfigs)
+          .set({ value: input.value, updatedBy: ctx.user.id, updatedAt: new Date() })
+          .where(eq(systemConfigs.key, input.key));
+
         await db.insert(operationLogs).values({
           adminId: ctx.user.id,
           action: "update_config",

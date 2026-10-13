@@ -22,6 +22,7 @@ import { AdminReports } from "./pages/AdminReports";
 import { AdminEmotions } from "./pages/AdminEmotions";
 import { AdminMembers } from "./pages/AdminMembers";
 import { AdminSettings } from "./pages/AdminSettings";
+import { AdminOperationLogs } from "./pages/AdminOperationLogs";
 import Login from "./pages/Login";
 import UserLogin from "./pages/UserLogin";
 import Register from "./pages/Register";
@@ -65,7 +66,10 @@ function Router() {
       <Route path={"/admin/reports"} component={AdminReports} />
       <Route path={"/admin/emotions"} component={AdminEmotions} />
       <Route path={"/admin/members"} component={AdminMembers} />
+      <Route path={"/admin/memberships"} component={AdminMembers} />
       <Route path={"/admin/settings"} component={AdminSettings} />
+      <Route path={"/admin/config"} component={AdminSettings} />
+      <Route path={"/admin/logs"} component={AdminOperationLogs} />
       <Route path={"/admin/support"} component={AdminSupport} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

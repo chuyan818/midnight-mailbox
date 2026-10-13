@@ -7,10 +7,12 @@ import { DollarSign } from "lucide-react";
 
 export function AdminMembers() {
   const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<string | undefined>();
 
   const { data: ordersData, isLoading } = trpc.admin.getVipOrders.useQuery({
     page,
     pageSize: 20,
+    status,
   });
 
   return (
@@ -49,7 +51,16 @@ export function AdminMembers() {
 
         {/* Orders Table */}
         <Card className="p-6 overflow-x-auto">
-          <h2 className="text-xl font-bold mb-4">订单列表</h2>
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold">订单列表</h2>
+            <select value={status || ""} onChange={(event) => { setStatus(event.target.value || undefined); setPage(1); }} className="rounded-lg border border-gray-300 px-3 py-2">
+              <option value="">全部状态</option>
+              <option value="pending">处理中</option>
+              <option value="completed">已完成</option>
+              <option value="failed">失败</option>
+              <option value="cancelled">已取消</option>
+            </select>
+          </div>
           <table className="w-full">
             <thead>
               <tr className="border-b">

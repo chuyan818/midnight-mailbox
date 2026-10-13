@@ -106,6 +106,11 @@ export function AdminUsers() {
                     <td className="py-3 px-4">{user.name || "未设置"}</td>
                     <td className="py-3 px-4">{user.email}</td>
                     <td className="py-3 px-4">
+                      {user.bannedAt && (
+                        <span className="mr-2 rounded-full bg-red-100 px-3 py-1 text-sm text-red-800">
+                          已封禁
+                        </span>
+                      )}
                       <span
                         className={`px-3 py-1 rounded-full text-sm ${
                           user.role === "admin"
@@ -123,11 +128,15 @@ export function AdminUsers() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleBanUser(user.id, true)}
+                        onClick={() => handleBanUser(user.id, !user.bannedAt)}
                         disabled={banMutation.isPending}
                       >
-                        <Ban className="w-4 h-4 mr-1" />
-                        封禁
+                        {user.bannedAt ? (
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                        ) : (
+                          <Ban className="w-4 h-4 mr-1" />
+                        )}
+                        {user.bannedAt ? "解除封禁" : "封禁"}
                       </Button>
                     </td>
                   </tr>

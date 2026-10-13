@@ -229,7 +229,7 @@ export async function registerEmailUser(emailInput: string, password: string, co
 export async function authenticateEmailUser(emailInput: string, password: string) {
   const email = normalizeEmail(emailInput);
   const user = await getUserByEmail(email);
-  if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) return undefined;
+  if (!user?.passwordHash || user.bannedAt || !(await verifyPassword(password, user.passwordHash))) return undefined;
   return user;
 }
 

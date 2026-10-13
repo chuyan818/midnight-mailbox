@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Save } from "lucide-react";
+import { useLocation } from "wouter";
 
 export function AdminSettings() {
+  const [, navigate] = useLocation();
   const { data: configsData, isLoading } = trpc.admin.getSystemConfigs.useQuery();
   const updateMutation = trpc.admin.updateSystemConfig.useMutation();
 
@@ -22,7 +24,7 @@ export function AdminSettings() {
   const handleSaveConfig = async (key: string, value: string) => {
     try {
       await updateMutation.mutateAsync({
-        key,
+        key: key as "max_letter_length" | "daily_letter_limit" | "maintenance_mode" | "ai_response_enabled",
         value,
       });
       alert("配置已保存");
@@ -128,7 +130,7 @@ export function AdminSettings() {
           <p className="text-gray-600 text-sm mb-4">
             所有管理员操作都会被记录在操作日志中，用于审计和追踪
           </p>
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" className="w-full" onClick={() => navigate("/admin/logs")}>
             查看操作日志
           </Button>
         </Card>
