@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react';
-import { getLoginUrl } from '@/const';
 import { useAuth } from '@/_core/hooks/useAuth';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
@@ -14,7 +13,7 @@ interface MousePosition {
 }
 
 export default function Login() {
-  const { user, loading } = useAuth();
+  const { user, loading, refresh, logout } = useAuth();
   const [, navigate] = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,6 +32,15 @@ export default function Login() {
       toast.error('当前账号没有管理员权限');
     }
   }, [loading, navigate, user]);
+
+  useEffect(() => {
+    const error = new URLSearchParams(window.location.search).get('error');
+    if (error === 'oauth_failed') {
+      toast.error('第三方登录失败，请使用管理员邮箱和密码登录');
+    } else if (error === 'oauth_state_invalid') {
+      toast.error('第三方登录状态已失效，请重试');
+    }
+  }, []);
 
   // 计算头部旋转角度
   const calculateRotation = (mouseX: number, mouseY: number) => {
@@ -66,8 +74,36 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setIsSuccess(true);
-    window.location.assign(getLoginUrl());
+    try {
+      const response = await fetch('/api/auth/email/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const result = await response.json().catch(() => null) as {
+        success?: boolean;
+        error?: string;
+        user?: { role?: string };
+      } | null;
+
+      if (!response.ok || !result?.success || !result.user) {
+        throw new Error(result?.error || '登录失败，请稍后重试');
+      }
+      if (!canAccessAdmin(result.user)) {
+        await logout();
+        throw new Error('当前账号没有管理员权限');
+      }
+
+      await refresh();
+      setIsSuccess(true);
+      navigate('/admin');
+    } catch (error) {
+      setIsSuccess(false);
+      toast.error(error instanceof Error ? error.message : '登录失败，请稍后重试');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const headRotation = calculateRotation(mousePos.x, mousePos.y);
