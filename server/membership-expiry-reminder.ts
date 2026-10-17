@@ -120,7 +120,7 @@ function getTierName(tier: MembershipTier): string {
  */
 export function getRenewalLink(tier: MembershipTier): string {
   const baseUrl = process.env.VITE_APP_URL || process.env.VITE_PUBLIC_SITE_URL || 'https://www.shenye.xin';
-  return `${baseUrl}/membership?tier=${tier}&action=renew`;
+  return `${baseUrl}/profile?payment=retry`;
 }
 
 /**
