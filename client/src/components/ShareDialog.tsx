@@ -13,6 +13,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { pageTranslations } from "@/lib/page-translations";
 import { createLetterPoster, downloadPosterBlob } from "@/lib/share-poster";
 
+const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL || "https://www.shenye.xin").replace(/\/+$/, "");
+
 interface ShareDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -171,8 +173,8 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   const copy = pageTranslations[language].write.share;
   const localized = labels[language] || labels.zh;
   const shareUrl =
-    customShareUrl ?? `${window.location.origin}/letter/${letterId}`;
-  const shareText = `${customShareText ?? copy.text}\n\n深夜信箱｜一个温暖的深夜陪伴\n${window.location.origin}`;
+    customShareUrl ?? `${PUBLIC_SITE_URL}/letter/${encodeURIComponent(letterId)}`;
+  const shareText = `${customShareText ?? copy.text}\n\n深夜信箱｜一个温暖的深夜陪伴\n${PUBLIC_SITE_URL}`;
   const isWechatBrowser =
     typeof navigator !== "undefined" &&
     /MicroMessenger/i.test(navigator.userAgent);
