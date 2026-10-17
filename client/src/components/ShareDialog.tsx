@@ -12,8 +12,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { pageTranslations } from "@/lib/page-translations";
 import { createLetterPoster, downloadPosterBlob } from "@/lib/share-poster";
-
-const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL || "https://www.shenye.xin").replace(/\/+$/, "");
+import { getPublicLetterUrl, PUBLIC_SITE_URL } from "@/lib/public-url";
 
 interface ShareDialogProps {
   isOpen: boolean;
@@ -173,7 +172,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   const copy = pageTranslations[language].write.share;
   const localized = labels[language] || labels.zh;
   const shareUrl =
-    customShareUrl ?? `${PUBLIC_SITE_URL}/letter/${encodeURIComponent(letterId)}`;
+    customShareUrl ?? getPublicLetterUrl(letterId);
   const shareText = `${customShareText ?? copy.text}\n\n深夜信箱｜一个温暖的深夜陪伴\n${PUBLIC_SITE_URL}`;
   const isWechatBrowser =
     typeof navigator !== "undefined" &&

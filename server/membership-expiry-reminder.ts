@@ -119,7 +119,7 @@ function getTierName(tier: MembershipTier): string {
  * 获取续费链接
  */
 export function getRenewalLink(tier: MembershipTier): string {
-  const baseUrl = process.env.VITE_APP_URL || 'https://midnight-mailbox.com';
+  const baseUrl = process.env.VITE_APP_URL || process.env.VITE_PUBLIC_SITE_URL || 'https://www.shenye.xin';
   return `${baseUrl}/membership?tier=${tier}&action=renew`;
 }
 

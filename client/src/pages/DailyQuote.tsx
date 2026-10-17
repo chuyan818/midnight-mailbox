@@ -5,6 +5,7 @@ import { Share2, Copy, Check } from "lucide-react";
 import { useLocation } from "wouter";
 import { ShareDialog } from "@/components/ShareDialog";
 import { trpc } from "@/lib/trpc";
+import { getDailyQuoteUrl } from "@/lib/public-url";
 
 interface Quote {
   id: number;
@@ -33,7 +34,7 @@ export default function DailyQuote() {
   const emotionValue = Array.isArray(quote?.emotionTags) ? String(quote?.emotionTags[0] || "陪伴") : "陪伴";
   const relatedCount = historyQuery.data?.total || 0;
 
-  const quoteUrl = `${window.location.origin}/daily-quote?quote=${quote?.id || "today"}`;
+  const quoteUrl = getDailyQuoteUrl(quote?.id || "today");
   const colors = emotionColors[emotionValue] || emotionColors.孤独;
 
   const handleCopy = async () => {

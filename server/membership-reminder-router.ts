@@ -58,7 +58,7 @@ export const membershipReminderRouter = router({
   getRenewalLink: protectedProcedure
     .input(z.object({ tier: z.enum(['free', 'standard', 'premium']) }))
     .query(({ input }) => ({
-      renewalLink: `${process.env.VITE_APP_URL || 'https://midnight-mailbox.com'}/membership?tier=${input.tier}&action=renew`,
+      renewalLink: `${process.env.VITE_APP_URL || process.env.VITE_PUBLIC_SITE_URL || 'https://www.shenye.xin'}/membership?tier=${input.tier}&action=renew`,
       message: '点击链接续费您的会员',
     })),
 });
