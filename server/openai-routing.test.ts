@@ -23,5 +23,8 @@ describe("Qwen model routing", () => {
     expect(prompt).toContain("不评判、不说教、不诊断");
     expect(prompt).toContain("自伤、自杀");
     expect(prompt).toContain("只输出回信正文");
+    expect(prompt).toContain("普通生活记录解释成求助");
+    expect(prompt).toContain("至少两个真实细节");
+    expect(prompt).toContain("情绪标签只是弱参考");
   });
 });

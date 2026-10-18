@@ -80,9 +80,12 @@ export async function generateAIReply(
     model: selectQwenModel("reply", letterContent),
     messages: [
       { role: "system", content: getMidnightMailboxReplyPrompt(language) },
-      { role: "user", content: `用户的来信：\n\n${letterContent}${context}` },
+      {
+        role: "user",
+        content: `用户的来信：\n\n${letterContent}${context}\n\n注意：系统识别的情绪标签只是弱参考，不是对用户的判断；如果来信只是分享日常、回忆或一个小计划，请按原文自然回应，不要强行寻找痛苦、迷茫或求助信号。`,
+      },
     ],
-    temperature: 0.72,
+    temperature: 0.65,
     max_tokens: 700,
   });
   const reply = response.choices[0]?.message?.content?.trim() || "";
@@ -137,7 +140,7 @@ export async function analyzeEmotion(
     messages: [
       {
         role: "system",
-        content: `你是深夜信箱的情绪标注器。只分析文字中明确表达或强烈暗示的情绪，不做心理诊断，不夸大风险。用${lang}返回 JSON：{"emotionType":"快乐|悲伤|焦虑|愤怒|孤独|迷茫|压力|思念","emotionScore":0到100的整数,"keywords":["3到6个关键词"]}。只返回 JSON。`,
+        content: `你是深夜信箱的情绪标注器。只分析文字中明确表达或强烈暗示的情绪，不做心理诊断，不夸大风险。普通生活记录、运动经历、与家人相处或未来的小计划，不应被强行标为迷茫、压力或求助；没有明确负面情绪时可以标为快乐、平静、满足、期待或日常分享。用${lang}返回 JSON：{"emotionType":"快乐|平静|满足|期待|日常分享|悲伤|焦虑|愤怒|孤独|迷茫|压力|思念","emotionScore":0到100的整数,"keywords":["3到6个关键词"]}。只返回 JSON。`,
       },
       { role: "user", content: `请分析这封信：\n\n${letterContent}` },
     ],
@@ -147,7 +150,7 @@ export async function analyzeEmotion(
   });
   const result = JSON.parse(response.choices[0]?.message?.content || "{}");
   return {
-    emotionType: result.emotionType || "迷茫",
+    emotionType: result.emotionType || "平静",
     emotionScore: Math.min(100, Math.max(0, Number(result.emotionScore) || 50)),
     keywords: Array.isArray(result.keywords) ? result.keywords.slice(0, 6) : [],
   };
