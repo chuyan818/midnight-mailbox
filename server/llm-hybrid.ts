@@ -33,11 +33,30 @@ function allowExternalModelCalls(): boolean {
   );
 }
 
+function buildEmotionFallback(content: string): {
+  emotionType: string;
+  emotionScore: number;
+  keywords: string[];
+} {
+  const text = content.replace(/\s+/g, " ").trim();
+  if (/[开心高兴快乐兴奋期待喜欢满足幸福惊喜]/.test(text)) {
+    return { emotionType: "快乐", emotionScore: 78, keywords: ["快乐", "分享"] };
+  }
+  if (/[爬山登山旅行散步吃饭天气阳光风景周末一起参加完成]/.test(text) && !/[难过悲伤焦虑害怕孤独压力失落绝望]/.test(text)) {
+    return { emotionType: "日常分享", emotionScore: 58, keywords: ["日常", "经历", "分享"] };
+  }
+  return { emotionType: "平静", emotionScore: 50, keywords: ["倾诉", "思考", "感受"] };
+}
+
 function buildReplyFallback(content: string, emotionType: string): string {
   const detail = content.replace(/\s+/g, " ").trim().slice(0, 70);
   if (!detail) return "我会先安静地陪你一会儿。你不需要马上把一切说清楚，今晚能把这份感受放到这里，已经值得被温柔接住。";
-  const emotion = emotionType ? `我也听见了其中的${emotionType}。` : "我也听见了这份心事里的重量。";
-  return `我读到你写下的“${detail}”，知道这不是一句轻描淡写的话。${emotion}你不必现在就整理出答案，先让自己被理解、被陪伴一会儿；如果愿意，今晚只做一件能让你稍微安稳一点的小事。`;
+  const positiveOrNeutral = new Set(["快乐", "开心", "幸福", "期待", "满足", "平静", "日常分享", "感恩", "兴奋"]);
+  if (positiveOrNeutral.has(emotionType)) {
+    return `我读到你写下的“${detail}”。这是一段明亮而具体的分享，${emotionType === "日常分享" || emotionType === "平静" ? "不必急着把它解释成更大的情绪" : `其中的${emotionType}很自然`}；那些真实发生过的细节，本身就值得被记住。愿这份轻快和期待，继续陪你走过接下来的日子。`;
+  }
+  const emotion = emotionType ? `我也听见了其中的${emotionType}。` : "我也听见了这份心事。";
+  return `我读到你写下的“${detail}”。${emotion}你不必现在就整理出答案，先让自己被理解、被陪伴一会儿；如果愿意，今晚只做一件能让你稍微安稳一点的小事。`;
 }
 
 /**
@@ -79,11 +98,7 @@ export async function analyzeEmotion(content: string): Promise<{
   keywords: string[];
 }> {
   if (!allowExternalModelCalls()) {
-    return {
-      emotionType: "迷茫",
-      emotionScore: 50,
-      keywords: ["倾诉", "思考", "感受"],
-    };
+    return buildEmotionFallback(content);
   }
   try {
     const language = await detectLanguage(content);
@@ -106,12 +121,14 @@ export async function analyzeEmotion(content: string): Promise<{
         messages: [
           {
             role: "system",
-            content: `你是一个情绪分析专家。请分析用户的来信，识别其中的情绪。
+            content: `你是一个谨慎、基于文本证据的情绪分析专家。请分析用户的来信，识别主要情绪，但不要把普通生活记录病理化或强行解释成负面情绪。
           
 返回JSON格式的结果，包含：
-- emotionType: 情绪类型（快乐/悲伤/焦虑/愤怒/孤独/迷茫/压力/思念）
+- emotionType: 情绪类型（快乐/悲伤/焦虑/愤怒/孤独/迷茫/压力/思念/期待/平静/日常分享）
 - emotionScore: 情绪强度评分（0-100）
 - keywords: 关键词数组（3-6个）
+
+判断规则：优先引用来信中的明确情绪词和事实细节；如果内容主要是旅行、运动、吃饭、工作或家庭等经历分享，且没有明确痛苦信号，应使用“日常分享”或“平静”，不要猜测为焦虑、迷茫或压力。
 
 用${language === "zh" ? "中文" : language === "en" ? "英文" : language === "ja" ? "日文" : "韩文"}返回结果。`,
           },
@@ -152,7 +169,7 @@ export async function analyzeEmotion(content: string): Promise<{
         if (textContent) {
           const result = JSON.parse(textContent);
           return {
-            emotionType: result.emotionType || "迷茫",
+            emotionType: result.emotionType || buildEmotionFallback(content).emotionType,
             emotionScore: Math.min(100, Math.max(0, result.emotionScore || 50)),
             keywords: Array.isArray(result.keywords) ? result.keywords : [],
           };
@@ -174,19 +191,11 @@ export async function analyzeEmotion(content: string): Promise<{
       }
     }
 
-    // 所有方案都失败，返回默认值
-    return {
-      emotionType: "迷茫",
-      emotionScore: 50,
-      keywords: ["倾诉", "思考", "感受"],
-    };
+    // 所有方案都失败时，仍依据文本做克制的正向/中性判断。
+    return buildEmotionFallback(content);
   } catch (error) {
     console.error("Emotion analysis error:", error);
-    return {
-      emotionType: "迷茫",
-      emotionScore: 50,
-      keywords: ["倾诉", "思考", "感受"],
-    };
+    return buildEmotionFallback(content);
   }
 }
 

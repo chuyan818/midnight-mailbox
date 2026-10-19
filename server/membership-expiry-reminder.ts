@@ -57,7 +57,10 @@ export function shouldSendExpiryReminder(expiryDate: Date, reminderDays: number)
  */
 export function getDaysUntilExpiry(expiryDate: Date): number {
   const now = new Date();
-  const daysUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  // Round to the nearest day so an expiry created exactly N days ahead does
+  // not become N-1 after a few milliseconds, while N days plus a small
+  // buffer (as used by reminder jobs) still belongs to the N-day bucket.
+  const daysUntilExpiry = Math.round((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   return Math.max(0, daysUntilExpiry);
 }
 

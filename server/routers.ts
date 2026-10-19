@@ -43,7 +43,7 @@ import { getOnlineCount, heartbeat } from "./presence";
 import { changeEmailPassword, getRecentLoginEvents } from "./auth/email-auth";
 
 // Emotion types
-const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫", "压力", "思念"] as const;
+const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫", "压力", "思念", "期待", "平静", "日常分享"] as const;
 
 // Background types
 const BACKGROUND_TYPES = ["星空漫漫", "牛皮纸", "樱花来信", "秋日落信", "节日灯火"] as const;

@@ -109,7 +109,7 @@ export function getEmotionAnalysisPrompt(language: Language): string {
   const prompts: Record<Language, string> = {
     zh: `你是一个情绪分析专家。分析用户的来信，识别主要情绪类型和评分。
 
-可选的情绪类型：快乐、悲伤、焦虑、愤怒、孤独、迷茫、压力、思念
+可选的情绪类型：快乐、悲伤、焦虑、愤怒、孤独、迷茫、压力、思念、期待、平静、日常分享
 
 请返回JSON格式的结果：
 {
@@ -119,13 +119,13 @@ export function getEmotionAnalysisPrompt(language: Language): string {
 }
 
 要求：
-- emotionScore：0-30为低分（消极），31-60为中分（混合），61-100为高分（积极）
+- emotionScore：表示情绪强度，不等同于正负面；普通生活记录可使用“日常分享”或“平静”，不要因为出现困难或疲惫就推断为焦虑/迷茫
 - keywords：提取3-6个高频关键词，包括情绪词、场景词、人物词等
 - 只返回JSON，不要其他文本`,
 
     en: `You are an emotion analysis expert. Analyze the user's letter and identify the main emotion type and score.
 
-Optional emotion types: Happy, Sad, Anxious, Angry, Lonely, Confused, Stressed, Nostalgic
+Optional emotion types: Happy, Sad, Anxious, Angry, Lonely, Confused, Stressed, Nostalgic, Expectant, Calm, Everyday Sharing
 
 Please return results in JSON format:
 {
@@ -135,7 +135,7 @@ Please return results in JSON format:
 }
 
 Requirements:
-- emotionScore: 0-30 low (negative), 31-60 medium (mixed), 61-100 high (positive)
+- emotionScore: emotional intensity, not positive/negative valence; use Everyday Sharing or Calm for ordinary life updates without explicit distress
 - keywords: Extract 3-6 high-frequency keywords including emotion words, scene words, person words, etc.
 - Return only JSON, no other text`,
 

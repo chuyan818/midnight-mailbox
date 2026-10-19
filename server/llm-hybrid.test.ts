@@ -62,6 +62,26 @@ describe("Hybrid LLM Integration", () => {
   });
 
   describe("AI Reply Generation", () => {
+    it("should keep a mountain-climbing life update grounded and non-pathologizing", async () => {
+      const letter = "周末和朋友一起去爬毛公山，山路比想象中累，但站到山顶看到风景时特别开心。回来后我想以后多锻炼。";
+      const emotion = await analyzeEmotion(letter);
+      const reply = await generateAIReply(letter, emotion.emotionType);
+
+      expect(["快乐", "日常分享", "平静", "期待"]).toContain(emotion.emotionType);
+      expect(reply).toContain("毛公山");
+      expect(reply).not.toMatch(/迷茫|焦虑|孤独|不知道该怎么办/);
+    });
+
+    it("should respond to a purely happy update without inventing distress", async () => {
+      const letter = "今天拿到了期待很久的演唱会门票，和最好的朋友一起去，我真的特别开心！";
+      const emotion = await analyzeEmotion(letter);
+      const reply = await generateAIReply(letter, emotion.emotionType);
+
+      expect(emotion.emotionType).toBe("快乐");
+      expect(reply).toContain("演唱会");
+      expect(reply).not.toMatch(/沉重|安稳|答案|不必急着/);
+    });
+
     it("should generate a warm reply", async () => {
       const letterContent = "我最近感到很孤独，工作压力很大，不知道该怎么办。";
       const reply = await generateAIReply(letterContent, "孤独");
