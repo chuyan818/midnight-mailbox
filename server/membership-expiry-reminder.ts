@@ -4,7 +4,7 @@
  */
 
 import { MembershipTier } from './membership-config';
-import { and, eq, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getDb } from './db';
 import { membershipExpiryReminders, memberships } from '../drizzle/schema';
 
@@ -247,24 +247,22 @@ export async function checkAndSendExpiryReminders(): Promise<{
     if (!reminderType) continue;
 
     try {
-      const [existing] = await db
-        .select({ id: membershipExpiryReminders.id })
-        .from(membershipExpiryReminders)
-        .where(and(
-          eq(membershipExpiryReminders.membershipId, membership.id),
-          eq(membershipExpiryReminders.reminderType, reminderType),
-          eq(membershipExpiryReminders.expiryDate, membership.membershipExpiry!),
-        ))
-        .limit(1);
-      if (existing) continue;
-
-      await db.insert(membershipExpiryReminders).values({
+      // The unique constraint and ON CONFLICT make this atomic when two
+      // scheduler invocations process the same membership concurrently.
+      const inserted = await db.insert(membershipExpiryReminders).values({
         userId: membership.userId,
         membershipId: membership.id,
         reminderType,
         expiryDate: membership.membershipExpiry!,
         sentAt: new Date(),
-      });
+      }).onConflictDoNothing({
+        target: [
+          membershipExpiryReminders.membershipId,
+          membershipExpiryReminders.reminderType,
+          membershipExpiryReminders.expiryDate,
+        ],
+      }).returning({ id: membershipExpiryReminders.id });
+      if (inserted.length === 0) continue;
       sent += 1;
     } catch (error) {
       failed += 1;

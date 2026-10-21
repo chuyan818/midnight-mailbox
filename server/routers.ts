@@ -29,7 +29,7 @@ import {
   updateLetterTemplate,
 } from "./db";
 import { z } from "zod";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lt, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   generateAIReply,
@@ -37,7 +37,7 @@ import {
   checkContentSafety,
   detectLanguage,
 } from "./llm-hybrid";
-import { crisisCases, users } from "../drizzle/schema";
+import { crisisCases, users, letters } from "../drizzle/schema";
 import { detectDeterministicRisk } from "./safety/risk";
 import { getOnlineCount, heartbeat } from "./presence";
 import { changeEmailPassword, getRecentLoginEvents } from "./auth/email-auth";
@@ -161,11 +161,61 @@ export const appRouter = router({
       }),
 
     getTodayScore: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDbConnection();
+      const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      const rows = await db.select({
+        emotionType: letters.emotionType,
+        emotionScore: letters.emotionScore,
+      }).from(letters).where(and(
+        eq(letters.userId, ctx.user.id),
+        gte(letters.createdAt, todayStart),
+        lt(letters.createdAt, tomorrowStart),
+      ));
+      const scored = rows.filter((row) => row.emotionScore !== null);
+      const typeCounts = new Map<string, number>();
+      rows.forEach(({ emotionType }) => {
+        if (emotionType) typeCounts.set(emotionType, (typeCounts.get(emotionType) || 0) + 1);
+      });
+      const dominantType = Array.from(typeCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || "平静";
       return {
-        type: "孤独",
-        score: 45,
-        count: 1,
+        type: dominantType,
+        score: scored.length ? Math.round(scored.reduce((sum, row) => sum + (row.emotionScore || 0), 0) / scored.length) : 0,
+        count: rows.length,
       };
+    }),
+
+    getKeywordStats: protectedProcedure.query(async ({ ctx }) => {
+      const membership = await getUserMembership(ctx.user.id);
+      if (!isPaidMembershipActive(membership)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "关键词和情绪洞察仅限已确认付款的会员使用，请先升级会员",
+        });
+      }
+      const db = await getDbConnection();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+      const rows = await db.select({ keywords: letters.keywords })
+        .from(letters)
+        .where(and(eq(letters.userId, ctx.user.id), gte(letters.createdAt, startDate)))
+        .orderBy(desc(letters.createdAt));
+      const counts = new Map<string, number>();
+      rows.forEach(({ keywords }) => {
+        if (!Array.isArray(keywords)) return;
+        keywords.forEach((keyword) => {
+          if (typeof keyword !== "string") return;
+          const normalized = keyword.trim();
+          if (normalized) counts.set(normalized, (counts.get(normalized) || 0) + 1);
+        });
+      });
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 10)
+        .map(([word, count]) => ({ word, count }));
     }),
 
     getTrendData: protectedProcedure.query(async ({ ctx }) => {

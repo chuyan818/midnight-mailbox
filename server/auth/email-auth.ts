@@ -149,6 +149,15 @@ export async function issueEmailVerificationCode(emailInput: string) {
   return withDistributedLock(`email-code-send:${email}`, () => issueEmailVerificationCodeUnlocked(email));
 }
 
+/** Issue a reset code without revealing whether an account exists. */
+export async function issuePasswordResetCode(emailInput: string) {
+  const email = normalizeEmail(emailInput);
+  if (!validateAuthEmail(email)) throw new Error("请输入有效的邮箱地址");
+  const user = await getUserByEmail(email);
+  if (!user) return { expiresInSeconds: CODE_TTL_MS / 1000, delivered: false };
+  return issueEmailVerificationCode(email);
+}
+
 async function issueEmailVerificationCodeUnlocked(email: string) {
   if (!validateAuthEmail(email)) throw new Error("请输入有效的邮箱地址");
   const db = await getDb();
@@ -224,6 +233,28 @@ export async function registerEmailUser(emailInput: string, password: string, co
     lastSignedIn: new Date(),
   });
   return (await getUserByOpenId(openId))!;
+}
+
+export async function resetEmailPassword(emailInput: string, code: string, newPassword: string) {
+  const email = normalizeEmail(emailInput);
+  if (!validateAuthEmail(email)) throw new Error("请输入有效的邮箱地址");
+  if (!validateAuthPassword(newPassword)) throw new Error("新密码至少 8 位，并包含字母和数字");
+
+  const user = await getUserByEmail(email);
+  if (!user) throw new Error("验证码无效或已过期");
+  if (!(await consumeEmailVerificationCode(email, code))) throw new Error("验证码无效或已过期");
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users)
+    .set({
+      passwordHash: await hashPassword(newPassword),
+      emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+      loginMethod: user.loginMethod || "email",
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id));
+  return { success: true } as const;
 }
 
 export async function authenticateEmailUser(emailInput: string, password: string) {

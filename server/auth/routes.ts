@@ -7,8 +7,10 @@ import {
   authenticateEmailUser,
   checkLoginRateLimit,
   issueEmailVerificationCode,
+  issuePasswordResetCode,
   recordLoginEvent,
   registerEmailUser,
+  resetEmailPassword,
   validateAuthEmail,
   validateAuthPassword,
 } from "./email-auth";
@@ -28,6 +30,11 @@ const registerSchema = z.object({
   name: z.string().trim().max(80).optional(),
 });
 const loginSchema = z.object({ email: z.string().trim().email(), password: z.string().min(1) });
+const resetPasswordSchema = z.object({
+  email: z.string().trim().email(),
+  code: z.string().regex(/^\d{6}$/),
+  newPassword: z.string().min(8),
+});
 
 function publicUser(user: { id: number; email: string | null; name: string | null; loginMethod: string | null; role: "user" | "admin" }) {
   return { id: user.id, email: user.email, name: user.name, loginMethod: user.loginMethod, role: user.role };
@@ -83,6 +90,34 @@ export function registerEmailAuthRoutes(app: Express) {
       const user = await registerEmailUser(parsed.data.email, parsed.data.password, parsed.data.code, parsed.data.name);
       await establishSession(req, res, user);
       res.status(201).json({ success: true, user: publicUser(user) });
+    } catch (error) {
+      sendValidationError(res, error);
+    }
+  });
+
+  app.post("/api/auth/password-reset/send-code", async (req, res) => {
+    const parsed = sendCodeSchema.safeParse(req.body);
+    if (!parsed.success || !validateAuthEmail(parsed.data.email)) {
+      res.status(400).json({ success: false, error: "请输入有效的邮箱地址" });
+      return;
+    }
+    try {
+      const result = await issuePasswordResetCode(parsed.data.email);
+      res.json({ success: true, expiresInSeconds: result.expiresInSeconds });
+    } catch (error) {
+      sendValidationError(res, error);
+    }
+  });
+
+  app.post("/api/auth/password-reset/reset", async (req, res) => {
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success || !validateAuthPassword(parsed.data.newPassword)) {
+      res.status(400).json({ success: false, error: "邮箱、验证码或密码格式不正确" });
+      return;
+    }
+    try {
+      await resetEmailPassword(parsed.data.email, parsed.data.code, parsed.data.newPassword);
+      res.json({ success: true });
     } catch (error) {
       sendValidationError(res, error);
     }

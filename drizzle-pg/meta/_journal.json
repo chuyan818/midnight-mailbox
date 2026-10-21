@@ -50,6 +50,13 @@
       "when": 1792264495000,
       "tag": "0006_seed_daily_quote_test_data",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792380490534,
+      "tag": "0007_high_natasha_romanoff",
+      "breakpoints": true
     }
   ]
 }

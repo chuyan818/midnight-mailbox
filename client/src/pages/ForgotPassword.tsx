@@ -2,16 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, CheckCircle, HelpCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function ForgotPassword() {
   const [, navigate] = useLocation();
-  const [step, setStep] = useState<'email' | 'verification' | 'security' | 'reset' | 'success'>('email');
+  const [step, setStep] = useState<'email' | 'verification' | 'reset' | 'success'>('email');
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [securityQuestion, setSecurityQuestion] = useState('');
-  const [securityAnswer, setSecurityAnswer] = useState('');
-  const [securityAttempts, setSecurityAttempts] = useState(3);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,16 +20,6 @@ export default function ForgotPassword() {
   const [emailValidationMessage, setEmailValidationMessage] = useState('');
   const [emailValidationStatus, setEmailValidationStatus] = useState<'valid' | 'invalid' | 'empty'>('empty');
   const passwordInputRef = useRef<HTMLInputElement>(null);
-
-  // 安全问题列表
-  const securityQuestions = [
-    '您最喜欢的电影是什么？',
-    '您的宠物名字是什么？',
-    '您出生地的城市是什么？',
-    '您第一份工作的公司名称是什么？',
-    '您最喜欢的书籍是什么？',
-    '您的高中名称是什么？',
-  ];
 
   // 验证邮箱格式
   const validateEmail = (email: string) => {
@@ -142,10 +129,17 @@ export default function ForgotPassword() {
 
     setIsLoading(true);
     try {
-      // 模拟发送验证码
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch('/api/auth/password-reset/send-code', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || '验证码发送失败，请重试');
       setVerificationCountdown(60);
       setDailyCodeCount((prev) => prev + 1);
+      setStep('verification');
       setErrors({ ...errors, verificationCode: '' });
     } catch (error) {
       setErrors({ ...errors, verificationCode: '发送验证码失败，请重试' });
@@ -173,52 +167,12 @@ export default function ForgotPassword() {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      // 模拟验证验证码
-      setTimeout(() => {
-        // 随机选择一个安全问题
-        const randomQuestion = securityQuestions[Math.floor(Math.random() * securityQuestions.length)];
-        setSecurityQuestion(randomQuestion);
-        setStep('security');
-        setIsLoading(false);
-      }, 1000);
-    } catch (error) {
-      setErrors({ submit: '验证失败，请重试' });
-      setIsLoading(false);
-    }
-  };
-
-  // 验证安全问题
-  const handleVerifySecurity = () => {
-    if (!securityAnswer.trim()) {
-      setErrors({ ...errors, securityAnswer: '请输入安全问题的答案' });
-      return;
-    }
-
-    // 模拟验证（实际应用中应比较与数据库中存储的答案）
-    if (securityAnswer.toLowerCase() === 'test') {
-      setStep('reset');
-      setErrors({});
-      setSecurityAnswer('');
-    } else {
-      const attemptsLeft = securityAttempts - 1;
-      setSecurityAttempts(attemptsLeft);
-
-      if (attemptsLeft <= 0) {
-        setErrors({ ...errors, securityAnswer: '尝试次数已用尽，请稍后再试' });
-        setStep('email');
-        setSecurityAttempts(3);
-        setSecurityAnswer('');
-      } else {
-        setErrors({ ...errors, securityAnswer: `答案错误，还有 ${attemptsLeft} 次尝试机会` });
-        setSecurityAnswer('');
-      }
-    }
+    setErrors({});
+    setStep('reset');
   };
 
   // 重置密码
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     const newErrors: Record<string, string> = {};
 
     if (!newPassword) {
@@ -240,19 +194,19 @@ export default function ForgotPassword() {
 
     setIsLoading(true);
     try {
-      // 模拟重置密码
-      setTimeout(() => {
-        setStep('success');
-        setIsLoading(false);
-        
-        // 1.5秒后自动跳转到登录页面并预填邮箱
-        setTimeout(() => {
-          const encodedEmail = encodeURIComponent(email);
-          navigate(`/user-login?email=${encodedEmail}`);
-        }, 1500);
-      }, 1500);
+      const response = await fetch('/api/auth/password-reset/reset', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, code: verificationCode, newPassword }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || '重置密码失败，请重试');
+      setStep('success');
+      window.setTimeout(() => navigate(`/user-login?email=${encodeURIComponent(email)}`), 1500);
     } catch (error) {
-      setErrors({ submit: '重置密码失败，请重试' });
+      setErrors({ submit: error instanceof Error ? error.message : '重置密码失败，请重试' });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -268,16 +222,16 @@ export default function ForgotPassword() {
           <p className="text-gray-400 text-sm">
             {step === 'email' && '请输入注册邮箱，我们将发送验证码到您的邮箱'}
             {step === 'verification' && '请输入发送到您邮箱的验证码'}
-            {step === 'security' && '请回答安全问题以验证身份'}
             {step === 'reset' && '请设置新密码'}
             {step === 'success' && '密码重置成功'}
           </p>
         </div>
 
         {/* 表单 */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 space-y-4 mb-6">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 space-y-4 mb-6">
+          {errors.submit && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{errors.submit}</p>}
           {/* 第一步：输入邮箱 */}
-          {step === 'email' && (
+          {(step === 'email' || step === 'verification') && (
             <>
               <div>
                 <label className="flex items-center text-white text-sm mb-2">
@@ -335,7 +289,7 @@ export default function ForgotPassword() {
                   />
                   <Button
                     onClick={handleSendVerificationCode}
-                    disabled={isLoading || verificationCountdown > 0 || emailValidationStatus !== 'valid'}
+                    disabled={isLoading || verificationCountdown > 0 || emailValidationStatus !== 'valid' || step === 'verification'}
                     className={`px-4 whitespace-nowrap ${
                       emailValidationStatus === 'valid'
                         ? 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -363,66 +317,7 @@ export default function ForgotPassword() {
             </>
           )}
 
-          {/* 第二步：安全问题验证 */}
-          {step === 'security' && (
-            <>
-              <div>
-                <label className="flex items-center text-white text-sm mb-2">
-                  <HelpCircle className="w-4 h-4 mr-2 text-purple-400" />
-                  安全问题
-                </label>
-                <div className="bg-white/5 border border-white/20 rounded-lg p-4 mb-4">
-                  <p className="text-white font-medium">{securityQuestion}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="flex items-center text-white text-sm mb-2">
-                  <Lock className="w-4 h-4 mr-2 text-purple-400" />
-                  您的答案
-                </label>
-                <Input
-                  type="text"
-                  placeholder="请输入答案"
-                  value={securityAnswer}
-                  onChange={(e) => {
-                    setSecurityAnswer(e.target.value);
-                    if (errors.securityAnswer) setErrors({ ...errors, securityAnswer: '' });
-                  }}
-                  className="bg-white/5 border-white/20 text-white placeholder:text-gray-500"
-                />
-                {errors.securityAnswer && <p className="text-red-400 text-xs mt-1">{errors.securityAnswer}</p>}
-                {securityAttempts < 3 && (
-                  <p className="text-yellow-400 text-xs mt-1">
-                    还有 {securityAttempts} 次尝试机会
-                  </p>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    setStep('email');
-                    setSecurityAnswer('');
-                    setSecurityAttempts(3);
-                    setErrors({});
-                  }}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white"
-                >
-                  返回
-                </Button>
-                <Button
-                  onClick={handleVerifySecurity}
-                  disabled={isLoading || !securityAnswer.trim()}
-                  className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold"
-                >
-                  {isLoading ? '验证中...' : '验证答案'}
-                </Button>
-              </div>
-            </>
-          )}
-
-          {/* 第三步：重置密码 */}
+          {/* 第二步：设置新密码 */}
           {step === 'reset' && (
             <>
               <div>

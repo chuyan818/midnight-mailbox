@@ -9,6 +9,7 @@ import {
   serial,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -218,7 +219,14 @@ export const membershipExpiryReminders = pgTable(
     sentAt: timestamp("sentAt"),
     readAt: timestamp("readAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-  }
+  },
+  (table) => ({
+    uniqueReminderWindow: unique("membership_expiry_reminder_window_unique").on(
+      table.membershipId,
+      table.reminderType,
+      table.expiryDate,
+    ),
+  }),
 );
 
 export type MembershipExpiryReminder =

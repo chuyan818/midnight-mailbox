@@ -24,6 +24,9 @@ export default function Report() {
   const { data: trendData, isLoading: loadingTrend } = trpc.emotion.getTrendData.useQuery(undefined, {
     enabled: isAuthenticated && hasPaidMembership,
   });
+  const { data: keywordStats = [], isLoading: loadingKeywords } = trpc.emotion.getKeywordStats.useQuery(undefined, {
+    enabled: isAuthenticated && hasPaidMembership,
+  });
 
   if (!isAuthenticated) {
     return (
@@ -74,20 +77,8 @@ export default function Report() {
     },
   ];
 
-  // Extract keywords from trend data
-  const allKeywords: Record<string, number> = {};
-  if (trendData && Array.isArray(trendData)) {
-    // This would need to be populated from the actual data
-    // For now, we'll show placeholder keywords
-  }
-
-  const topKeywords = [
-    { word: "工作", count: 5 },
-    { word: "压力", count: 4 },
-    { word: "孤独", count: 3 },
-    { word: "思念", count: 2 },
-    { word: "焦虑", count: 2 },
-  ];
+  const topKeywords = keywordStats;
+  const leadingKeywords = topKeywords.slice(0, 2).map((keyword) => keyword.word).join("、");
 
   const maxKeywordCount = Math.max(...topKeywords.map((k) => k.count), 1);
 
@@ -225,11 +216,13 @@ export default function Report() {
               <p className="text-sm text-gray-300 mt-2">升级会员后可查看完整的情绪分析结果。</p>
               <Button onClick={() => navigate("/profile?payment=retry")} className="mt-4 bg-[#FFD580] text-[#0B0F2F] hover:bg-yellow-400">立即升级</Button>
             </div>
+          ) : loadingKeywords ? (
+            <div className="p-6 rounded-lg bg-white/5 border border-white/10 text-center text-gray-400">正在整理你的关键词……</div>
           ) : <div className="p-6 rounded-lg bg-white/5 border border-white/10">
             <div className="flex flex-wrap gap-3">
-              {topKeywords.map((keyword, idx) => (
+              {topKeywords.length ? topKeywords.map((keyword) => (
                 <div
-                  key={idx}
+                  key={keyword.word}
                   className="px-4 py-2 rounded-full bg-[#FFD580]/20 border border-[#FFD580]/30 hover:border-[#FFD580] transition-colors"
                   style={{
                     fontSize: `${12 + (keyword.count / maxKeywordCount) * 8}px`,
@@ -239,7 +232,7 @@ export default function Report() {
                   <span className="text-[#FFD580] font-semibold">{keyword.word}</span>
                   <span className="text-gray-400 text-xs ml-2">×{keyword.count}</span>
                 </div>
-              ))}
+              )) : <p className="w-full text-center text-gray-400">近 30 天还没有足够的关键词数据。</p>}
             </div>
             <p className="text-xs text-gray-500 mt-4">
               这些是你最常提到的词汇，可以帮助你更好地理解自己的情绪模式。
@@ -257,7 +250,9 @@ export default function Report() {
                 <span>💡</span> 你的情绪模式
               </h3>
               <p className="text-sm text-gray-300 leading-relaxed">
-                根据你最近的信件，你似乎在处理工作压力和孤独感。这些都是很常见的情绪，记得照顾好自己。
+                {leadingKeywords
+                  ? `近 30 天你提到较多的主题是${leadingKeywords}。它们只是记录，不代表固定的情绪结论；如果愿意，可以继续写下当下真实的感受。`
+                  : "近 30 天还没有足够的关键词来形成洞察。继续写下真实感受，变化会慢慢显现。"}
               </p>
             </div>
 
