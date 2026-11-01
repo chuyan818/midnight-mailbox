@@ -7,12 +7,16 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { pageTranslations } from "@/lib/page-translations";
 import LanguageSelector from "@/components/LanguageSelector";
 import OnlineCountBadge from "@/components/OnlineCountBadge";
+import { MEMBERSHIP_PRICING } from "@shared/membership-pricing";
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const { language } = useLanguage();
   const copy = pageTranslations[language].home;
+  const membershipPriceLabel = language === "zh"
+    ? `${MEMBERSHIP_PRICING.currency} ${MEMBERSHIP_PRICING.monthly.amount}/月 · ${MEMBERSHIP_PRICING.currency} ${MEMBERSHIP_PRICING.yearly.amount}/年`
+    : `${MEMBERSHIP_PRICING.currency} ${MEMBERSHIP_PRICING.monthly.amount}/month · ${MEMBERSHIP_PRICING.currency} ${MEMBERSHIP_PRICING.yearly.amount}/year`;
 
   const handleWriteLetter = () => {
     if (isAuthenticated) {
@@ -205,8 +209,8 @@ export default function Home() {
                     <Sparkles className="w-5 h-5 text-[#FFD580]" />
                     <h4 className="text-xl font-semibold">{copy.memberPlan}</h4>
                   </div>
-                  <p className="text-3xl font-bold text-[#FFD580] mb-2">¥29</p>
-                  <p className="text-sm text-gray-400 mb-6">{copy.perMonth}</p>
+                  <p className="text-3xl font-bold text-[#FFD580] mb-2">{MEMBERSHIP_PRICING.currency} {MEMBERSHIP_PRICING.monthly.amount}</p>
+                  <p className="text-sm text-gray-400 mb-6">{membershipPriceLabel}</p>
                   <ul className="space-y-3 text-gray-300 mb-6">
                     <li className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-[#FFD580] rounded-full" />

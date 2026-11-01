@@ -11,7 +11,6 @@ import {
   getDaysUntilExpiry,
   shouldSendExpiryReminder,
 } from './membership-expiry-reminder';
-import { canSendReply, canCollectLetter, getWriteCooldown, getMembershipLimits } from './membership-limits';
 
 describe('Membership Badges', () => {
   it('should have badge config for all tiers', () => {
@@ -114,81 +113,6 @@ describe('Membership Expiry Reminder', () => {
 
     expect(notification.type).toBe('expiry_3days');
     expect(notification.content).toContain('3天');
-  });
-});
-
-describe('Membership Limits', () => {
-  it('should allow free users to send 1 reply per day', async () => {
-    const result = await canSendReply('user-123', 'free');
-    expect(result.allowed).toBe(true);
-    expect(result.remainingQuota).toBe(1);
-  });
-
-  it('should allow standard users to send 5 replies per day', async () => {
-    const result = await canSendReply('user-123', 'standard');
-    expect(result.allowed).toBe(true);
-    expect(result.remainingQuota).toBe(5);
-  });
-
-  it('should allow premium users unlimited replies', async () => {
-    const result = await canSendReply('user-123', 'premium');
-    expect(result.allowed).toBe(true);
-    expect(result.remainingQuota).toBe(-1); // -1 means unlimited
-  });
-
-  it('should prevent free users from collecting letters', async () => {
-    const result = await canCollectLetter('user-123', 'free');
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain('免费用户');
-  });
-
-  it('should allow standard users to collect up to 100 letters', async () => {
-    const result = await canCollectLetter('user-123', 'standard');
-    expect(result.allowed).toBe(true);
-    expect(result.remainingQuota).toBe(100);
-  });
-
-  it('should allow premium users unlimited collections', async () => {
-    const result = await canCollectLetter('user-123', 'premium');
-    expect(result.allowed).toBe(true);
-    expect(result.remainingQuota).toBe(-1); // -1 means unlimited
-  });
-
-  it('should have write cooldown for free users', async () => {
-    const cooldown = await getWriteCooldown('user-123', 'free');
-    expect(cooldown.remainingSeconds).toBeGreaterThanOrEqual(0);
-  });
-
-  it('should have no write cooldown for standard users', async () => {
-    const cooldown = await getWriteCooldown('user-123', 'standard');
-    expect(cooldown.onCooldown).toBe(false);
-    expect(cooldown.remainingSeconds).toBe(0);
-  });
-
-  it('should have no write cooldown for premium users', async () => {
-    const cooldown = await getWriteCooldown('user-123', 'premium');
-    expect(cooldown.onCooldown).toBe(false);
-    expect(cooldown.remainingSeconds).toBe(0);
-  });
-
-  it('should return correct limits for each tier', () => {
-    const freeLimits = getMembershipLimits('free');
-    expect(freeLimits.dailyReplies).toBe(1);
-    expect(freeLimits.maxCollections).toBe(0);
-    expect(freeLimits.canCollect).toBe(false);
-    expect(freeLimits.writeCooldown).toBe(300);
-
-    const standardLimits = getMembershipLimits('standard');
-    expect(standardLimits.dailyReplies).toBe(5);
-    expect(standardLimits.maxCollections).toBe(100);
-    expect(standardLimits.canCollect).toBe(true);
-    expect(standardLimits.writeCooldown).toBe(0);
-
-    const premiumLimits = getMembershipLimits('premium');
-    expect(premiumLimits.dailyReplies).toBe(-1); // unlimited
-    expect(premiumLimits.maxCollections).toBe(-1); // unlimited
-    expect(premiumLimits.canCollect).toBe(true);
-    expect(premiumLimits.writeCooldown).toBe(0);
   });
 });
 

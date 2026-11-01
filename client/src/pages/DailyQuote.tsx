@@ -10,6 +10,7 @@ import { getDailyQuoteUrl } from "@/lib/public-url";
 interface Quote {
   id: number;
   quote: string;
+  message?: string;
   emotionTags?: unknown;
   date: string | Date;
   publicLetter?: { starCount?: number; emotionTags?: unknown } | null;
@@ -31,6 +32,8 @@ export default function DailyQuote() {
   const historyQuery = trpc.social.dailyQuote.list.useQuery({ limit: 5, offset: 0 });
   const quote = quoteQuery.data as Quote | undefined;
   const content = quote?.quote || "";
+  const displayContent = content || quote?.message || "暂时还没有可公开的真实来信，等一句被认真读过的话来到这里。";
+  const hasQuote = Boolean(content);
   const emotionValue = Array.isArray(quote?.emotionTags) ? String(quote?.emotionTags[0] || "陪伴") : "陪伴";
   const relatedCount = historyQuery.data?.total || 0;
 
@@ -79,7 +82,7 @@ export default function DailyQuote() {
             <div className="space-y-6">
               <div className="text-5xl text-gray-600 opacity-40">“</div>
               <p className="text-3xl font-light leading-relaxed text-white md:text-4xl">
-                {content || "今晚暂时还没有新的句子，写下心事后再回来看看。"}
+                {displayContent}
               </p>
               <div className="text-right text-5xl text-gray-600 opacity-40">”</div>
             </div>
@@ -93,7 +96,7 @@ export default function DailyQuote() {
               >
                 {emotionValue}
               </span>
-                <span className="text-gray-400">来自真实来信的温柔摘句</span>
+                <span className="text-gray-400">{hasQuote ? "来自真实来信的陪伴摘句" : "等待真实来信"}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -120,6 +123,7 @@ export default function DailyQuote() {
               <Button
                 className="flex-1 bg-[#FFD580] py-6 font-semibold text-[#0B0F2F] hover:bg-yellow-400"
                 onClick={() => setShowShareDialog(true)}
+                disabled={!hasQuote}
               >
                 <Share2 className="mr-2 h-5 w-5" />
                 分享这句话
@@ -128,6 +132,7 @@ export default function DailyQuote() {
                 variant="outline"
                 className="flex-1 border-[#FFD580] py-6 font-semibold text-[#FFD580] hover:bg-[#FFD580]/10"
                 onClick={handleCopy}
+                disabled={!hasQuote}
               >
                 {copied ? (
                   <>

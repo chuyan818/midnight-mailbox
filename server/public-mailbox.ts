@@ -197,7 +197,7 @@ async function selectDailyQuoteUnlocked() {
 
   if (existing.length > 0) return existing[0];
 
-  // 从公共信箱中选择最有共鸣的一条
+  // 优先从公共信箱中选择最有共鸣的一条。
   const topLetter = await db
     .select()
     .from(publicLetters)
@@ -205,16 +205,36 @@ async function selectDailyQuoteUnlocked() {
     .orderBy(desc(publicLetters.starCount))
     .limit(1);
 
-  if (topLetter.length === 0) return null;
+  let sourceLetterId: number;
+  let sourceExcerpt: string;
+  let sourceEmotionTags: unknown;
+  if (topLetter.length > 0) {
+    const publicLetter = topLetter[0];
+    sourceLetterId = publicLetter.letterId;
+    sourceExcerpt = publicLetter.excerpt;
+    sourceEmotionTags = publicLetter.emotionTags;
+  } else {
+    // 没有新的公开信时，使用历史上已公开的真实金句作为上下文，
+    // 而不是向用户展示固定占位句或捏造一封不存在的来信。
+    const previousQuote = await db
+      .select()
+      .from(dailyQuotes)
+      .where(sql`${dailyQuotes.date} < ${today}`)
+      .orderBy(desc(dailyQuotes.date))
+      .limit(1);
+    if (previousQuote.length === 0) return null;
+    sourceLetterId = previousQuote[0].letterId;
+    sourceExcerpt = previousQuote[0].quote;
+    sourceEmotionTags = previousQuote[0].emotionTags;
+  }
 
-  const publicLetter = topLetter[0];
-  // 只把已审核、已脱敏的公开摘录交给生成器，避免原始正文进入公开内容。
-  const generatedQuote = await generateDailyQuote(publicLetter.excerpt);
+  // 只把已审核、已脱敏的公开摘录（或历史已公开金句）交给生成器。
+  const generatedQuote = await generateDailyQuote(sourceExcerpt, sourceEmotionTags);
 
   const result = await db.insert(dailyQuotes).values({
-    letterId: publicLetter.letterId,
+    letterId: sourceLetterId,
     quote: generatedQuote,
-    emotionTags: publicLetter.emotionTags,
+    emotionTags: sourceEmotionTags,
     date: today,
   }).onConflictDoNothing({ target: dailyQuotes.date });
 

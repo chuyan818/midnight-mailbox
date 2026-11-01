@@ -96,9 +96,11 @@ export async function generateAIReply(
 /** 从已审核、已脱敏的公开摘录中生成当天唯一的一句温暖文字。 */
 export async function generateDailyQuote(
   publicExcerpt: string,
-  language = "zh"
+  language = "zh",
+  emotionTags: unknown = []
 ): Promise<string> {
   const languageName = language === "en" ? "英文" : language === "ja" ? "日文" : language === "ko" ? "韩文" : "简体中文";
+  const tags = Array.isArray(emotionTags) ? emotionTags.map(String).join("、") : "未提供";
   const response = await getClient().chat.completions.create({
     model: selectQwenModel("quote", publicExcerpt),
     messages: [
@@ -110,10 +112,11 @@ export async function generateDailyQuote(
 - 用${languageName}输出，只输出一句 20–70 字的完整句子，不要标题、引号、标签、解释或署名；
 - 让句子能感受到这封信里的真实情绪或细节，但不要暴露姓名、地点、联系方式或可识别身份的信息；
 - 不要把原文机械改写成鸡汤，不要使用“你要坚强”“一切都会好起来”“相信自己”等空泛套话；
+- 如果标签是平静、快乐、期待、希望或日常分享，要保留生活本身的明亮，不要把普通分享解释成痛苦；如果有压力或难过，只做情绪验证，不诊断、不夸大；
 - 语气安静、温柔、平等，像有人认真读过这份心事后留下的一盏小灯；
 - 不替用户下结论，不做诊断，不提供医疗建议。`,
       },
-      { role: "user", content: `请为这段已脱敏公开摘录生成今日一句：\n\n${publicExcerpt}` },
+      { role: "user", content: `请为这段已脱敏公开摘录生成今日一句：\n\n${publicExcerpt}\n\n情绪标签：${tags}` },
     ],
     temperature: 0.88,
     max_tokens: 140,

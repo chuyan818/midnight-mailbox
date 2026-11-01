@@ -3,6 +3,8 @@
  * 定义三层会员结构：免费用户、标准会员、高级会员
  */
 
+import { MEMBERSHIP_PRICING } from '../shared/membership-pricing';
+
 export type MembershipTier = 'free' | 'standard' | 'premium';
 
 export interface MembershipTierConfig {
@@ -31,7 +33,7 @@ export const MEMBERSHIP_TIERS: Record<MembershipTier, MembershipTierConfig> = {
   standard: {
     id: 'standard',
     name: '会员版',
-    price: 29,
+    price: MEMBERSHIP_PRICING.monthly.amount,
     description: '会员版提供无限写信、完整情绪报告和7天情绪趋势',
     features: [
       'basic_letters',
@@ -45,7 +47,7 @@ export const MEMBERSHIP_TIERS: Record<MembershipTier, MembershipTierConfig> = {
   premium: {
     id: 'premium',
     name: '会员版',
-    price: 29,
+    price: MEMBERSHIP_PRICING.monthly.amount,
     description: '会员版提供无限写信、完整情绪报告和7天情绪趋势',
     features: [
       'basic_letters',

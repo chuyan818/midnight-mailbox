@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { memberships, subscriptionRecords } from "../drizzle/schema";
 import { getDb } from "./db";
 import { withDistributedLock } from "./_core/redis-lock";
+import { MEMBERSHIP_PRICING, getMembershipAmount } from "../shared/membership-pricing";
 
 export type PayPalPaymentStatus = "none" | "pending" | "active" | "failed";
 
@@ -17,10 +18,10 @@ export const PAYPAL_PLAN_IDS: Record<PayPalPlanType, string> = {
   yearly: process.env.PAYPAL_YEARLY_PLAN_ID || PAYPAL_PLAN_ID,
 };
 const PAYPAL_PLAN_AMOUNTS: Record<PayPalPlanType, string> = {
-  monthly: process.env.PAYPAL_MONTHLY_PLAN_AMOUNT || "29.00",
-  yearly: process.env.PAYPAL_YEARLY_PLAN_AMOUNT || "288.00",
+  monthly: getMembershipAmount("monthly"),
+  yearly: getMembershipAmount("yearly"),
 };
-const PAYPAL_PLAN_CURRENCY = process.env.PAYPAL_PLAN_CURRENCY || "USD";
+const PAYPAL_PLAN_CURRENCY = MEMBERSHIP_PRICING.currency;
 
 export function getPayPalPlanType(planId: string): PayPalPlanType | undefined {
   if (planId && planId === PAYPAL_PLAN_IDS.monthly) return "monthly";

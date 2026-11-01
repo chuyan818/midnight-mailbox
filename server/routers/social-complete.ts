@@ -17,7 +17,7 @@ import {
   emotions,
   publicModerationRequests,
 } from "../../drizzle/schema";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, count } from "drizzle-orm";
 import { evaluatePublication } from "../safety/publication";
 import { getTodayQuote, selectDailyQuote } from "../public-mailbox";
 
@@ -34,27 +34,49 @@ export const socialCompleteRouter = router({
           sortBy: z.enum(["recent", "popular"]).default("recent"),
         })
       )
-      .query(async ({ input }: any) => {
+      .query(async ({ ctx, input }: any) => {
         try {
           const db = await getDb();
           if (!db) throw new Error("Database not available");
 
-          // 排序
-          const results = await db
-            .select()
+          const whereClause = eq(publicLetters.moderationStatus, "approved");
+          const hasStarred = ctx.user
+            ? sql<boolean>`EXISTS (
+                SELECT 1 FROM ${stars}
+                WHERE ${stars.userId} = ${ctx.user.id}
+                  AND ${stars.publicLetterId} = ${publicLetters.id}
+              )`
+            : sql<boolean>`false`;
+          const orderBy = input.sortBy === "popular"
+            ? desc(publicLetters.starCount)
+            : desc(publicLetters.createdAt);
+          const [results, totalRows] = await Promise.all([
+            db
+            .select({
+              id: publicLetters.id,
+              letterId: publicLetters.letterId,
+              userId: publicLetters.userId,
+              excerpt: publicLetters.excerpt,
+              moderationStatus: publicLetters.moderationStatus,
+              redactionFields: publicLetters.redactionFields,
+              reviewedAt: publicLetters.reviewedAt,
+              reviewedBy: publicLetters.reviewedBy,
+              emotionTags: publicLetters.emotionTags,
+              starCount: publicLetters.starCount,
+              createdAt: publicLetters.createdAt,
+              hasStarred,
+            })
             .from(publicLetters)
-            .where(eq(publicLetters.moderationStatus, "approved"))
-            .orderBy(
-              input.sortBy === "popular"
-                ? desc(publicLetters.starCount)
-                : desc(publicLetters.createdAt)
-            )
+            .where(whereClause)
+            .orderBy(orderBy)
             .limit(input.limit)
-            .offset(input.offset);
+            .offset(input.offset),
+            db.select({ total: count() }).from(publicLetters).where(whereClause),
+          ]);
 
           return {
             data: results,
-            total: results.length,
+            total: Number(totalRows[0]?.total || 0),
           };
         } catch (error) {
           console.error("获取公开信件列表失败:", error);
@@ -364,7 +386,12 @@ export const socialCompleteRouter = router({
         const current = await getTodayQuote();
         if (current) return current;
         await selectDailyQuote();
-        return (await getTodayQuote()) || { quote: "", emotionTags: [], publicLetter: null };
+        return (await getTodayQuote()) || {
+          quote: "",
+          message: "暂时还没有可公开的真实来信；等有人愿意分享后，这里会为你留下一句被认真读过的话。",
+          emotionTags: [],
+          publicLetter: null,
+        };
       } catch (error) {
         console.error("获取今日金句失败:", error);
         throw new TRPCError({

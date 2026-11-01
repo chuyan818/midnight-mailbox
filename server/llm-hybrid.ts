@@ -278,20 +278,23 @@ export async function generateAIReply(
   }
 }
 
-function buildDailyQuoteFallback(publicExcerpt: string): string {
+function buildDailyQuoteFallback(publicExcerpt: string, emotionTags: unknown = []): string {
   const detail = publicExcerpt.replace(/\s+/g, " ").trim().split(/[。！？!?\n]/)[0]?.slice(0, 42);
-  if (detail) return `你写下的“${detail}”，值得被认真放在心上；今晚不必急着给自己答案。`;
+  const tags = Array.isArray(emotionTags) ? emotionTags.map(String) : [];
+  const positiveOrNeutral = tags.some((tag) => ["快乐", "开心", "期待", "希望", "平静", "日常分享", "感恩", "满足"].includes(tag));
+  if (detail && positiveOrNeutral) return `你写下的“${detail}”，这份真实的开心与日常值得被好好记住，也值得有人安静地为你高兴。`;
+  if (detail) return `你写下的“${detail}”，已经被认真看见；先允许自己有这样的感受，今晚不必急着给自己答案。`;
   return "愿你今晚不必急着解释自己，先在一盏安静的灯下，陪自己走过这一小段。";
 }
 
 /** 生成每日一句：优先千问，失败时仍依据当日公开摘录生成内容相关的安全降级句。 */
-export async function generateDailyQuote(publicExcerpt: string): Promise<string> {
-  if (!allowExternalModelCalls()) return buildDailyQuoteFallback(publicExcerpt);
+export async function generateDailyQuote(publicExcerpt: string, emotionTags: unknown = []): Promise<string> {
+  if (!allowExternalModelCalls()) return buildDailyQuoteFallback(publicExcerpt, emotionTags);
   try {
     const language = await detectLanguage(publicExcerpt);
     if (hasQwenConfig()) {
       try {
-        return await openaiGenerateDailyQuote(publicExcerpt, language);
+        return await openaiGenerateDailyQuote(publicExcerpt, language, emotionTags);
       } catch (error) {
         console.warn("Qwen daily quote generation failed, falling back to Manus LLM:", error);
       }
@@ -302,9 +305,9 @@ export async function generateDailyQuote(publicExcerpt: string): Promise<string>
         messages: [
           {
             role: "system",
-            content: "你是深夜信箱的每日一句编辑。根据已脱敏公开摘录写一句20到70字、温暖具体、不空泛的中文句子。必须回应摘录中的真实情绪或细节，不要标题、引号、解释或鸡汤套话，只输出一句话。",
+            content: "你是深夜信箱的每日一句编辑。根据已脱敏公开摘录和情绪标签写一句20到70字、温暖具体、不空泛的中文陪伴句。先准确承接摘录中的真实细节：如果是平静、快乐、期待或日常分享，要自然地为这份生活感到高兴，不要把它解释成痛苦；如果有压力或难过，只做情绪验证，不诊断、不夸大、不说教。不要标题、引号、解释或鸡汤套话，只输出一句话。",
           },
-          { role: "user", content: `已脱敏公开摘录：\n${publicExcerpt}` },
+          { role: "user", content: `已脱敏公开摘录：\n${publicExcerpt}\n情绪标签：${Array.isArray(emotionTags) ? emotionTags.join("、") : "未提供"}` },
         ],
       });
       const raw = response.choices[0]?.message?.content;
@@ -316,7 +319,7 @@ export async function generateDailyQuote(publicExcerpt: string): Promise<string>
   } catch (error) {
     console.error("Daily quote generation error:", error);
   }
-  return buildDailyQuoteFallback(publicExcerpt);
+  return buildDailyQuoteFallback(publicExcerpt, emotionTags);
 }
 
 /**
