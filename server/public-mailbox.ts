@@ -156,7 +156,7 @@ export async function getTodayQuote() {
     .where(eq(dailyQuotes.date, today))
     .limit(1);
 
-  if (result.length === 0) return null;
+  if (result.length === 0 || result[0].quote.includes("[测试数据]")) return null;
 
   const quote = result[0];
   const letterResult = await db
@@ -196,7 +196,10 @@ async function selectDailyQuoteUnlocked() {
     .where(eq(dailyQuotes.date, today))
     .limit(1);
 
-  if (existing.length > 0) return existing[0];
+  if (existing.length > 0 && !existing[0].quote.includes("[测试数据]")) return existing[0];
+  if (existing.length > 0) {
+    await db.delete(dailyQuotes).where(eq(dailyQuotes.id, existing[0].id));
+  }
 
   // 优先从公共信箱中选择最有共鸣的一条。
   const topLetter = await db
@@ -219,7 +222,10 @@ async function selectDailyQuoteUnlocked() {
     const previousQuote = await db
       .select()
       .from(dailyQuotes)
-      .where(sql`${dailyQuotes.date} < ${today}`)
+      .where(and(
+        sql`${dailyQuotes.date} < ${today}`,
+        sql`${dailyQuotes.quote} NOT LIKE ${"%[测试数据]%"}`,
+      ))
       .orderBy(desc(dailyQuotes.date))
       .limit(1);
     if (previousQuote.length > 0) {
