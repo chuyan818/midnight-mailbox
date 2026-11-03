@@ -40,7 +40,7 @@ import {
 import { crisisCases, users, letters } from "../drizzle/schema";
 import { detectDeterministicRisk } from "./safety/risk";
 import { getOnlineCount, heartbeat } from "./presence";
-import { changeEmailPassword, getRecentLoginEvents } from "./auth/email-auth";
+import { changeEmailPassword, getRecentLoginEvents, hashPassword, verifyPassword } from "./auth/email-auth";
 
 // Emotion types
 const EMOTION_TYPES = ["快乐", "悲伤", "焦虑", "愤怒", "孤独", "迷茫", "压力", "思念", "期待", "平静", "日常分享"] as const;
@@ -129,9 +129,87 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         if (input.newPassword !== input.confirmPassword) throw new Error("两次输入的新密码不一致");
         return changeEmailPassword(ctx.user.id, input.currentPassword, input.newPassword);
+    }),
+  }),
+  security: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDbConnection();
+      const [user] = await db
+        .select({
+          securityQuestion: users.securityQuestion,
+          securityQuestionUpdatedAt: users.securityQuestionUpdatedAt,
+        })
+        .from(users)
+        .where(eq(users.id, ctx.user.id))
+        .limit(1);
+      return {
+        configured: Boolean(user?.securityQuestion),
+        question: user?.securityQuestion || null,
+        updatedAt: user?.securityQuestionUpdatedAt || null,
+      };
+    }),
+    verify: protectedProcedure
+      .input(z.object({ answer: z.string().trim().min(2).max(256) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDbConnection();
+        const [user] = await db
+          .select({ securityAnswerHash: users.securityAnswerHash })
+          .from(users)
+          .where(eq(users.id, ctx.user.id))
+          .limit(1);
+        if (!user?.securityAnswerHash) return { configured: false, verified: false };
+        const verified = await verifyPassword(input.answer, user.securityAnswerHash);
+        return { configured: true, verified };
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        currentAnswer: z.string().trim().min(2).max(256).optional(),
+        question: z.string().trim().min(1).max(255),
+        answer: z.string().trim().min(2).max(256),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDbConnection();
+        const [user] = await db
+          .select({ securityAnswerHash: users.securityAnswerHash })
+          .from(users)
+          .where(eq(users.id, ctx.user.id))
+          .limit(1);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "用户不存在" });
+        if (user.securityAnswerHash) {
+          if (!input.currentAnswer || !(await verifyPassword(input.currentAnswer, user.securityAnswerHash))) {
+            throw new TRPCError({ code: "UNAUTHORIZED", message: "当前安全问题答案不正确" });
+          }
+        }
+        const securityAnswerHash = await hashPassword(input.answer);
+        await db.update(users).set({
+          securityQuestion: input.question,
+          securityAnswerHash,
+          securityQuestionUpdatedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(users.id, ctx.user.id));
+        return { success: true };
+      }),
+    reset: protectedProcedure
+      .input(z.object({ currentPassword: z.string().min(1).max(256) }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDbConnection();
+        const [user] = await db
+          .select({ passwordHash: users.passwordHash })
+          .from(users)
+          .where(eq(users.id, ctx.user.id))
+          .limit(1);
+        if (!user?.passwordHash || !(await verifyPassword(input.currentPassword, user.passwordHash))) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "当前密码不正确" });
+        }
+        await db.update(users).set({
+          securityQuestion: null,
+          securityAnswerHash: null,
+          securityQuestionUpdatedAt: null,
+          updatedAt: new Date(),
+        }).where(eq(users.id, ctx.user.id));
+        return { success: true };
       }),
   }),
-
   user: router({
     getProfile: protectedProcedure.query(async ({ ctx }) => {
       const user = await getUserById(ctx.user.id);

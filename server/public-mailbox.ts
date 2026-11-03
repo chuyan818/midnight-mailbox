@@ -168,6 +168,7 @@ export async function getTodayQuote() {
   return {
     ...quote,
     publicLetter: letterResult[0] || null,
+    sourceType: letterResult[0] ? "public" : quote.letterId === 0 ? "default" : "history",
   };
 }
 
@@ -206,30 +207,32 @@ async function selectDailyQuoteUnlocked() {
     .limit(1);
 
   let sourceLetterId: number;
-  let sourceExcerpt: string;
+  let generatedQuote: string;
   let sourceEmotionTags: unknown;
   if (topLetter.length > 0) {
     const publicLetter = topLetter[0];
     sourceLetterId = publicLetter.letterId;
-    sourceExcerpt = publicLetter.excerpt;
     sourceEmotionTags = publicLetter.emotionTags;
+    generatedQuote = await generateDailyQuote(publicLetter.excerpt, sourceEmotionTags);
   } else {
-    // 没有新的公开信时，使用历史上已公开的真实金句作为上下文，
-    // 而不是向用户展示固定占位句或捏造一封不存在的来信。
+    // 没有新的公开信时，优先使用历史真实金句；首次运行才使用明确标注的系统安慰文本。
     const previousQuote = await db
       .select()
       .from(dailyQuotes)
       .where(sql`${dailyQuotes.date} < ${today}`)
       .orderBy(desc(dailyQuotes.date))
       .limit(1);
-    if (previousQuote.length === 0) return null;
-    sourceLetterId = previousQuote[0].letterId;
-    sourceExcerpt = previousQuote[0].quote;
-    sourceEmotionTags = previousQuote[0].emotionTags;
+    if (previousQuote.length > 0) {
+      sourceLetterId = previousQuote[0].letterId;
+      sourceEmotionTags = previousQuote[0].emotionTags;
+      generatedQuote = await generateDailyQuote(previousQuote[0].quote, sourceEmotionTags);
+    } else {
+      // First-run fallback: this is an explicit system comfort line, not a fake user quote.
+      sourceLetterId = 0;
+      sourceEmotionTags = ["陪伴"];
+      generatedQuote = "今晚不必急着把一切说清楚，先让自己在这里被温柔地陪一会儿。";
+    }
   }
-
-  // 只把已审核、已脱敏的公开摘录（或历史已公开金句）交给生成器。
-  const generatedQuote = await generateDailyQuote(sourceExcerpt, sourceEmotionTags);
 
   const result = await db.insert(dailyQuotes).values({
     letterId: sourceLetterId,

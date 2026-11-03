@@ -57,6 +57,13 @@
       "when": 1792380490534,
       "tag": "0007_high_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793578829534,
+      "tag": "0008_safe_karnak",
+      "breakpoints": true
     }
   ]
 }

@@ -11,6 +11,7 @@ interface Quote {
   id: number;
   quote: string;
   message?: string;
+  sourceType?: "public" | "history" | "default";
   emotionTags?: unknown;
   date: string | Date;
   publicLetter?: { starCount?: number; emotionTags?: unknown } | null;
@@ -96,7 +97,9 @@ export default function DailyQuote() {
               >
                 {emotionValue}
               </span>
-                <span className="text-gray-400">{hasQuote ? "来自真实来信的陪伴摘句" : "等待真实来信"}</span>
+                <span className="text-gray-400">
+                  {quote?.sourceType === "public" ? "来自真实公开信的陪伴摘句" : quote?.sourceType === "history" ? "根据历史真实金句生成" : quote?.sourceType === "default" ? "系统默认的安慰话" : "等待真实来信"}
+                </span>
             </div>
 
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
