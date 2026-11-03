@@ -396,11 +396,6 @@ export default function Profile() {
               <p className="text-2xl font-bold mb-1">{stats?.weeklyLetters ?? "—"} {extra.lettersUnit}</p>
               <p className="text-xs text-[#FFD580]">{extra.weekChange} {stats?.weeklyChangePercent === undefined ? "—" : `${stats.weeklyChangePercent >= 0 ? "+" : ""}${stats.weeklyChangePercent}%`}</p>
             </div>
-            <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-              <p className="text-xs text-white/60 mb-1">{extra.hours}</p>
-              <p className="text-2xl font-bold mb-1">{stats?.emotionalHours ?? "—"}{stats?.emotionalHours == null ? "" : ` ${extra.hoursUnit}`}</p>
-              <p className="text-xs text-white/50">数据库暂无情绪停留时长字段</p>
-            </div>
           </div>
         </div>
 

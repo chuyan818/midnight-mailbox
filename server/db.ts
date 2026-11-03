@@ -466,7 +466,7 @@ export async function getUserProfileStats(userId: number) {
     return {
       totalLetters: 0, averageMood: null, pendingReplies: 0, lastActive: null,
       daysSinceJoined: 0, moodType: null, trend: [], emotionDistribution: [],
-      weeklyLetters: 0, previousWeeklyLetters: 0, weeklyChangePercent: 0, emotionalHours: null,
+      weeklyLetters: 0, previousWeeklyLetters: 0, weeklyChangePercent: 0,
     };
   }
 
@@ -535,7 +535,5 @@ export async function getUserProfileStats(userId: number) {
     weeklyLetters,
     previousWeeklyLetters,
     weeklyChangePercent,
-    // The schema has no duration/session field, so do not fabricate this value.
-    emotionalHours: null,
   };
 }
