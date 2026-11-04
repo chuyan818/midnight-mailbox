@@ -220,6 +220,7 @@ export default function Profile() {
   const todayKey = new Date().toISOString().slice(0, 10);
   const activeTrend = activeTrendIndex === null ? null : stats?.trend?.[activeTrendIndex] ?? null;
   const emotionEmoji: Record<string, string> = { 快乐: "😊", 开心: "😊", 平静: "😐", 悲伤: "😢", 低落: "😢", 焦虑: "😰", 愤怒: "😠", 孤独: "🌙", 迷茫: "🌫️", 压力: "🫨", 思念: "💭" };
+  const moodSummary = stats?.moodType ? extra.mood.replace("{moodType}", stats.moodType) : extra.moodEmpty;
 
   const handleChangePassword = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -296,7 +297,7 @@ export default function Profile() {
                 <MembershipBadge tier={badgeTier} size="small" />
               </div>
               <p className="text-xs text-white/60 mb-2">{extra.days.replace("{days}", String(stats?.daysSinceJoined ?? 0))}</p>
-              <p className="text-xs text-white/70">{stats?.moodType ? `今晚的你，状态：${stats.moodType}` : "—"} <span>🌙</span></p>
+              <p className="text-xs text-white/70">{moodSummary} <span>🌙</span></p>
             </div>
 
             {/* 引用语 */}
