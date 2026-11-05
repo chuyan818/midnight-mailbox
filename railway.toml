@@ -1,0 +1,16 @@
+# Railway service configuration for midnight-mailbox.
+# Keep this file minimal so it can be migrated to .railway/railway.ts if the
+# legacy Config as Code cutoff is enforced after 2026-12-01.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Run migrations from the runtime image before the new server starts.
+preDeployCommand = ["pnpm db:migrate"]
+startCommand = "node dist/server.js"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
